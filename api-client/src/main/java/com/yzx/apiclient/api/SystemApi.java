@@ -45,4 +45,10 @@ public interface SystemApi {
      */
     @GetMapping("/system/menu/getMenusTreeByUserId/{userId}")
     public AjaxResult getMenusTreeByUserId(@PathVariable(name = "userId") Long userId);
+
+    @GetMapping("/system/getUserInfo/{userId}")
+    public AjaxResult getUserInfo(@PathVariable(name = "userId") String userId);
+
+    @GetMapping("/system/getUserInfoByQrCode/{code}")
+    public AjaxResult getUserInfoByQrCode(@PathVariable String code);
 }

@@ -3,6 +3,9 @@ package com.yzx.wms.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yzx.model.order.WareSkuLockVo;
 import com.yzx.model.wms.WareSkuEntity;
+import com.yzx.model.wms.vo.SkuHasStockVo;
+
+import java.util.List;
 
 /**
  * @className: WareSkuService
@@ -13,4 +16,6 @@ import com.yzx.model.wms.WareSkuEntity;
  */
 public interface IWareSkuService extends IService<WareSkuEntity> {
     boolean orderLockStock(WareSkuLockVo vo);
+
+    List<SkuHasStockVo> getSkusHasStock(List<Long> skuIds);
 }

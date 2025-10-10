@@ -11,4 +11,5 @@ import com.yzx.model.wms.WareSkuEntity;
  * @description:
  */
 public interface WareMapper extends BaseMapper<WareSkuEntity> {
+    Long getSkuStock(Long skuid);
 }

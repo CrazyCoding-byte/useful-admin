@@ -3,12 +3,15 @@ package com.yzx.wms.controller;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.exception.NoStockException;
 import com.yzx.model.order.WareSkuLockVo;
+import com.yzx.model.wms.vo.SkuHasStockVo;
 import com.yzx.wms.service.IWareSkuService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 import static com.yzx.model.enums.BizCodeEnum.NO_STOCK_EXCEPTION;
 
@@ -34,5 +37,11 @@ public class WareController {
         } catch (NoStockException e) {
             return AjaxResult.error(NO_STOCK_EXCEPTION.getCode(),NO_STOCK_EXCEPTION.getMessage());
         }
+    }
+
+    @PostMapping("/hasstock")
+    public AjaxResult hasStock(@RequestBody List<Long> skuIds) {
+        List<SkuHasStockVo> vos =  wareSkuService.getSkusHasStock(skuIds);
+        return AjaxResult.success(vos);
     }
 }

@@ -85,5 +85,5 @@ public abstract class BaseUserDetails implements UserDetailsService {
         return baseUserDetail;
     }
 
-    protected abstract BaseAuth getBaseAuth(String username);
+    protected abstract BaseAuth getBaseAuth(String s);
 }

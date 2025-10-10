@@ -5,11 +5,10 @@ import java.util.Locale;
 
 /**
  * 通用常量信息
- * 
+ *
  * @author ruoyi
  */
-public class Constants
-{
+public class Constants {
     /**
      * Zuul请求头TOKEN名称（不要有空格）
      */
@@ -109,7 +108,6 @@ public class Constants
      * 手机号+密码登陆
      */
     public static final String LOGIN_TYPE_PWD = "pwd";
-
     /**
      * 账户名+密码登陆
      */

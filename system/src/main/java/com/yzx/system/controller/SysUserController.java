@@ -1,9 +1,12 @@
 package com.yzx.system.controller;
 
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.yzx.model.AjaxResult;
+import com.yzx.model.StringUtils;
 import com.yzx.model.annotation.Log;
 import com.yzx.model.enums.BusinessType;
+import com.yzx.model.system.RegisterUserTo;
 import com.yzx.model.system.SysRole;
 import com.yzx.model.system.SysUser;
 import com.yzx.model.system.TableDataInfo;
@@ -12,19 +15,22 @@ import com.yzx.system.service.ISysRoleService;
 import com.yzx.system.service.ISysUserService;
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * 用户信息
- * 
+ *
  * @author ruoyi
  */
 @RestController
 @RequestMapping("/system/user")
-public class SysUserController extends BaseController
-{
+public class SysUserController extends BaseController {
     @Autowired
     private ISysUserService userService;
 
@@ -41,8 +47,7 @@ public class SysUserController extends BaseController
      * 获取用户列表
      */
     @GetMapping("/list")
-    public TableDataInfo list(SysUser user)
-    {
+    public TableDataInfo list(SysUser user) {
         startPage();
         List<SysUser> list = userService.selectUserList(user);
         return getDataTable(list);
@@ -75,9 +80,9 @@ public class SysUserController extends BaseController
 //        util.importTemplateExcel(response, "用户数据");
 //    }
 
-//    /**
-//     * 根据用户编号获取详细信息
-//     */
+    /**
+     * 根据用户编号获取详细信息
+     */
 //    @PreAuthorize("@ss.hasPermi('system:user:query')")
 //    @GetMapping(value = { "/", "/{userId}" })
 //    public AjaxResult getInfo(@PathVariable(value = "userId", required = false) Long userId)
@@ -96,7 +101,15 @@ public class SysUserController extends BaseController
 //        ajax.put("posts", postService.selectPostAll());
 //        return ajax;
 //    }
+    @GetMapping("/getUserInfo/{userId}")
+    public AjaxResult getUserInfo(@PathVariable String userId) {
+        return AjaxResult.success(userService.selectUserById(Long.valueOf(userId)));
+    }
 
+    @GetMapping("/getUserInfoByQrCode/{code}")
+    public AjaxResult getUserInfoByQrCode(@PathVariable String code) {
+        return AjaxResult.success(userService.getOne(new LambdaQueryWrapper<SysUser>().eq(SysUser::getQrCode, code)));
+    }
 //    /**
 //     * 新增用户
 //     */
@@ -157,10 +170,8 @@ public class SysUserController extends BaseController
      */
     @Log(title = "用户管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{userIds}")
-    public AjaxResult remove(@PathVariable Long[] userIds)
-    {
-        if (ArrayUtils.contains(userIds, getUserId()))
-        {
+    public AjaxResult remove(@PathVariable Long[] userIds) {
+        if (ArrayUtils.contains(userIds, getUserId())) {
             return error("当前用户不能删除");
         }
         return toAjax(userService.deleteUserByIds(userIds));
@@ -171,8 +182,7 @@ public class SysUserController extends BaseController
      */
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/resetPwd")
-    public AjaxResult resetPwd(@RequestBody SysUser user)
-    {
+    public AjaxResult resetPwd(@RequestBody SysUser user) {
         userService.checkUserAllowed(user);
         userService.checkUserDataScope(user.getUserId());
         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
@@ -185,8 +195,7 @@ public class SysUserController extends BaseController
      */
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/changeStatus")
-    public AjaxResult changeStatus(@RequestBody SysUser user)
-    {
+    public AjaxResult changeStatus(@RequestBody SysUser user) {
         userService.checkUserAllowed(user);
         userService.checkUserDataScope(user.getUserId());
         user.setUpdateBy(getUsername());
@@ -197,8 +206,7 @@ public class SysUserController extends BaseController
      * 根据用户编号获取授权角色
      */
     @GetMapping("/authRole/{userId}")
-    public AjaxResult authRole(@PathVariable("userId") Long userId)
-    {
+    public AjaxResult authRole(@PathVariable("userId") Long userId) {
         AjaxResult ajax = AjaxResult.success();
         SysUser user = userService.selectUserById(userId);
         List<SysRole> roles = roleService.selectRolesByUserId(userId);
@@ -212,12 +220,28 @@ public class SysUserController extends BaseController
      */
     @Log(title = "用户管理", businessType = BusinessType.GRANT)
     @PutMapping("/authRole")
-    public AjaxResult insertAuthRole(Long userId, Long[] roleIds)
-    {
+    public AjaxResult insertAuthRole(Long userId, Long[] roleIds) {
         userService.checkUserDataScope(userId);
         roleService.checkRoleDataScope(roleIds);
         userService.insertUserAuth(userId, roleIds);
         return success();
+    }
+
+    @PostMapping("/register")
+    public AjaxResult register(@Valid @RequestBody RegisterUserTo user) {
+
+        return AjaxResult.success(userService.register(user));
+    }
+
+    /**
+     * 分销注册
+     * @param user
+     * @param code
+     * @return
+     */
+    @PostMapping
+    public AjaxResult register(@Valid @RequestBody RegisterUserTo user, String code) {
+        return AjaxResult.success(userService.registerByH5(user, code));
     }
 //
 //    /**

@@ -94,7 +94,9 @@ public class AuthenticationController {
     }
 
     @GetMapping("/user/getInfo")
-    public AjaxResult getInfo() {
+    public AjaxResult getInfo(HttpServletRequest request) {
+        String bear = request.getHeader("Authorization");
+        System.out.println(bear);
         Oauth2Util.UserJwt userJwt = new Oauth2Util().getUserJwtFromHeader(ServletUtils.getRequest());
 
         if (Objects.isNull(userJwt)) {

@@ -2,8 +2,11 @@ package com.yzx.system.service;
 
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.yzx.model.AjaxResult;
+import com.yzx.model.system.RegisterUserTo;
 import com.yzx.model.system.SysUser;
 
+import javax.validation.Valid;
 import java.util.List;
 
 /**
@@ -206,4 +209,8 @@ public interface ISysUserService extends IService<SysUser>
      * @return 结果
      */
     public String importUser(List<SysUser> userList, Boolean isUpdateSupport, String operName);
+
+    AjaxResult register(RegisterUserTo user);
+
+    AjaxResult registerByH5(@Valid RegisterUserTo user, String code);
 }

@@ -7,6 +7,7 @@ import com.yzx.model.order.WareSkuLockVo;
 import com.yzx.model.wms.WareOrderTaskDetailEntity;
 import com.yzx.model.wms.WareOrderTaskEntity;
 import com.yzx.model.wms.WareSkuEntity;
+import com.yzx.model.wms.vo.SkuHasStockVo;
 import com.yzx.wms.mapper.WareMapper;
 import com.yzx.wms.mapper.WareSkuDao;
 import com.yzx.wms.mq.StockDetailTo;
@@ -21,6 +22,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -42,6 +45,7 @@ public class WareSkuService extends ServiceImpl<WareMapper, WareSkuEntity> imple
     private WareSkuDao wareSkuDao;
     @Autowired
     private WareOrderTaskDetailService wareOrderTaskDetailService;
+
     @Override
     public boolean orderLockStock(WareSkuLockVo vo) {
         /**
@@ -102,6 +106,19 @@ public class WareSkuService extends ServiceImpl<WareMapper, WareSkuEntity> imple
             }
         }
         return false;
+    }
+
+    @Override
+    public List<SkuHasStockVo> getSkusHasStock(List<Long> skuIds) {
+        List<SkuHasStockVo> stockVos = new ArrayList<>();
+        for (Long skuid : skuIds) {
+            SkuHasStockVo skuHasStockVo = new SkuHasStockVo();
+            Long count = baseMapper.getSkuStock(skuid);
+            skuHasStockVo.setSkuId(skuid);
+            skuHasStockVo.setHasStock(count == null ? false : count > 0);
+            stockVos.add(skuHasStockVo);
+        }
+        return stockVos;
     }
 
     @Data

@@ -1,13 +1,15 @@
 package com.yzx.system.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.yzx.common.config.RabbitMQConfig;
+import com.yzx.model.AjaxResult;
 import com.yzx.model.StringUtils;
 import com.yzx.model.annotation.DataScope;
 import com.yzx.model.constant.UserConstants;
 import com.yzx.model.exception.ServiceException;
-import com.yzx.model.system.SysRole;
-import com.yzx.model.system.SysUser;
-import com.yzx.model.system.SysUserRole;
+import com.yzx.model.system.*;
 import com.yzx.model.ucenter.BaseAuth;
 import com.yzx.model.utils.BeanValidators;
 import com.yzx.model.utils.SecurityUtils;
@@ -18,18 +20,20 @@ import com.yzx.system.mapper.SysUserRoleMapper;
 import com.yzx.system.service.BaseAuthService;
 import com.yzx.system.service.ISysConfigService;
 import com.yzx.system.service.ISysUserService;
-import lombok.extern.slf4j.Slf4j;
+import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import javax.validation.Validator;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -39,6 +43,9 @@ import java.util.stream.Collectors;
  */
 @Service
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements ISysUserService {
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
     private static final Logger log = LoggerFactory.getLogger(SysUserServiceImpl.class);
 
     @Autowired
@@ -66,6 +73,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Autowired
     protected Validator validator;
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+    @Autowired
+    private SysUserMapper sysUserMapper;
 
     /**
      * 根据条件分页查询用户列表
@@ -512,4 +523,100 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
         return successMsg.toString();
     }
+
+    @Override
+    public AjaxResult register(RegisterUserTo user) {
+        return registInfo(user, null) ? AjaxResult.success("注冊成功") : AjaxResult.error("注册失败");
+    }
+
+    @Transactional
+    public boolean registInfo(RegisterUserTo user, String qrcode) {
+        if (Objects.isNull(user)) return false;
+        String code = user.getCode();
+        if (isExist(user.getPhone(), user.getUsername())) return false;
+        if (StringUtils.isEmpty(code)) return false;
+        String s = redisTemplate.opsForValue().get("sms_code:" + user.getPhone());
+        if (s.equals(code)) {
+            SysUser sysUser = new SysUser();
+            if (!StringUtils.isEmpty(user.getPassword())) {
+                sysUser.setPassword(user.getPassword());
+            }
+            sysUser.setPhonenumber(user.getPhone());
+            if (!StringUtils.isEmpty(user.getUsername())) {
+                sysUser.setUserName(user.getUsername());
+            }
+            sysUser.setQrCode(generateCodeWithDate());
+            boolean save = this.save(sysUser);
+            //如果当前是分销注册保存成功发送消息给mq
+            registerUser(sysUser);
+            if (save && !StringUtils.isEmpty(qrcode)) {
+                sendUserMessage(sysUser, qrcode);
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private void sendUserMessage(SysUser sysUser, String qrCode) {
+        UserRegisteredMessage userRegisteredMessage = new UserRegisteredMessage();
+        userRegisteredMessage.setUserId(sysUser.getUserId().toString());
+        userRegisteredMessage.setUserName(sysUser.getUserName());
+        userRegisteredMessage.setPhoneNumber(sysUser.getPhonenumber());
+        userRegisteredMessage.setQrCode(sysUser.getQrCode());
+        userRegisteredMessage.setRegisterTime(new Date());
+
+        // 如果有邀请码，先查询邀请人信息
+        if (StringUtils.isNotBlank(qrCode)) {
+            SysUser inviter = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>().eq(SysUser::getQrCode, qrCode));
+            if (inviter != null) {
+                InviterInfo inviterInfo = new InviterInfo();
+                inviterInfo.setUserId(inviter.getUserId().toString());
+                inviterInfo.setUserName(inviter.getUserName());
+                inviterInfo.setQrCode(inviter.getQrCode());
+                userRegisteredMessage.setInviterInfo(inviterInfo);
+            }
+        }
+
+        try {
+            rabbitTemplate.convertAndSend(RabbitMQConfig.USER_EXCHANGE,
+                    RabbitMQConfig.USER_REGISTERED_ROUTING_KEY,
+                    userRegisteredMessage);
+            log.info("发送用户注册消息成功：{}", userRegisteredMessage);
+        } catch (Exception e) {
+            log.error("发送用户注册消息失败：{}", e.getMessage());
+            //todo 记录日志
+        }
+
+    }
+
+    @Override
+    public AjaxResult registerByH5(RegisterUserTo user, String qrcode) {
+        return registInfo(user, qrcode) ? AjaxResult.success("注冊成功") : AjaxResult.error("注册失败");
+    }
+
+    private boolean isExist(String phone, String username) {
+        return userMapper.selectUserByUserName(username) != null || this.getOne(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getPhonenumber, phone)) != null;
+    }
+
+    private static String generateCodeWithDate() {
+        // 生成6位随机大写字母
+        StringBuilder randomCode = new StringBuilder();
+        Random random = new Random();
+        for (int i = 0; i < 6; i++) {
+            char randomChar = (char) ('A' + random.nextInt(26));
+            randomCode.append(randomChar);
+        }
+        // 获取当前日期，格式化为8位数字（YYYYMMDD）
+        LocalDate now = LocalDate.now();
+        int year = now.getYear();
+        int month = now.getMonthValue();
+        int day = now.getDayOfMonth();
+        // 格式化为8位：yyyyMMdd
+        String datePart = String.format("%04d%02d%02d", year, month, day);
+        // 组合返回结果
+        return randomCode.toString() + datePart;
+    }
+
+
 }
