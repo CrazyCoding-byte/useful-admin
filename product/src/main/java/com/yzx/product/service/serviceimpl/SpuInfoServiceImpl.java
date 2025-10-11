@@ -43,6 +43,12 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
     @Autowired
     private WmsFeignService wmsFeignService;
 
+
+    /**
+     * 商品上架
+     * @param spuId
+     * @return
+     */
     @Override
     @Transactional
     public Result up(String spuId) {

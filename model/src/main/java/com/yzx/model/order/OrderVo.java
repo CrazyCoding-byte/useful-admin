@@ -1,31 +1,20 @@
 package com.yzx.model.order;
 
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
-import java.util.List;
 
 /**
- * 订单
- *
- * @author 夏沫止水
- * @email HeJieLin@gulimall.com
- * @date 2020-05-22 19:49:53
- */
-@Data
-@TableName("oms_order")
-public class OrderEntity implements Serializable {
-    private static final long serialVersionUID = 1L;
+ * @Description:
+ * @Created: with IntelliJ IDEA.
+ * @author: 夏沫止水
+ * @createTime: 2020-07-06 23:30
+ **/
 
-    /**
-     * id
-     */
-    @TableId
+@Data
+public class OrderVo {
+
     private Long id;
     /**
      * member_id
@@ -192,10 +181,4 @@ public class OrderEntity implements Serializable {
      */
     private Date modifyTime;
 
-    @TableField(exist = false)
-    private List<OrderItemEntity> orderItemEntityList;
-    /**
-     * 订单二维码
-     */
-    private String codeUrl;
 }

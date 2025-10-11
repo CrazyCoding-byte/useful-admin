@@ -1,6 +1,7 @@
 package com.yzx.order.service.impl;
 
 import com.alibaba.fastjson.TypeReference;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yzx.apiclient.api.CartFeignService;
@@ -13,11 +14,13 @@ import com.yzx.model.exception.NoStockException;
 import com.yzx.model.order.*;
 import com.yzx.model.order.enums.OrderStatusEnum;
 import com.yzx.model.order.to.OrderCreateTo;
+import com.yzx.model.order.to.OrderTo;
 import com.yzx.model.ucenter.BaseUser;
 import com.yzx.order.mapper.OrderMapper;
 import com.yzx.order.service.OrderItemService;
 import com.yzx.order.service.OrderService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -187,6 +190,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderEntity> impl
             }
         }
     }
+
 
     /**
      * 保存订单所有数据
@@ -361,5 +365,28 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderEntity> impl
         orderEntity.setAutoConfirmDay(7);
         orderEntity.setConfirmStatus(0);
         return orderEntity;
+    }
+
+    @Override
+    public void closeOrder(OrderEntity orderEntity) {
+        //关闭订单之前先查询一下数据库，判断此订单状态是否已支付
+        OrderEntity orderInfo = this.getOne(new QueryWrapper<OrderEntity>().
+                eq("order_sn", orderEntity.getOrderSn()));
+        if (orderInfo.getStatus().equals(OrderStatusEnum.CREATE_NEW.getCode())) {
+            //代付款状态进行关单
+            OrderEntity orderUpdate = new OrderEntity();
+            orderUpdate.setId(orderInfo.getId());
+            orderUpdate.setStatus(OrderStatusEnum.CANCLED.getCode());
+            this.updateById(orderUpdate);
+            // 发送消息给MQ
+            OrderTo orderTo = new OrderTo();
+            BeanUtils.copyProperties(orderInfo, orderTo);
+            try {
+                //TODO 确保每个消息发送成功，给每个消息做好日志记录，(给数据库保存每一个详细信息)保存每个消息的详细信息
+                rabbitTemplate.convertAndSend("order-event-exchange", "order.release.other", orderTo);
+            } catch (Exception e) {
+                //TODO 定期扫描数据库，重新发送失败的消息
+            }
+        }
     }
 }

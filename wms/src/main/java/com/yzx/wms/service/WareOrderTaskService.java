@@ -11,4 +11,5 @@ import com.yzx.model.wms.WareOrderTaskEntity;
  * @description:
  */
 public interface WareOrderTaskService extends IService<WareOrderTaskEntity> {
+    WareOrderTaskEntity getOrderTaskByOrderSn(String orderSn);
 }
