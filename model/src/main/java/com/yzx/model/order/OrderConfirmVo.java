@@ -1,5 +1,8 @@
 package com.yzx.model.order;
 
+import com.yzx.model.cart.vo.CartItemVo;
+import com.yzx.model.coupon.CartInfoVo;
+import com.yzx.model.coupon.CouponInfo;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -7,12 +10,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-/**
- * @Description: 订单确认页需要用的数据
- * @Created: with IntelliJ IDEA.
- * @author: 夏沫止水
- * @createTime: 2020-07-02 18:59
- **/
+
 
 public class OrderConfirmVo {
 
@@ -35,6 +33,106 @@ public class OrderConfirmVo {
 
     @Getter @Setter
     Map<Long,Boolean> stocks;
+
+    private List<CartInfoVo> carInfoVoList;
+
+    private List<CouponInfo> couponInfoList;
+
+    private BigDecimal activityReduceAmount;
+
+    private BigDecimal couponReduceAmount;
+
+    private BigDecimal originalTotalAmount;
+
+    private BigDecimal totalAmount;
+
+    public List<MemberAddressVo> getMemberAddressVos() {
+        return memberAddressVos;
+    }
+
+    public void setMemberAddressVos(List<MemberAddressVo> memberAddressVos) {
+        this.memberAddressVos = memberAddressVos;
+    }
+
+    public List<OrderItemVo> getItems() {
+        return items;
+    }
+
+    public void setItems(List<OrderItemVo> items) {
+        this.items = items;
+    }
+
+    public Integer getIntegration() {
+        return integration;
+    }
+
+    public void setIntegration(Integer integration) {
+        this.integration = integration;
+    }
+
+    public String getOrderToken() {
+        return orderToken;
+    }
+
+    public void setOrderToken(String orderToken) {
+        this.orderToken = orderToken;
+    }
+
+    public Map<Long, Boolean> getStocks() {
+        return stocks;
+    }
+
+    public void setStocks(Map<Long, Boolean> stocks) {
+        this.stocks = stocks;
+    }
+
+    public List<CartInfoVo> getCarInfoVoList() {
+        return carInfoVoList;
+    }
+
+    public void setCarInfoVoList(List<CartInfoVo> carInfoVoList) {
+        this.carInfoVoList = carInfoVoList;
+    }
+
+    public List<CouponInfo> getCouponInfoList() {
+        return couponInfoList;
+    }
+
+    public void setCouponInfoList(List<CouponInfo> couponInfoList) {
+        this.couponInfoList = couponInfoList;
+    }
+
+    public BigDecimal getActivityReduceAmount() {
+        return activityReduceAmount;
+    }
+
+    public void setActivityReduceAmount(BigDecimal activityReduceAmount) {
+        this.activityReduceAmount = activityReduceAmount;
+    }
+
+    public BigDecimal getCouponReduceAmount() {
+        return couponReduceAmount;
+    }
+
+    public void setCouponReduceAmount(BigDecimal couponReduceAmount) {
+        this.couponReduceAmount = couponReduceAmount;
+    }
+
+    public BigDecimal getOriginalTotalAmount() {
+        return originalTotalAmount;
+    }
+
+    public void setOriginalTotalAmount(BigDecimal originalTotalAmount) {
+        this.originalTotalAmount = originalTotalAmount;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
+    }
 
     public Integer getCount() {
         Integer count = 0;

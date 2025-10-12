@@ -1,7 +1,9 @@
 package com.yzx.cart.service;
 
+import com.yzx.model.cart.vo.CartItemVo;
 import com.yzx.model.cart.vo.CartVo;
 
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -21,4 +23,6 @@ public interface CartService {
     void deleteIdCartInfo(Integer skuId);
 
     CartVo getCart();
+
+    List<CartItemVo> getUserCartItems();
 }

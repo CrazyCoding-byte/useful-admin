@@ -18,6 +18,9 @@ import org.springframework.data.redis.core.BoundHashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -88,7 +91,6 @@ public class CartServiceImpl implements CartService {
             //修改redis的数据
             String cartItemJson = JSON.toJSONString(cartItemVo);
             cartOps.put(skuId.toString(), cartItemJson);
-
         }
     }
 
@@ -137,12 +139,42 @@ public class CartServiceImpl implements CartService {
         if (userInfoTo.getUserId() != null) {
             //1、登录
             String cartKey = CART_PREFIX + userInfoTo.getUserId();
-
             //2、获取登录后的购物车数据【包含合并过来的临时购物车的数据和登录后购物车的数据】
             List<CartItemVo> cartItems = getCartItems(cartKey);
             cartVo.setItems(cartItems);
         }
         return cartVo;
+    }
+
+    @Override
+    public List<CartItemVo> getUserCartItems() {
+        List<CartItemVo> cartItemVoList = new ArrayList<>();
+        //获取当前用户登录的信息
+        BaseUser baseUser = jwtHelp.getCurrentUser().getBaseUser();
+        //如果用户未登录直接返回null
+        if (baseUser.getUserId() == null) {
+            return null;
+        } else {
+            //获取购物车项
+            String cartKey = CART_PREFIX + baseUser.getUserId();
+            //获取所有的
+            List<CartItemVo> cartItems = getCartItems(cartKey);
+            if (cartItems == null) {
+                throw new RuntimeException("购物车为空");
+            }
+            //筛选出选中的
+            cartItemVoList = cartItems.stream()
+                    .filter(items -> items.getCheck())
+                    .map(item -> {
+                        //更新为最新的价格（查询数据库）
+                        BigDecimal price = productFeignService.getPrice(item.getSkuId());
+                        item.setPrice(price);
+                        return item;
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        return cartItemVoList;
     }
 
     private List<CartItemVo> getCartItems(String cartKey) {

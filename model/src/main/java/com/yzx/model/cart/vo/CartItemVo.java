@@ -3,6 +3,7 @@ package com.yzx.model.cart.vo;
 import java.math.BigDecimal;
 import java.util.List;
 
+
 /**
  * @Description: 购物项内容
  * @Created: with IntelliJ IDEA.
@@ -19,6 +20,16 @@ public class CartItemVo {
     private String title;
 
     private String image;
+
+    private Long catalogId;
+
+    public Long getCatalogId() {
+        return catalogId;
+    }
+
+    public void setCatalogId(Long catalogId) {
+        this.catalogId = catalogId;
+    }
 
     /**
      * 商品套餐属性

@@ -2,15 +2,14 @@ package com.yzx.cart.controller;
 
 import com.yzx.cart.service.CartService;
 import com.yzx.model.AjaxResult;
+import com.yzx.model.cart.vo.CartItemVo;
 import com.yzx.model.cart.vo.CartVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -27,19 +26,28 @@ public class CartController {
     @Autowired
     private CartService cartService;
 
+    /**
+     * 获取当前用户的购物车商品项
+     * @return
+     */
+    @GetMapping(value = "/currentUserCartItems")
+    @ResponseBody
+    public List<CartItemVo> getCurrentCartItems() {
+
+        List<CartItemVo> cartItemVoList = cartService.getUserCartItems();
+
+        return cartItemVoList;
+    }
 
     /**
      *  获取用户购物车数据
      * @return
      */
-    @GetMapping(value = "/cart.html")
-    public AjaxResult cartListPage(Model model) throws ExecutionException, InterruptedException {
-        //快速得到用户信息：id,user-key
-        // UserInfoTo userInfoTo = CartInterceptor.toThreadLocal.get();
-
+    @GetMapping(value = "/getcart")
+    public AjaxResult cartListPage() throws ExecutionException, InterruptedException {
         CartVo cartVo = cartService.getCart();
 
-        return AjaxResult.success( cartVo);
+        return AjaxResult.success(cartVo);
     }
 
     /**

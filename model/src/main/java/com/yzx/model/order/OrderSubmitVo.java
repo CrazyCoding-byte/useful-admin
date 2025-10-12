@@ -31,5 +31,7 @@ public class OrderSubmitVo {
     /** 订单备注 **/
     private String remarks;
 
+    /** 使用的优惠券 **/
+    private Long couponId;
     //用户相关的信息，直接去session中取出即可
 }
