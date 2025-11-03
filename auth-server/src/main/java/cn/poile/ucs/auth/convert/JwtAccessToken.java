@@ -1,6 +1,7 @@
 package cn.poile.ucs.auth.convert;
 
 import cn.poile.ucs.auth.security.UserNameUserDetailService;
+import cn.poile.ucs.auth.utils.AESEncryptUtil;
 import com.yzx.model.ucenter.BaseUserDetail;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,12 +79,19 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
         }
         log.debug("ba user detail :" + baseUserDetail);
         DefaultOAuth2AccessToken token = (DefaultOAuth2AccessToken) oAuth2AccessToken;
-        map.put("username", baseUserDetail.getBaseAuth().getUserName());
+        try {
+            // 对敏感字段进行AES加密
+            String encryptedUid = AESEncryptUtil.encrypt(baseUserDetail.getBaseUser().getUserId().toString());
+            String encryptedUsername = AESEncryptUtil.encrypt(baseUserDetail.getBaseAuth().getUserName());
+            map.put("username", baseUserDetail.getBaseAuth().getUserName());
 //        map.put("mobile", baseUserDetail.getBaseAuth().getPhoneNumber());
-        map.put("u_id", baseUserDetail.getBaseUser().getUserId());
+            map.put("u_id", baseUserDetail.getBaseUser().getUserId());
+        }catch (Exception e){
+            log.error("加密用户信息失败", e);
+            throw new RuntimeException("Token 生成失败", e);
+        }
         token.setAdditionalInformation(map);
         log.debug("oAuth2AccessToken==========>" + oAuth2AccessToken);
-
         // 调用父类方法进行签名
         return super.enhance(token, oAuth2Authentication);
     }

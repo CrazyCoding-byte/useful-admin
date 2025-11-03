@@ -39,7 +39,7 @@ public class OrderApiController {
     public AjaxResult toTrade() throws ExecutionException, InterruptedException {
         OrderConfirmVo confirmVo = orderService.confirmOrder();
         //展示订单确认的数据
-        return AjaxResult.success();
+        return AjaxResult.success(confirmVo);
     }
 
     /**

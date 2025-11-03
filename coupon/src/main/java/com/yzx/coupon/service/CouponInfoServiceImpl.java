@@ -5,10 +5,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.yzx.apiclient.api.ProductFeignService;
 import com.yzx.coupon.mapper.CouponInfoMapper;
 import com.yzx.coupon.mapper.CouponRangeMapper;
 import com.yzx.coupon.mapper.CouponUseMapper;
+import com.yzx.model.AjaxResult;
 import com.yzx.model.cart.vo.CartItemVo;
+import com.yzx.model.cart.vo.SkuInfoVo;
 import com.yzx.model.coupon.CouponInfo;
 import com.yzx.model.coupon.CouponRange;
 import com.yzx.model.coupon.CouponUse;
@@ -36,21 +39,22 @@ public class CouponInfoServiceImpl extends ServiceImpl<CouponInfoMapper, CouponI
     @Autowired
     private CouponUseMapper couponUseMapper;
 
-//    @Autowired
-//    private ProductFeignClient productFeignClient;
+    @Autowired
+    private ProductFeignService productFeignClient;
 
-    //2 根据skuId+userId查询优惠卷信息
-//    @Override
-//    public List<CouponInfo> findCouponInfoList(Long skuId, Long userId) {
-//        //远程调用：根据skuId获取skuInfo
-//        SkuInfo skuInfo = productFeignClient.getSkuInfo(skuId);
-//
-//        //根据条件查询：skuId + 分类id + userId
-//        List<CouponInfo> couponInfoList = baseMapper.selectCouponInfoList(skuInfo.getId(),
-//                skuInfo.getCategoryId(), userId);
-//
-//        return couponInfoList;
-//    }
+    //    2 根据skuId+userId查询优惠卷信息
+    @Override
+    public List<CouponInfo> findCouponInfoList(Long skuId, Long userId) {
+        //远程调用：根据skuId获取skuInfo
+        AjaxResult ajaxResult = productFeignClient.getInfo(skuId);
+        SkuInfoVo o = (SkuInfoVo) ajaxResult.get("data");
+        if (Objects.isNull(o)) return null;
+        //根据条件查询：skuId + 分类id + userId
+        List<CouponInfo> couponInfoList = baseMapper.selectCouponInfoList(o.getSkuId(),
+        o.getCatalogId(), userId);
+
+        return couponInfoList;
+    }
 
     //3 获取购物车可以使用优惠卷列表
     @Override

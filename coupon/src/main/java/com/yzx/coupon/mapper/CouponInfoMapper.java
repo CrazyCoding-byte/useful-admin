@@ -3,7 +3,6 @@ package com.yzx.coupon.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.yzx.model.coupon.CouponInfo;
 import org.apache.ibatis.annotations.Param;
-import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 

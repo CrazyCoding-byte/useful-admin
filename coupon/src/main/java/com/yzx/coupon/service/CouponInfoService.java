@@ -32,7 +32,7 @@ public interface CouponInfoService extends IService<CouponInfo> {
 //    void saveCouponRule(CouponRuleVo couponRuleVo);
 
     //2 根据skuId+userId查询优惠卷信息
-//    List<CouponInfo> findCouponInfoList(Long skuId, Long userId);
+    List<CouponInfo> findCouponInfoList(Long skuId, Long userId);
 
     //3 获取购物车可以使用优惠卷列表
     List<CouponInfo> findCartCouponInfo(List<CartItemVo> cartInfoList, Long userId);

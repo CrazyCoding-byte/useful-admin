@@ -3,7 +3,6 @@ package cn.poile.ucs.auth.config;
 import cn.poile.ucs.auth.auth.granter.MobileCodeTokenGranter;
 import cn.poile.ucs.auth.convert.JwtAccessToken;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.bootstrap.encrypt.KeyProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,6 +30,7 @@ import javax.annotation.Resource;
 import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.List;
+
 /**
  * @className: BaseUserDetails
  * @author: yzx
@@ -122,4 +122,6 @@ public class AuthorizationConfig extends AuthorizationServerConfigurerAdapter {
         tokenGranters.add(new MobileCodeTokenGranter(authenticationManager, tokenServices, clientDetailsService, requestFactory));
         return tokenGranters;
     }
+
+
 }

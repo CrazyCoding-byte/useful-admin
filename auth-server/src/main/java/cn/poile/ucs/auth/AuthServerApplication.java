@@ -1,8 +1,5 @@
 package cn.poile.ucs.auth;
 
-import com.yzx.common.config.ComfireRabbitConfig;
-import com.yzx.common.config.MyThreadConfig;
-import com.yzx.common.config.RedisConfig;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

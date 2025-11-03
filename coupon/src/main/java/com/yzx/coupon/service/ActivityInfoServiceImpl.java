@@ -87,17 +87,17 @@ public class ActivityInfoServiceImpl extends ServiceImpl<ActivityInfoMapper, Act
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         //3 获取购物车可以使用优惠卷列表
-        List<CouponInfo> couponInfoList =
-                couponInfoService.findCartCouponInfo(cartInfoList, userId);
-
+//        List<CouponInfo> couponInfoList =
+//                couponInfoService.findCartCouponInfo(cartInfoList, userId);
+      //todo 优惠卷使用放在确认订单中处理
         //4 计算商品使用优惠卷之后金额，一次只能使用一张优惠卷
-        BigDecimal couponReduceAmount = new BigDecimal(0);
-        if (!CollectionUtils.isEmpty(couponInfoList)) {
-            couponReduceAmount = couponInfoList.stream()
-                    .filter(couponInfo -> couponInfo.getIsOptimal().intValue() == 1)
-                    .map(couponInfo -> couponInfo.getAmount())
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-        }
+//        BigDecimal couponReduceAmount = new BigDecimal(0);
+//        if (!CollectionUtils.isEmpty(couponInfoList)) {
+//            couponReduceAmount = couponInfoList.stream()
+//                    .filter(couponInfo -> couponInfo.getIsOptimal().intValue() == 1)
+//                    .map(couponInfo -> couponInfo.getAmount())
+//                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+//        }
 
         //5 计算没有参与活动，没有使用优惠卷原始金额
         BigDecimal originalTotalAmount = cartInfoList.stream()
@@ -107,14 +107,15 @@ public class ActivityInfoServiceImpl extends ServiceImpl<ActivityInfoMapper, Act
 
         //6 最终金额
         BigDecimal totalAmount =
-                originalTotalAmount.subtract(activityReduceAmount).subtract(couponReduceAmount);
-
+                originalTotalAmount.subtract(activityReduceAmount);
+//        BigDecimal totalAmount =
+//                originalTotalAmount.subtract(activityReduceAmount).subtract(couponReduceAmount)
         //7 封装需要数据到OrderConfirmVo,返回
         OrderConfirmVo orderTradeVo = new OrderConfirmVo();
         orderTradeVo.setCarInfoVoList(cartInfoVoList);
         orderTradeVo.setActivityReduceAmount(activityReduceAmount);
-        orderTradeVo.setCouponInfoList(couponInfoList);
-        orderTradeVo.setCouponReduceAmount(couponReduceAmount);
+//        orderTradeVo.setCouponInfoList(couponInfoList);
+//        orderTradeVo.setCouponReduceAmount(couponReduceAmount);
         orderTradeVo.setOriginalTotalAmount(originalTotalAmount);
         orderTradeVo.setTotalAmount(totalAmount);
         return orderTradeVo;

@@ -1,0 +1,21 @@
+# 数据库配置
+database:
+  driver: "mysql"       # 数据库驱动（mysql、postgres 等）
+  host: "localhost"     # 地址
+  port: 3306            # 端口
+  username: "root"      # 用户名
+  password: "yangzhixuan"    # 密码
+  dbname: "xz"     # 数据库名
+  charset: "utf8mb4"    # 字符集
+#服务器发现注册配置
+eureka:
+  client:
+    serviceUrl:
+      #配置服务中心(可配置多个,用逗号隔开)
+      defaultZone: http://admin:admin@localhost:9000/eureka/
+# 日志配置
+log:
+  path: "../logs/app.log"  # 日志文件路径（与 src 同级的 logs 目录）
+  level: "info"           # 日志级别（debug/info/warn/error）
+  format: "text"          # 日志格式（text/json）
+  max_size: 10            # 单个文件最大大小（MB，可选，用于切割）

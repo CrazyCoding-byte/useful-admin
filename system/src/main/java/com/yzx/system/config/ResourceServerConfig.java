@@ -46,8 +46,8 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
 
     @Override
     public void configure(HttpSecurity http) throws Exception {
-        http.requestMatchers().antMatchers("/demo")
-                .and().authorizeRequests().anyRequest().authenticated();
+        http.requestMatchers()
+                .and().authorizeRequests().antMatchers("/system/user/register").permitAll().anyRequest().authenticated();
     }
 
     @Bean
@@ -94,7 +94,7 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
         return tokenServices;
     }
 
-     //自定义用户信息转换器 获取的一般是用户名 所以当我们需要用户信息的principal需要转换
+    //自定义用户信息转换器 获取的一般是用户名 所以当我们需要用户信息的principal需要转换
     public static class CustomUserAuthenticationConverter implements UserAuthenticationConverter {
 
         @Override
@@ -114,7 +114,7 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
                         authorities
                 );
             }
-             //否则就按照默认的转换方式
+            //否则就按照默认的转换方式
             // 修改后的回退逻辑：处理authorities的两种类型
             Object principal = map.get(USERNAME);
             Collection<? extends GrantedAuthority> authorities = Collections.emptyList();
@@ -149,6 +149,7 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
             return Collections.emptyList();
         }
     }
+
     //这个地方先调用解系jwt 放入princippal
     public static class CustomTokenServices extends DefaultTokenServices {
         @Override
