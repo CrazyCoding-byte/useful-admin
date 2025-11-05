@@ -1,13 +1,5 @@
 package config
 
-// LogConfig 日志配置结构体（对应 YAML 中的 log 节点）
-type LogConfig struct {
-	Path    string `yaml:"path"`     // 日志文件路径（如 "logs/app.log"）
-	Level   string `yaml:"level"`    // 日志级别（debug/info/warn/error）
-	Format  string `yaml:"format"`   // 日志格式（text/json）
-	MaxSize int    `yaml:"max_size"` // 单个文件最大大小（MB）
-}
-
 // DatabaseConfig 数据库配置结构体（对应 YAML 中的 database 节点）
 type DatabaseConfig struct {
 	Driver   string `yaml:"driver"`   // 数据库驱动（如 "mysql"）
@@ -23,4 +15,12 @@ type DatabaseConfig struct {
 type Config struct {
 	Log      LogConfig      `yaml:"log"`      // 日志配置节点
 	Database DatabaseConfig `yaml:"database"` // 数据库配置节点
+}
+
+// LogConfig 日志配置结构体（对应 YAML 中的 log 节点）
+type LogConfig struct {
+	Path    string `yaml:"path"`     // 日志文件路径（如 "logs/app.log"）
+	Level   string `yaml:"level"`    // 日志级别（debug/info/warn/error）
+	Format  string `yaml:"format"`   // 日志格式（text/json）
+	MaxSize int    `yaml:"max_size"` // 单个文件最大大小（MB）
 }

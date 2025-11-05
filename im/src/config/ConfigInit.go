@@ -1,14 +1,13 @@
 package config
 
 import (
-	"database/sql"
 	"fmt"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
-	// 按需导入数据库驱动（以 mysql 为例）
-	_ "github.com/go-sql-driver/mysql"
 )
 
 // InitLogger 基于 LogConfig 初始化全局日志器
@@ -52,8 +51,8 @@ func (lc *LogConfig) InitLogger() error {
 	return nil
 }
 
-// InitDatabase 基于 DatabaseConfig 初始化数据库连接（返回 *sql.DB）
-func (dc *DatabaseConfig) InitDatabase() (*sql.DB, error) {
+// 注意：移除参数，改为返回 *gorm.DB 和 error
+func (dc *DatabaseConfig) InitDatabase() (*gorm.DB, error) {
 	// 构建数据库连接字符串（以 mysql 为例）
 	dsn := fmt.Sprintf(
 		"%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=true",
@@ -65,17 +64,24 @@ func (dc *DatabaseConfig) InitDatabase() (*sql.DB, error) {
 		dc.Charset,
 	)
 
-	// 打开数据库连接
-	db, err := sql.Open(dc.Driver, dsn)
+	// 打开数据库连接（这里的 db 是局部变量，初始化后返回）
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("创建数据库连接失败：%w", err)
 	}
 
-	// 验证连接有效性
-	if err := db.Ping(); err != nil {
+	// 验证连接有效性（获取底层 sql.DB 并检查）
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("获取底层数据库连接失败：%w", err)
+	}
+	if err := sqlDB.Ping(); err != nil { // 显式 ping 验证连接
 		return nil, fmt.Errorf("数据库连接验证失败：%w", err)
 	}
 
+	// 设置数据库连接池参数
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetMaxIdleConns(20)
 	slog.Info("数据库初始化成功", "driver", dc.Driver, "host", dc.Host, "dbname", dc.Dbname)
-	return db, nil
+	return db, nil // 返回初始化后的 db 实例
 }
