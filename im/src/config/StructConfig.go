@@ -15,6 +15,7 @@ type DatabaseConfig struct {
 type Config struct {
 	Log      LogConfig      `yaml:"log"`      // 日志配置节点
 	Database DatabaseConfig `yaml:"database"` // 数据库配置节点
+	AES      AESConfig      `yaml:"aseKey"`   // 对称加密密钥配置（yaml 中节点名为 aseKey）
 }
 
 // LogConfig 日志配置结构体（对应 YAML 中的 log 节点）
@@ -23,4 +24,9 @@ type LogConfig struct {
 	Level   string `yaml:"level"`    // 日志级别（debug/info/warn/error）
 	Format  string `yaml:"format"`   // 日志格式（text/json）
 	MaxSize int    `yaml:"max_size"` // 单个文件最大大小（MB）
+}
+
+// AESConfig 对称加密配置（对应 YAML 中的 aseKey 节点）
+type AESConfig struct {
+	Key string `yaml:"key"` // 对称加密密钥
 }

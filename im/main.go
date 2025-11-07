@@ -72,7 +72,12 @@ func main() {
 	//_db.Preload("Profile").Preload("Article").Find(&users)
 	// 为关联表添加条件  注意他搜索的条件是不会过滤
 	//_db.Preload("Article", "status = ? and id=?", 1, 1).Find(&users)
-	_db.Table("users").Joins("left join articles on users.id=articles.user_id").Where("articles.status=? and users.id=?", 1, 1).Find(&users)
+	_db.Table("users").
+		// 把articles的过滤条件（status=1、user_id=1）移到ON子句
+		Joins("left join articles on users.id = articles.user_id and articles.status = ? and users.id = ?", 1, 1).
+		// 这里Where只放users表的条件（如果需要过滤用户）
+		// Where("users.id = ?", 1).
+		Find(&users)
 	//_db.Where("id = ?", 1). // 核心：过滤主表 users，只取 id=1 的记录
 	//			Preload("Profile").                  // 加载该用户的 Profile
 	//			Preload("Article", "status = ?", 1). // 加载该用户状态为1的文章

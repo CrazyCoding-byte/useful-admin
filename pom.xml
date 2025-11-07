@@ -12,13 +12,18 @@
         <module>eureka-server</module>
         <module>auth-server</module>
         <module>resource-server</module>
-        <module>message</module>
         <module>system</module>
         <module>gateway</module>
         <module>order</module>
         <module>file-storage</module>
         <module>cart</module>
         <module>common</module>
+        <module>api-client</module>
+        <module>distribution</module>
+        <module>model</module>
+        <module>wms</module>
+        <module>wallet</module>
+        <module>coupon</module>
     </modules>
 
     <parent>

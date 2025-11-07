@@ -14,8 +14,9 @@ public enum FileSystemType {
     WAMediaMessage("WAMediaMessage"),
     UserAvatar("UserAvatar"),
     WAContactAvatar("WAContactAvatar"),
-    MessengerMessageAttachment("MessengerMessageAttachment");
-
+    MINIO("minio"),
+    MessengerMessageAttachment("MessengerMessageAttachment"),
+    LOCAL("local");
     private final String type;
 
     FileSystemType(String type) {

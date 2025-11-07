@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -119,7 +120,18 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
         String normalizedPath = downloadDir.toString().replace(File.separator, "/");
         //保存元数据
         FileStorage fileStorageToSave = saveMetaDate(fileSystemType, fileName, fileType, fileHash, normalizedPath, fileSize);
-        return fileStorageTransform.toFileDetailResponse(fileStorageToSave);
+        FileDetailResponse fileDetailResponse = fileStorageTransform.toFileDetailResponse(fileStorageToSave);
+        System.out.println("=== storeUrlFile 返回结果 ===");
+        System.out.println("结果对象: " + fileDetailResponse);
+        if (fileDetailResponse != null) {
+            System.out.println("结果ID: " + fileDetailResponse.getId());
+            System.out.println("结果文件名: " + fileDetailResponse.getFileName());
+            System.out.println("结果文件哈希: " + fileDetailResponse.getFileHash());
+        } else {
+            System.err.println("错误: storeUrlFile 返回了 null 结果");
+        }
+
+        return fileDetailResponse;
     }
 
     // 保存元数据到数据库

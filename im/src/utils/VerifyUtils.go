@@ -1,4 +1,4 @@
-package untils
+package utils
 
 import (
 	"crypto/aes"
@@ -13,7 +13,7 @@ import (
 )
 
 // 验证Token是否被篡改，返回解析后的claims
-func verifyToken(tokenStr string, pubKey *rsa.PublicKey) (jwt.MapClaims, error) {
+func VerifyToken(tokenStr string, pubKey *rsa.PublicKey) (jwt.MapClaims, error) {
 	// 解析Token（同时验证签名）
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		// 1. 验证签名算法是否与认证服务一致（如RS256）
@@ -45,10 +45,10 @@ func verifyToken(tokenStr string, pubKey *rsa.PublicKey) (jwt.MapClaims, error) 
 }
 
 // 解析并验证 Token，同时解密用户信息
-func parseAndVerifyToken(tokenStr, aesKey string) (userID, username string, err error) {
+func ParseAndVerifyToken(tokenStr, aesKey string) (userID, username string, err error) {
 	// 1. 验证 RSA 签名
-	key, err := loadPublicKey(`E:\studyoauth2\springcloud-oauth2\im\src\publickey.txt`)
-	publicKey, err := verifyToken(tokenStr, key)
+	key, err := LoadPublicKey(`E:\studyoauth2\springcloud-oauth2\im\src\publickey.txt`)
+	publicKey, err := VerifyToken(tokenStr, key)
 	if err != nil {
 		return "", "", err
 	}
@@ -73,14 +73,14 @@ func parseAndVerifyToken(tokenStr, aesKey string) (userID, username string, err 
 
 	// 解密 u_id
 	encryptedUid := additionalInfo["u_id"].(string)
-	uid, err := aesDecrypt(encryptedUid, aesKey)
+	uid, err := AesDecrypt(encryptedUid, aesKey)
 	if err != nil {
 		return "", "", fmt.Errorf("解密 u_id 失败: %v", err)
 	}
 
 	// 解密 username
 	encryptedUsername := additionalInfo["username"].(string)
-	uname, err := aesDecrypt(encryptedUsername, aesKey)
+	uname, err := AesDecrypt(encryptedUsername, aesKey)
 	if err != nil {
 		return "", "", fmt.Errorf("解密 username 失败: %v", err)
 	}
@@ -89,7 +89,7 @@ func parseAndVerifyToken(tokenStr, aesKey string) (userID, username string, err 
 }
 
 // aesDecrypt 解密Java端AES加密的内容（AES/ECB/PKCS5Padding + Base64编码）
-func aesDecrypt(cipherText, key string) (string, error) {
+func AesDecrypt(cipherText, key string) (string, error) {
 	// 1. Base64解码密文
 	cipherBytes, err := base64.StdEncoding.DecodeString(cipherText)
 	if err != nil {
@@ -114,7 +114,7 @@ func aesDecrypt(cipherText, key string) (string, error) {
 	}
 
 	// 4. 去除PKCS5填充
-	plainBytes = pkcs5Unpad(plainBytes)
+	plainBytes = Pkcs5Unpad(plainBytes)
 	if plainBytes == nil {
 		return "", errors.New("PKCS5解填充失败")
 	}
@@ -123,7 +123,7 @@ func aesDecrypt(cipherText, key string) (string, error) {
 }
 
 // pkcs5Unpad 去除PKCS5填充
-func pkcs5Unpad(data []byte) []byte {
+func Pkcs5Unpad(data []byte) []byte {
 	length := len(data)
 	if length == 0 {
 		return nil
@@ -136,7 +136,7 @@ func pkcs5Unpad(data []byte) []byte {
 }
 
 // 从文件加载RSA公钥
-func loadPublicKey(path string) (*rsa.PublicKey, error) {
+func LoadPublicKey(path string) (*rsa.PublicKey, error) {
 	// 读取公钥文件内容（如publickey.txt）
 	pubKeyBytes, err := os.ReadFile(path)
 	if err != nil {
