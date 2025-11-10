@@ -3,12 +3,11 @@ package repository
 import (
 	"context"
 	"fmt"
+	"gorm.io/gorm"
 	"io"
 	"local/im/src/client"
 	"local/im/src/model"
 	"strings"
-
-	"gorm.io/gorm"
 )
 
 // MessageService 消息服务层，聚合 GroupMessageRepository 和 UserMessageRepository 的所有方法
@@ -31,7 +30,7 @@ func NewMessageService(db *gorm.DB, fileStorageAddr string) (*MessageService, er
 	}, nil
 }
 
-// SaveVideoMessage 保存视频消息（上传视频并保存消息记录）
+// SaveVideoOrPhotoMessage 保存视频消息（上传视频并保存消息记录）
 func (m *MessageService) SaveVideoMessage(fromUserId string, receiveUserId string, videoFile io.Reader, fileName string, mimeType string) (string, error) {
 	ctx := context.Background()
 
@@ -62,17 +61,17 @@ func (m *MessageService) SaveVideoMessage(fromUserId string, receiveUserId strin
 
 // CreateGroup 创建群聊
 func (m *MessageService) CreateGroup(groupName string, creatorId string) error {
-	return saveGroup(m, creatorId, groupName)
+	return SaveGroup(m, creatorId, groupName)
 }
 
 // GetGroupInfo 查询群聊天信息
 func (m *MessageService) GetGroupInfo(groupId string) ([]model.Message, error) {
-	return getGroupInfo(m, groupId)
+	return GetGroupInfo(m, groupId)
 }
 
 // GetGroupsByUserId 根据用户ID查询所在的所有群
 func (m *MessageService) GetGroupsByUserId(userId string) ([]model.Group, error) {
-	return getGroupsByUserId(m, userId)
+	return GetGroupsByUserId(m, userId)
 }
 
 // AddGroupMember 添加群成员（支持批量添加）
@@ -138,6 +137,17 @@ func (m *MessageService) RemoveGroupMember(groupId string, userId string) error 
 	return nil
 }
 
+func (m *MessageService) GetGroupMembers(groupId string) ([]string, error) {
+	var memberId []string
+	result := m.db.Model(&model.GroupMember{}).
+		Where("group_id=? And is_quit=false", groupId).
+		Pluck("member_id", &memberId)
+	if result.Error != nil {
+		return nil, fmt.Errorf("查询群成员失败：%w", result.Error)
+	}
+	return memberId, nil
+}
+
 // ==================== 用户消息相关方法（UserMessageRepository） ====================
 
 // SaveUserMessage 添加用户之间消息
@@ -158,12 +168,12 @@ func (m *MessageService) SaveUserMessage(fromUserId string, receiveUserId string
 
 // GetUserMessage 拉取当前用户与目标用户的双向聊天数据
 func (m *MessageService) GetUserMessage(currentUserID string, targetUserID string) ([]model.Message, error) {
-	return getUserMessage(m, currentUserID, targetUserID)
+	return GetUserMessage(m, currentUserID, targetUserID)
 }
 
 // GetChatList 获取用户的聊天列表（单聊+群聊，每个会话展示最新一条消息）
 func (m *MessageService) GetChatList(userId string) ([]model.Message, error) {
-	return getChatList(m, userId)
+	return GetChatList(m, userId)
 }
 
 // SaveGroupMessage 保存群消息

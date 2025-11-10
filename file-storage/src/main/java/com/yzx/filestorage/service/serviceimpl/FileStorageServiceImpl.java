@@ -3,6 +3,7 @@ package com.yzx.filestorage.service.serviceimpl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yzx.filestorage.config.FileLoadProperties;
 import com.yzx.filestorage.config.FileStorageTransform;
 import com.yzx.filestorage.config.OkHttpUtils;
@@ -13,6 +14,10 @@ import com.yzx.model.ErrorCodeEnum;
 import com.yzx.model.filestorage.FileDetailResponse;
 import com.yzx.model.filestorage.FileStorage;
 import com.yzx.model.filestorage.FileSystemType;
+import kotlin.io.FilesKt;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import okhttp3.Response;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -25,12 +30,15 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -40,7 +48,7 @@ import java.util.stream.Collectors;
  * 文件存储表 服务实现类
  * </p>
  *
- * @author 翱翔
+ * @author yzx
  * @since 2025-03-11
  */
 @Service
@@ -132,6 +140,198 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
         }
 
         return fileDetailResponse;
+    }
+
+    @Override
+    public ChunkMetadata storeFileChunk(String fileSystemType, String uploadId, int chunkIndex,
+                                        int totalChunks, byte[] chunkData, String fileName, String mimeType) {
+        try {
+            //创建临时文件夹
+            Path chunkDir = Paths.get(fileLoadProperties.getUploadBaseDir(), "chunks", uploadId);
+            Path chunkFile = chunkDir.resolve(String.format("chunk_%05d", chunkIndex));
+            String originHash = calculateChunkHash(chunkData);
+            Files.createDirectories(chunkDir);
+            saveChunkFile(chunkDir, chunkIndex, chunkData);
+            byte[] bytes = Files.readAllBytes(chunkFile);
+            String chunkHash = calculateChunkHash(bytes);
+            boolean verified = originHash.equals(chunkHash);
+            ChunkMetadata chunkMetadata = saveChunkMetadata(uploadId, chunkDir, chunkData, fileName, chunkIndex, chunkHash, verified);
+            if (!verified) {
+                // 如果验证失败，删除损坏的分片文件
+                Files.deleteIfExists(chunkFile);
+                throw new BaseException(ErrorCodeEnum.CHUNK_HASH_ERROR.getCode(),
+                        String.format("分片%d校验失败，需要重新上传", chunkIndex));
+            }
+            return chunkMetadata;
+        } catch (Exception e) {
+            log.error("分片上传失败:{}", e);
+            throw new BaseException(ErrorCodeEnum.EXECUTION_FAIL.getCode(), "创建目录失败");
+        }
+    }
+
+    /**
+     * 保存分片元数据到JSON文件
+     */
+    private ChunkMetadata saveChunkMetadata(String uploadId, Path chunkDir, byte[] chunkData, String fileName, int chunIndex,
+                                            String chunkHash, boolean verified) throws IOException {
+        ChunkMetadata metadata = new ChunkMetadata();
+        metadata.setUploadId(uploadId);
+        metadata.setChunkHash(chunkHash);
+        metadata.setChunkIndex(chunIndex);
+        // 计算chunkSize（字节数 -> MB/KB，带单位）
+        int byteLength = (chunkData != null) ? chunkData.length : 0; // 避免空指针
+        String chunkSize;
+        if (byteLength >= 1024 * 1024) { // 1MB = 1024*1024字节
+            double mbSize = (double) byteLength / (1024 * 1024);
+            chunkSize = String.format("%.2fMB", mbSize); // 保留2位小数
+        } else { // 不足1MB，用KB
+            double kbSize = (double) byteLength / 1024; // 1KB = 1024字节
+            chunkSize = String.format("%.2fKB", kbSize); // 保留2位小数
+        }
+        metadata.setChunkSize(chunkSize);
+        metadata.setVerified(verified);
+        metadata.setFilePath(chunkDir.resolve(String.format("chunk_%05d", chunIndex)).toString());
+        ObjectMapper objectMapper = new ObjectMapper();
+        String metadataJson = objectMapper.writeValueAsString(metadata);
+        // 为每个分片保存单独的元数据文件
+        Path metadataFile = chunkDir.resolve(String.format("metadata_%05d.json", chunIndex));
+        Files.write(metadataFile, metadataJson.getBytes(StandardCharsets.UTF_8));
+        return metadata;
+    }
+
+    /**
+     * 计算分片哈希
+     */
+    private String calculateChunkHash(byte[] chunkData) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(chunkData);
+            return bytesToHex(hashBytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256算法不支持", e);
+        }
+    }
+
+    /**
+     * 计算文件哈希
+     */
+    private String calculateFileHash(Path file) throws IOException {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] fileBytes = Files.readAllBytes(file);
+            byte[] hashBytes = digest.digest(fileBytes);
+            return bytesToHex(hashBytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256算法不支持", e);
+        }
+    }
+
+    // 辅助方法：字节数组转十六进制
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder result = new StringBuilder();
+        for (byte b : bytes) {
+            result.append(String.format("%02x", b));
+        }
+        return result.toString();
+    }
+
+    /**
+     * 读取分片元数据
+     * @param chunkDir   chunDir.Resolve("metadata.json")相当于 chunDir路径+"/metadata.json"
+     * @return
+     */
+    private ChunkMetadata readChunkMetadata(Path chunkDir) {
+        Path metadataFile = chunkDir.resolve("metadata.json");
+        if (!Files.exists(metadataFile)) return null;
+        try {
+            String s = new String(Files.readAllBytes(metadataFile), StandardCharsets.UTF_8);
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.readValue(s, ChunkMetadata.class);
+        } catch (IOException e) {
+            log.error("读取分片元数据失败:{}", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     *
+     * @param chunkDir  分片文件
+     * @param chunIndex 分片索引
+     * @param chunkData  分片数据
+     */
+    private void saveChunkFile(Path chunkDir, int chunIndex, byte[] chunkData) throws IOException {
+        String format = String.format("chunk_%05d", chunIndex);
+        Path chunkFile = chunkDir.resolve(format);
+        // 使用临时文件确保原子性写入
+        Path tempFile = chunkDir.resolve(chunkFile + ".tmp");
+        String chunkHash;
+        try {
+            //写入临时文件 意思是先写入临时文件，然后移动到目标文件，如果目标文件已存在，则替换掉 因为写入临时的可能会出现问题 所以为了避免错误的文件
+            //就需要写入临时文件 移动文件是原子操作
+            Files.write(tempFile, chunkData);
+            Files.move(tempFile, chunkFile, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            // 如果不支持原子移动，使用普通移动
+            Files.move(tempFile, chunkFile, StandardCopyOption.REPLACE_EXISTING);
+            log.error("保存分片文件失败:{}", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public boolean isChunkComplete(String uploadId) {
+        try {
+            Path chunkDir = Paths.get(fileLoadProperties.getUploadBaseDir(), "chunks", uploadId);
+            if (!Files.exists(chunkDir)) {
+                return false;
+            }
+            //读取元数据
+            ChunkMetadata chunkMetadata = readChunkMetadata(chunkDir);
+            if (chunkMetadata == null) {
+                return false;
+            }
+            //检查分片数量是否一致
+            int actualChunks = countChunkFiles(chunkDir);
+            return actualIndex >=
+        }
+        return false;
+    }
+
+    @Override
+    public String completeChunkUpload(String uploadId, String fileType, String fileName, String mimeType) throws IOException {
+
+    }
+
+    private Path megerChunk(Path chunkDir, String fileName) throws IOException {
+        //
+        Path megerFile = Files.createTempFile("meger_", "_" + fileName);
+        try (OutputStream outputStream = Files.newOutputStream(megerFile)) {
+            List<Path> chunkFiles = Files.list(chunkDir).sorted(Comparator.comparing(path -> {
+                String filename = path.getFileName().toString();
+                return Integer.parseInt(filename.replace("chunk_", ""));
+            })).collect(Collectors.toList());
+            for (Path chunkFile : chunkFiles) {
+                Files.copy(chunkFile, outputStream);
+            }
+        }
+        return megerFile;
+    }
+
+    private void cleanupChunkDirectory(Path chunkDir) throws IOException {
+        Files.walk(chunkDir)
+                .sorted(Comparator.reverseOrder())
+                .map(Path::toFile)
+                .forEach(File::delete);
+    }
+
+    @Override
+    public void cleanupChunkSession(String uploadId) {
+        try {
+            Path chunkDir = Paths.get(fileLoadProperties.getUploadBaseDir(), "chunks", uploadId);
+            cleanupChunkDirectory(chunkDir);
+        } catch (IOException e) {
+            LOGGER.warn("清理分片目录失败: {}", uploadId, e);
+        }
     }
 
     // 保存元数据到数据库
@@ -227,7 +427,6 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
 
         // 计算文件SHA-256哈希
         String fileHash = DigestUtils.sha256Hex(file.getInputStream());
-
         // 查询数据库，检查是否已存在相同哈希文件
         FileStorage fileStorage = getFileStorageSimpleByFileHash(fileSystemType, fileHash);
         if (fileStorage != null && fileStorage.getFilePath() != null) {
@@ -276,4 +475,18 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
         }
     }
 
+    /**
+     * 分片元数据类
+     */
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public class ChunkMetadata {
+        private String uploadId;          // 唯一上传会话ID
+        private String chunkHash;        // 该分片的哈希值
+        private int chunkIndex;          // 分片索引
+        private String chunkSize;          // 分片大小
+        private String filePath;        // 文件路径
+        private boolean verified;        // 是否已验证
+    }
 }

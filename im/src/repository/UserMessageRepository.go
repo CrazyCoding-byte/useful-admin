@@ -3,7 +3,7 @@ package repository
 import "local/im/src/model"
 
 // 添加用户之间消息
-func saveUserMessage(m *MessageService, fromUserId string, receiveUserId string, content string) {
+func SaveUserMessage(m *MessageService, fromUserId string, receiveUserId string, content string) {
 	message := model.Message{
 		FromUserID: fromUserId,
 		ToUserID:   receiveUserId,
@@ -16,7 +16,7 @@ func saveUserMessage(m *MessageService, fromUserId string, receiveUserId string,
 }
 
 // 拉取当前用户与目标用户的双向聊天数据（修正拼写：ReciveUserId → ReceiveUserId）
-func getUserMessage(m *MessageService, currentUserID string, targetUserID string) ([]model.Message, error) {
+func GetUserMessage(m *MessageService, currentUserID string, targetUserID string) ([]model.Message, error) {
 	var messages []model.Message
 	// 条件：(当前用户发给目标用户) OR (目标用户发给当前用户)，确保双向消息都包含
 	result := m.db.Where(
@@ -34,7 +34,7 @@ func getUserMessage(m *MessageService, currentUserID string, targetUserID string
 
 // 显示现有的聊天
 // 获取用户的聊天列表（单聊+群聊，每个会话展示最新一条消息）
-func getChatList(m *MessageService, userId string) ([]model.Message, error) {
+func GetChatList(m *MessageService, userId string) ([]model.Message, error) {
 	var chatList []model.Message
 
 	// 步骤1：查询“用户参与的所有会话”（单聊+群聊）

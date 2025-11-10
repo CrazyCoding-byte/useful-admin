@@ -69,8 +69,8 @@ public enum ErrorCodeEnum {
     FILE_UPLOAD_ERROR("20006", "文件上传失败"),
     REQUEST_NO_RESPONSE("30001", "请求无响应"),
     EXECUTION_TIMEOUT("30002", "执行超时"),
-    EXECUTION_FAIL("30003", "请求失败");
-
+    EXECUTION_FAIL("30003", "请求失败"),
+    CHUNK_HASH_ERROR("30004", "分片哈希校验失败");
     private final String code;
     private final String desc;
 

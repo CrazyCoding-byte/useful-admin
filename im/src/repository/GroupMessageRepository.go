@@ -8,7 +8,7 @@ import (
 
 // 创建一个组
 // 创建一个组（修正拼写：saveGoup → saveGroup）
-func saveGroup(service *MessageService, createUserId string, groupName string) error {
+func SaveGroup(service *MessageService, createUserId string, groupName string) error {
 	// 1. 生成唯一群ID
 	group := model.Group{
 		GroupID:   "G" + time.Now().Format("20060102"), // 唯一ID
@@ -37,7 +37,7 @@ func saveGroup(service *MessageService, createUserId string, groupName string) e
 }
 
 // 查询群聊天信息(组信息有几种 一种是全是用户组信息,一种是用户和客服信息)
-func getGroupInfo(service *MessageService, groupId string) ([]model.Message, error) {
+func GetGroupInfo(service *MessageService, groupId string) ([]model.Message, error) {
 	var messages []model.Message
 	result := service.db.Where("session_id = ? AND type=2", groupId).
 		Order("send_time Desc").
@@ -50,7 +50,7 @@ func getGroupInfo(service *MessageService, groupId string) ([]model.Message, err
 }
 
 // 根据用户ID查询所在的所有群
-func getGroupsByUserId(service *MessageService, userId string) ([]model.Group, error) {
+func GetGroupsByUserId(service *MessageService, userId string) ([]model.Group, error) {
 	var groups []model.Group
 	// 关联查询：通过group_members表找到用户所在的群ID，再查询群信息
 	// 步骤：1. 查group_members表，找到userId对应的group_id；2. 用group_id查groups表
