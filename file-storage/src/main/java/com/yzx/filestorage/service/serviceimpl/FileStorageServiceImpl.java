@@ -143,10 +143,12 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
     }
 
     @Override
-    public ChunkMetadata storeFileChunk(String fileSystemType, String uploadId, int chunkIndex,
-                                        int totalChunks, byte[] chunkData, String fileName, String mimeType) {
+    public ChunkMetadata storeFileChunk(String uploadId, int chunkIndex,
+                                        int totalChunks, byte[] chunkData, String fileName) {
         try {
-            //创建临时文件夹
+            //创建临时文件夹 假设配置的 upload.base-dir 为 /data/server/upload，某次上传的 uploadId 是 f8921e5d-3c7b-458a-9f3d-75555abcdef，则：
+            //chunkDir 最终路径为：/data/server/upload/chunks/f8921e5d-3c7b-458a-9f3d-75555abcdef
+            //该目录下会存储分片文件（如 chunk_00000、chunk_00001）和对应元数据文件（如 metadata_00000.json）。
             Path chunkDir = Paths.get(fileLoadProperties.getUploadBaseDir(), "chunks", uploadId);
             Path chunkFile = chunkDir.resolve(String.format("chunk_%05d", chunkIndex));
             String originHash = calculateChunkHash(chunkData);
@@ -155,7 +157,7 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
             byte[] bytes = Files.readAllBytes(chunkFile);
             String chunkHash = calculateChunkHash(bytes);
             boolean verified = originHash.equals(chunkHash);
-            ChunkMetadata chunkMetadata = saveChunkMetadata(uploadId, chunkDir, chunkData, fileName, chunkIndex, chunkHash, verified);
+            ChunkMetadata chunkMetadata = saveChunkMetadata(uploadId, chunkDir, chunkData, fileName, chunkIndex, chunkHash, verified, totalChunks);
             if (!verified) {
                 // 如果验证失败，删除损坏的分片文件
                 Files.deleteIfExists(chunkFile);
@@ -173,11 +175,13 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
      * 保存分片元数据到JSON文件
      */
     private ChunkMetadata saveChunkMetadata(String uploadId, Path chunkDir, byte[] chunkData, String fileName, int chunIndex,
-                                            String chunkHash, boolean verified) throws IOException {
+                                            String chunkHash, boolean verified, int totalChunks) throws IOException {
         ChunkMetadata metadata = new ChunkMetadata();
         metadata.setUploadId(uploadId);
         metadata.setChunkHash(chunkHash);
         metadata.setChunkIndex(chunIndex);
+        metadata.setTotalChunks(totalChunks);
+        metadata.setFileName(fileName);
         // 计算chunkSize（字节数 -> MB/KB，带单位）
         int byteLength = (chunkData != null) ? chunkData.length : 0; // 避免空指针
         String chunkSize;
@@ -240,8 +244,8 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
      * @param chunkDir   chunDir.Resolve("metadata.json")相当于 chunDir路径+"/metadata.json"
      * @return
      */
-    private ChunkMetadata readChunkMetadata(Path chunkDir) {
-        Path metadataFile = chunkDir.resolve("metadata.json");
+    private ChunkMetadata readChunkMetadata(Path chunkDir, int chunkIndex) {
+        Path metadataFile = chunkDir.resolve(String.format("metadata_%05d.json", chunkIndex));
         if (!Files.exists(metadataFile)) return null;
         try {
             String s = new String(Files.readAllBytes(metadataFile), StandardCharsets.UTF_8);
@@ -264,7 +268,6 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
         Path chunkFile = chunkDir.resolve(format);
         // 使用临时文件确保原子性写入
         Path tempFile = chunkDir.resolve(chunkFile + ".tmp");
-        String chunkHash;
         try {
             //写入临时文件 意思是先写入临时文件，然后移动到目标文件，如果目标文件已存在，则替换掉 因为写入临时的可能会出现问题 所以为了避免错误的文件
             //就需要写入临时文件 移动文件是原子操作
@@ -286,20 +289,50 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
                 return false;
             }
             //读取元数据
-            ChunkMetadata chunkMetadata = readChunkMetadata(chunkDir);
-            if (chunkMetadata == null) {
-                return false;
+            int totalChunks = getTotalChunksFromMetadata(chunkDir);
+            if (totalChunks == 0) return false;
+            // 检查所有分片是否都存在且验证通过
+            for (int i = 0; i < totalChunks; i++) {
+                ChunkMetadata metadata = readChunkMetadata(chunkDir, i);
+                if (metadata == null || !metadata.isVerified()) {
+                    return false;
+                }
+                // 检查分片文件是否存在
+                Path chunkFile = chunkDir.resolve(String.format("chunk_%05d", i));
+                if (!Files.exists(chunkFile)) {
+                    return false;
+                }
             }
+            return true;
             //检查分片数量是否一致
-            int actualChunks = countChunkFiles(chunkDir);
-            return actualIndex >=
+        } catch (Exception e) {
+            log.error("检查分片是否完成失败:{}", e);
+            return false;
         }
-        return false;
+    }
+
+    private int getTotalChunksFromMetadata(Path chunkDir) {
+        ChunkMetadata chunkMetadata = readChunkMetadata(chunkDir, 0);
+        return chunkMetadata != null ? chunkMetadata.getTotalChunks() : 0;
     }
 
     @Override
     public String completeChunkUpload(String uploadId, String fileType, String fileName, String mimeType) throws IOException {
+        Path chunks = Paths.get(fileLoadProperties.getUploadBaseDir(), "chunks", uploadId);
+        if (!Files.exists(chunks)) {
+            return null;
+        }
+        if (!isChunkComplete(uploadId)) {
+            return null;
+        }
+        Path megerFile = megerChunk(chunks, fileName);
+        // 使用现有的 storeFile 方法保存文件
+        MultipartFile multipartFile = new FileSystemMultipartFile(mergedFile.toFile());
+        String fileHash = storeFile(fileSystemType, multipartFile);
 
+        // 清理临时文件
+        Files.deleteIfExists(mergedFile);
+        cleanupChunkSession(uploadId);
     }
 
     private Path megerChunk(Path chunkDir, String fileName) throws IOException {
@@ -483,10 +516,12 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
     @NoArgsConstructor
     public class ChunkMetadata {
         private String uploadId;          // 唯一上传会话ID
+        private String fileName;          //文件名
         private String chunkHash;        // 该分片的哈希值
         private int chunkIndex;          // 分片索引
         private String chunkSize;          // 分片大小
         private String filePath;        // 文件路径
         private boolean verified;        // 是否已验证
+        private int totalChunks;      // 总分片数
     }
 }

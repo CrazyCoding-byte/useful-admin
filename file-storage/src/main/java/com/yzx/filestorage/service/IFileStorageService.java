@@ -1,6 +1,7 @@
 package com.yzx.filestorage.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.yzx.filestorage.service.serviceimpl.FileStorageServiceImpl;
 import com.yzx.model.filestorage.FileDetailResponse;
 import com.yzx.model.filestorage.FileStorage;
 import org.springframework.web.multipart.MultipartFile;
@@ -77,8 +78,9 @@ public interface IFileStorageService extends IService<FileStorage> {
     FileDetailResponse storeUrlFile(String fileSystemType, String downloadUrl, String mimeType, String fileName) throws IOException;
 
     // 修改分片上传方法，不需要数据库记录
-    String storeFileChunk(String fileSystemType, String uploadId, int chunkIndex,
-                          int totalChunks, byte[] chunkData, String fileName, String mimeType);
+    FileStorageServiceImpl.ChunkMetadata storeFileChunk(String uploadId, int chunkIndex,
+                                                        int totalChunks, byte[] chunkData, String fileName);
+
     boolean isChunkComplete(String uploadId);
 
     String completeChunkUpload(String uploadId, String fileSystemType, String fileName, String mimeType) throws IOException;
