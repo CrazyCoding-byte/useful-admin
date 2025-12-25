@@ -112,6 +112,7 @@ public class AuthService {
         System.out.println(authUrl);
         //定义header
         LinkedMultiValueMap<String, String> header = new LinkedMultiValueMap<>();
+        List<String> client_id = body.get("client_id");
         String httpBasic = getHttpBasic();
         header.add("Authorization", httpBasic);
 
@@ -169,14 +170,14 @@ public class AuthService {
     }
 
     /**删除token*/
-    public boolean delToken(String accessToken){
+    public boolean delToken(String accessToken) {
         String key = Constants.USER_TOKEN + accessToken;
         redisTemplate.delete(key);
         return true;
     }
 
     /**从redis查询令牌*/
-    public AuthToken getUserToken(String token){
+    public AuthToken getUserToken(String token) {
         String key = Constants.USER_TOKEN + token;
         //从redis中取到令牌信息
         String value = redisTemplate.opsForValue().get(key);

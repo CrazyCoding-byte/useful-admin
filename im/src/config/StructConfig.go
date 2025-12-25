@@ -10,12 +10,20 @@ type DatabaseConfig struct {
 	Dbname   string `yaml:"dbname"`   // 数据库名
 	Charset  string `yaml:"charset"`  // 字符集（如 "utf8mb4"）
 }
+type MinIOConfig struct {
+	Endpoint        string `yaml:"endpoint"`
+	AccessKeyID     string `yaml:"accessKeyID"`
+	SecretAccessKey string `yaml:"secretAccessKey"`
+	UseSSL          bool   `yaml:"useSSL"`
+	BucketName      string `yaml:"bucketName"`
+}
 
 // Config 总配置结构体（对应整个 YAML 配置文件，包含所有子配置）
 type Config struct {
 	Log      LogConfig      `yaml:"log"`      // 日志配置节点
 	Database DatabaseConfig `yaml:"database"` // 数据库配置节点
 	AES      AESConfig      `yaml:"aseKey"`   // 对称加密密钥配置（yaml 中节点名为 aseKey）
+	MinIO    MinIOConfig    `yaml:"minio"`    // 新增MinIO配置
 }
 
 // LogConfig 日志配置结构体（对应 YAML 中的 log 节点）

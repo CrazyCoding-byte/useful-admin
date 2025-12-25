@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
  * @author: yzx
  * @date: 2025/9/18 11:28
  * @Version: 1.0
- * @description:
+ * @description:首页数据
  */
 @RestController
 @RequestMapping("/product")

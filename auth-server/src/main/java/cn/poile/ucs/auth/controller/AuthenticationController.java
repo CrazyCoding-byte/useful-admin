@@ -45,6 +45,7 @@ public class AuthenticationController {
             ExceptionCast.cast(AuthCode.AUTH_LOGIN_ERROR);
         }
         LinkedMultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("client_id", loginRequest.getClientId());
         switch (loginRequest.getGrantType()) {
             case Constants.LOGIN_TYPE_PWD:
                 if (StringUtils.isEmpty(loginRequest.getMobile())) {

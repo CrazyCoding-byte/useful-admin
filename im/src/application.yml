@@ -21,3 +21,5 @@ log:
   max_size: 10            # 单个文件最大大小（MB，可选，用于切割）
 aseKey:
   key: "yangzhixuan944166810@qq.com1150614966@qq.com13735713859" # 对称加密密钥（需安全存储，如配置中心）
+file:
+  uploadBaseUrl: "file-storage" # 文件下载基础 URL

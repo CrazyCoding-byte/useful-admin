@@ -13,5 +13,4 @@ import lombok.Data;
 public class SearchParam {
     private String keyword;
     private Long catalog3Id;
-
 }

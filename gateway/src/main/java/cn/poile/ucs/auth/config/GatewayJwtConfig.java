@@ -24,18 +24,14 @@ public class GatewayJwtConfig {
         JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
 
         // 加载 KeyStore 文件（对应你的 encrypt.key-store 配置）
-        KeyStoreKeyFactory keyStoreKeyFactory = new KeyStoreKeyFactory(
-                new ClassPathResource("xz.keystore"), // 密钥库路径：classpath:/xz.keystore
+        KeyStoreKeyFactory keyStoreKeyFactory = new KeyStoreKeyFactory(new ClassPathResource("xz.keystore"), // 密钥库路径：classpath:/xz.keystore
                 "xiaozuokeystore".toCharArray()       // 密钥库密码：secret = xiaozuokeystore
         );
-
         // 获取密钥对（公钥用于验签）
-        KeyPair keyPair = keyStoreKeyFactory.getKeyPair(
-                "xzkey",                  // 密钥别名：alias = xzkey
+        KeyPair keyPair = keyStoreKeyFactory.getKeyPair("xzkey",                  // 密钥别名：alias = xzkey
                 "xiaozuo".toCharArray()   // 密钥密码：password = xiaozuo
         );
         converter.setKeyPair(keyPair); // 设置密钥对，自动用公钥验签
-
         return converter;
     }
 

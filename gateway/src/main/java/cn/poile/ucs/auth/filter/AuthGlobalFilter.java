@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -21,10 +22,7 @@ import reactor.core.publisher.Mono;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 网关全局过滤器：校验 JWT 令牌是否过期（基于本地公钥验签）
@@ -35,7 +33,8 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
 
     @Autowired
     private TokenStore tokenStore; // 注入 JwtTokenStore（本地解析 JWT）
-
+    @Value("${auth.allowed-origins:http://localhost:8080,https://admin.xxx.com}")
+    private String allowedOriginsStr;
     private static List<String> whiteList = new ArrayList<>();
     private final AntPathMatcher pathMatcher = new AntPathMatcher(); // 路径匹配器
 
@@ -59,7 +58,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String requestUrl = exchange.getRequest().getPath().value();
-
+        ServerHttpRequest request = exchange.getRequest();
         // 1. 白名单路径直接放行
         for (String whiteUrl : whiteList) {
             if (pathMatcher.match(whiteUrl, requestUrl)) {
@@ -67,7 +66,18 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
                 return chain.filter(exchange);
             }
         }
-
+        //解析前端能够访问的路径
+        Set<String> allowedOrigins = new HashSet<>(Arrays.asList(allowedOriginsStr.split(",")));
+        String origin = request.getHeaders().getFirst("Origin");
+        String referer = request.getHeaders().getFirst("Referer");
+        boolean isSourceValid = false;
+        if (origin != null && allowedOrigins.contains(origin.trim())) {
+            isSourceValid = true;
+        } else if (referer != null) {
+            // 从Referer中提取域名（如https://admin.xxx.com/login → https://admin.xxx.com）
+            String refererDomain = getDomainFromUrl(referer);
+            isSourceValid = allowedOrigins.contains(refererDomain);
+        }
         // 2. 提取令牌（Authorization: Bearer {token}）
         String token = getTokenFromHeader(exchange);
         if (StringUtils.isBlank(token)) {
@@ -115,6 +125,21 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         byte[] body = JSON.toJSONString(error).getBytes(StandardCharsets.UTF_8);
         DataBuffer buffer = response.bufferFactory().wrap(body);
         return response.writeWith(Mono.just(buffer));
+    }
+
+    /**
+     * 从URL中提取域名
+     */
+    private String getDomainFromUrl(String url) {
+        try {
+            if (url.startsWith("http")) {
+                int pathIndex = url.indexOf("/", 8); // 跳过"https://"或"http://"
+                return pathIndex > 0 ? url.substring(0, pathIndex) : url;
+            }
+        } catch (Exception e) {
+            log.error("解析URL域名失败：{}", url, e);
+        }
+        return url;
     }
 
     /**

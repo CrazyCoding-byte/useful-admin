@@ -123,5 +123,4 @@ public class AuthorizationConfig extends AuthorizationServerConfigurerAdapter {
         return tokenGranters;
     }
 
-
 }

@@ -16,4 +16,5 @@ public class LoginRequest {
     String verifyCode;
     String uuid;
     String grantType;
+    String clientId;
 }

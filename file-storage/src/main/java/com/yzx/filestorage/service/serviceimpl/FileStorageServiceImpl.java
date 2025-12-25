@@ -326,23 +326,66 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
             return null;
         }
         Path megerFile = megerChunk(chunks, fileName);
-        // 使用现有的 storeFile 方法保存文件
-        MultipartFile multipartFile = new FileSystemMultipartFile(mergedFile.toFile());
-        String fileHash = storeFile(fileSystemType, multipartFile);
+        try {
+            //计算文件hash
+            String fileHash = calculateFileHash(megerFile);
+            //获取文件类型
+            String type = getFileType(mimeType);
 
-        // 清理临时文件
-        Files.deleteIfExists(mergedFile);
-        cleanupChunkSession(uploadId);
+            // 获取文件扩展名
+            String extension = "";
+            if (fileName.contains(".")) {
+                extension = fileName.substring(fileName.lastIndexOf("."));
+            }
+            // 构建路径并写入文件
+            Path typeDir = Paths.get(fileLoadProperties.getUploadBaseDir(), type, fileType);
+            if (!Files.exists(typeDir)) {
+                Files.createDirectories(typeDir);
+            }
+
+            String hashedFileName = fileHash + extension;
+            Path targetPath = typeDir.resolve(hashedFileName);
+            FileStorage fileStorage = getFileStorageSimpleByFileHash(fileType, fileHash);
+            if (fileStorage == null && Files.exists(targetPath)) {
+                // 文件已存在，直接返回哈希值
+                LOGGER.info("文件已存在，跳过存储: {}", fileHash);
+                return fileHash;
+            }
+
+            // 将合并的文件移动到最终位置
+            Files.move(megerFile, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            // 构建相对路径
+            Path downloadDir = Paths.get(fileType, fileType, hashedFileName);
+            String normalizedPath = downloadDir.toString().replace(File.separator, "/");
+
+            // 保存元数据到数据库
+            long fileSize = Files.size(targetPath);
+            saveMetaDate(fileType, fileName, fileType, fileHash, normalizedPath, fileSize);
+
+            LOGGER.info("分片上传完成: uploadId={}, fileHash={}, fileName={}", uploadId, fileHash, fileName);
+
+            return fileHash;
+        } finally {
+            // 确保临时文件被清理（如果移动失败）
+            Files.deleteIfExists(megerFile);
+            // 清理分片目录
+            cleanupChunkSession(uploadId);
+        }
     }
 
     private Path megerChunk(Path chunkDir, String fileName) throws IOException {
         //
-        Path megerFile = Files.createTempFile("meger_", "_" + fileName);
+        Path megerFile = Files.createTempFile("merge_", "_" + fileName);
         try (OutputStream outputStream = Files.newOutputStream(megerFile)) {
-            List<Path> chunkFiles = Files.list(chunkDir).sorted(Comparator.comparing(path -> {
-                String filename = path.getFileName().toString();
-                return Integer.parseInt(filename.replace("chunk_", ""));
-            })).collect(Collectors.toList());
+            List<Path> chunkFiles = Files.list(chunkDir).
+                    filter(path -> {
+                        String name = path.getFileName().toString();
+                        return name.startsWith("chunk_");
+                    }).sorted(Comparator.comparing(path -> {
+                        String name = path.getFileName().toString();
+                        String indexStr = name.replace("chunk_", "");  // 得到 "00000" 之类的字符串
+                        return Integer.parseInt(indexStr);
+                    })).collect(Collectors.toList());
             for (Path chunkFile : chunkFiles) {
                 Files.copy(chunkFile, outputStream);
             }

@@ -50,7 +50,6 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
 
     @PostConstruct
     public void init() {
-
         // 设置密钥对
         KeyPair keyPair = new KeyStoreKeyFactory(
                 keyProperties.getKeyStore().getLocation(),
@@ -67,7 +66,6 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
     public OAuth2AccessToken enhance(OAuth2AccessToken oAuth2AccessToken, OAuth2Authentication oAuth2Authentication) {
         String name = oAuth2Authentication.getName();
         log.debug("jwt token name is :" + name);
-
         Map<String, Object> map = new LinkedHashMap<>();
         Object principal = oAuth2Authentication.getPrincipal();
         BaseUserDetail baseUserDetail = null;
@@ -83,10 +81,10 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
             // 对敏感字段进行AES加密
             String encryptedUid = AESEncryptUtil.encrypt(baseUserDetail.getBaseUser().getUserId().toString());
             String encryptedUsername = AESEncryptUtil.encrypt(baseUserDetail.getBaseAuth().getUserName());
-            map.put("username", baseUserDetail.getBaseAuth().getUserName());
+            map.put("username", encryptedUsername);
 //        map.put("mobile", baseUserDetail.getBaseAuth().getPhoneNumber());
-            map.put("u_id", baseUserDetail.getBaseUser().getUserId());
-        }catch (Exception e){
+            map.put("u_id", encryptedUid);
+        } catch (Exception e) {
             log.error("加密用户信息失败", e);
             throw new RuntimeException("Token 生成失败", e);
         }

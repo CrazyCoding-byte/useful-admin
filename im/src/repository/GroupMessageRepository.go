@@ -7,7 +7,6 @@ import (
 )
 
 // 创建一个组
-// 创建一个组（修正拼写：saveGoup → saveGroup）
 func SaveGroup(service *MessageService, createUserId string, groupName string) error {
 	// 1. 生成唯一群ID
 	group := model.Group{

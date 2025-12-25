@@ -6,6 +6,14 @@ eureka:
       logging:
         level:
           org.springframework.cloud.gateway: DEBUG
+encrypt:
+  key-store:
+    location: classpath:/xz.keystore
+    secret: xiaozuokeystore
+    alias: xzkey
+    password: xiaozuo
+auth:
+  allowed-origins: http://localhost:8080
 server:
   port: 9100
 spring:
@@ -14,8 +22,32 @@ spring:
   cloud:
     gateway:
       routes:
-       - id: auth-server
-         uri: http://localhost:8001
-         predicates:
-           - Path=/auth/**
+        # 认证服务路由（登录、获取Token等）
+        - id: auth-server
+          uri: lb://auth-server  # 使用服务名（需配合eureka）
+          predicates:
+            - Path=/auth/**
+          filters:
+            - StripPrefix=0  # 转发时保留/auth前缀
+
+        # 其他微服务路由（如商品服务、订单服务）
+        - id: goods-server
+          uri: lb://goods-server
+          predicates:
+            - Path=/goods/**
+          filters:
+            - StripPrefix=0
+            # 转发时添加用户信息头（从Token中解析）
+            - name: RequestHeaderToRequestAttribute
+              args:
+                headerName: X-User-ID
+                attributeName: userId
+
+        # IM服务路由（WebSocket协议）
+        - id: im-server
+          uri: ws://localhost:你的IM服务端口
+          predicates:
+            - Path=/ws/**
+          filters:
+            - StripPrefix=0
 
