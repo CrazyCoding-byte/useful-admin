@@ -20,7 +20,12 @@ import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+
 
 /**
  * <p>
@@ -32,6 +37,62 @@ import java.util.stream.Collectors;
  */
 @Service
 public class ActivityInfoServiceImpl extends ServiceImpl<ActivityInfoMapper, ActivityInfo> implements ActivityInfoService {
+    static int current = 0;
+    private static final Object LOCK = new Object();
+    private Lock lock = new ReentrantLock();
+    private AtomicInteger count = new AtomicInteger();
+
+    public static void main(String[] args) throws Exception {
+        demo();
+    }
+
+    private void atomicIncrement() {
+        count.incrementAndGet();
+
+    }
+
+    private void atomicDecrement() {
+        count.decrementAndGet();
+    }
+
+    public int getCount() {
+        return count.get();
+    }
+
+    private void increment() {
+        lock.lock();
+        try {
+            current++;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void decrement() {
+        lock.lock();
+        try {
+            current--;
+        } finally {
+
+            lock.unlock();
+        }
+    }
+
+    private static void demo() throws InterruptedException {
+        for (int i = 0; i < 10; i++) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (LOCK) {
+                        if (current < 10) current++;
+                    }
+                    System.out.println(Thread.currentThread().getName() + "正在执行");
+                }
+            }).start();
+        }
+        Thread.sleep(200);
+        System.out.println("最后的结果：" + current);
+    }
 
     @Autowired
     private ActivityRuleMapper activityRuleMapper;
@@ -89,7 +150,7 @@ public class ActivityInfoServiceImpl extends ServiceImpl<ActivityInfoMapper, Act
         //3 获取购物车可以使用优惠卷列表
 //        List<CouponInfo> couponInfoList =
 //                couponInfoService.findCartCouponInfo(cartInfoList, userId);
-      //todo 优惠卷使用放在确认订单中处理
+        //todo 优惠卷使用放在确认订单中处理
         //4 计算商品使用优惠卷之后金额，一次只能使用一张优惠卷
 //        BigDecimal couponReduceAmount = new BigDecimal(0);
 //        if (!CollectionUtils.isEmpty(couponInfoList)) {
@@ -101,7 +162,7 @@ public class ActivityInfoServiceImpl extends ServiceImpl<ActivityInfoMapper, Act
 
         //5 计算没有参与活动，没有使用优惠卷原始金额
         BigDecimal originalTotalAmount = cartInfoList.stream()
-                .filter(cartInfo -> cartInfo.getCheck() )
+                .filter(cartInfo -> cartInfo.getCheck())
                 .map(cartInfo -> cartInfo.getPrice().multiply(new BigDecimal(cartInfo.getCount())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -365,7 +426,7 @@ public class ActivityInfoServiceImpl extends ServiceImpl<ActivityInfoMapper, Act
         });
         return activityInfoPage;
     }
-//
+
 //    //1 根据活动id获取活动规则数据
 //    @Override
 //    public Map<String, Object> findActivityRuleList(Long id) {

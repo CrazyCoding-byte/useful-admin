@@ -14,6 +14,7 @@ import (
 func (lc *LogConfig) InitLogger() error {
 	// 1. 创建日志目录（确保路径存在）
 	logDir := filepath.Dir(lc.Path)
+
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		return fmt.Errorf("创建日志目录 %s 失败：%w", logDir, err)
 	}

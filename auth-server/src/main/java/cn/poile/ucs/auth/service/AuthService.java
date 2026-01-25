@@ -1,10 +1,13 @@
 package cn.poile.ucs.auth.service;
 
+import cn.poile.ucs.auth.mapper.OauthClientDetailsMapper;
 import com.alibaba.fastjson.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.api.R;
 import com.yzx.model.constant.Constants;
 import com.yzx.model.enums.AuthCode;
 import com.yzx.model.exception.ExceptionCast;
+import com.yzx.model.ucenter.OauthClientDetails;
 import com.yzx.model.ucenter.ext.AuthToken;
 import com.yzx.model.utils.UserAgentUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -44,13 +47,9 @@ public class AuthService {
     @Autowired
     private RestTemplate restTemplate;
     @Autowired
-    LoadBalancerClient loadBalancerClient;
-    @Value("${auth.clientId}")
-    String clientId;
-
-    @Value("${auth.clientSecret}")
-    String clientSecret;
-
+    private LoadBalancerClient loadBalancerClient;
+    @Autowired
+    private OauthClientDetailsMapper oauthClientDetailsMapper;
     @Value("${auth.tokenValiditySecondsMobile}")
     int tokenValiditySecondsMobile;
 
@@ -113,12 +112,10 @@ public class AuthService {
         //定义header
         LinkedMultiValueMap<String, String> header = new LinkedMultiValueMap<>();
         List<String> client_id = body.get("client_id");
-        String httpBasic = getHttpBasic();
+        String httpBasic = getHttpBasic(client_id.get(0));
         header.add("Authorization", httpBasic);
-
         HttpEntity<MultiValueMap<String, String>> httpEntity = new HttpEntity<>(body, header);
         //String url, HttpMethod method, @Nullable HttpEntity<?> requestEntity, Class<T> responseType, Object... uriVariables
-
         //设置restTemplate远程调用时候，对400和401不让报错，正确返回数据
         restTemplate.setErrorHandler(new DefaultResponseErrorHandler() {
             @Override
@@ -132,10 +129,7 @@ public class AuthService {
         log.info("exchange:{}", exchange.getBody());
         //申请令牌信息
         Map bodyMap = exchange.getBody();
-        if (bodyMap == null ||
-                bodyMap.get("access_token") == null ||
-                bodyMap.get("refresh_token") == null ||
-                bodyMap.get("jti") == null) {
+        if (bodyMap == null || bodyMap.get("access_token") == null || bodyMap.get("refresh_token") == null || bodyMap.get("jti") == null) {
             return null;
         }
         AuthToken authToken = new AuthToken();
@@ -148,8 +142,11 @@ public class AuthService {
         return authToken;
     }
 
-    private String getHttpBasic() {
-        String string = clientId + ":" + clientSecret;
+    private String getHttpBasic(String clientId) {
+        LambdaQueryWrapper<OauthClientDetails> oauthClientDetailsLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        oauthClientDetailsLambdaQueryWrapper.eq(OauthClientDetails::getClientId, clientId);
+        OauthClientDetails oauthClientDetails = oauthClientDetailsMapper.selectOne(oauthClientDetailsLambdaQueryWrapper);
+        String string = oauthClientDetails.getClientId() + ":" + oauthClientDetails.getClientSecret();
         //将串进行base64编码
         byte[] encode = Base64Utils.encode(string.getBytes());
         return "Basic " + new String(encode);

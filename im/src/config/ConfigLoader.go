@@ -8,7 +8,7 @@ import (
 
 // LoadConfig 泛型配置加载函数：从 YAML 文件加载配置到指定结构体
 // T 可以是 Config（总配置）、LogConfig（单独日志配置）、DatabaseConfig（单独数据库配置）等
-func LoadConfig[T any](path string) (*T, error) {
+func LoadConfig[T any](path string) (*T, error) { //[T any]声明泛型方法
 	// 读取文件内容
 	data, err := os.ReadFile(path)
 	if err != nil {

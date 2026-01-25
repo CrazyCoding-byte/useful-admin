@@ -106,13 +106,12 @@ func (s *FileStorageService) UploadFile(ctx context.Context, file io.Reader, fil
 
 	// 保存文件元数据到数据库
 	fileStorage := &model.FileStorage{
-		FileName:    fileName,
-		FileHash:    fileHash,
-		FilePath:    objectName,
-		FileSize:    fileSize,
-		MimeType:    mimeType,
-		UploadTime:  time.Now(),
-		StorageType: "minio",
+		FileName:       fileName,
+		FileHash:       fileHash,
+		FilePath:       objectName,
+		FileSize:       fileSize,
+		FileType:       mimeType,
+		FileSystemType: mimeType, // 文件系统类型
 	}
 
 	if err := s.db.Create(fileStorage).Error; err != nil {
@@ -124,28 +123,23 @@ func (s *FileStorageService) UploadFile(ctx context.Context, file io.Reader, fil
 	return fileStorage, nil
 }
 
-// 初始化分片上传
-func (s *FileStorageService) InitMultipartUpload(ctx context.Context, fileName, mimeType string) (string, error) {
-	// 生成上传ID
-	uploadID, err := s.minioClient.NewMultipartUpload(ctx, s.bucketName, minio.CreateMultipartUploadOptions{
-		Object:      fmt.Sprintf("chunks/%s", fileName),
-		ContentType: mimeType,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	// 记录分片上传元数据
-	return uploadID, nil
-}
-
-func (s *FileStorageService) storeFileChunk(uploadId string, chunkData []byte, chunkPath string, fileName string, chunkIndex int, totalChunks int) {
+func (s *FileStorageService) storeFileChunk(uploadId string, chunkData []byte, fileName string, chunkIndex int, totalChunks int) {
 	chunkDir := filepath.Join(baseUrl, "chunks", uploadId)
 	chunkFile := filepath.Join(chunkDir, fmt.Sprintf("chunk_%05d", chunkIndex))
 	originHash, err := CalculateFileHash(chunkFile)
 	if err != nil {
 		slog.Error("计算文件哈希失败", "error", err)
 	}
+	//1.首先应该判断文件的hash存不存在 如果存在则直接返回
+	if checkFileExists(chunkFile) {
+		return
+	}
+	//2.如果不存在则创建文件
+	result := checkFileExists(chunkDir)
+	if !result {
+		os.MkdirAll(chunkDir, os.ModePerm)
+	}
+	saveChunkFile(chunkData, chunkFile, chunkIndex)
 	currentHash := hex.EncodeToString(chunkData)
 	verified := strings.EqualFold(currentHash, originHash)
 	SaveChunkMetadata(chunkData, chunkDir, fileName, uploadId, chunkIndex, currentHash, verified, totalChunks)
@@ -156,6 +150,27 @@ func (s *FileStorageService) storeFileChunk(uploadId string, chunkData []byte, c
 		}
 		slog.Error("删除分片文件{}", chunkFile)
 	}
+}
+func saveChunkFile(chunkData []byte, chunkPath string, chunkIndex int) {
+	//使用临时文件确保原子性写入
+	temp := filepath.Join(chunkPath, ".tmp")
+	defer func() {
+		if err := recover(); err != nil {
+			_ = os.Remove(temp)
+			panic(err)
+		}
+	}()
+	if err := os.WriteFile(temp, chunkData, 0644); err != nil {
+		return
+	}
+	err := os.Rename(temp, chunkPath)
+	if err == nil { //原子移动成功就直接返回
+		return
+	}
+	if err := os.Remove(chunkPath); err != nil && !os.IsNotExist(err) {
+		panic(err)
+	}
+	slog.Info("原子移动失败，降级为普通替换：%v", err)
 }
 func SaveChunkMetadata(chunkData []byte, chunkPath string, fileName string, uploadId string, chunkIndex int, chunkHash string, verified bool, totalChunks int) error {
 	//保存分片元数据
@@ -236,13 +251,13 @@ func (s *FileStorageService) CompleteMergeChunks(uploadId string, fileType strin
 
 }
 func getMinmeType(contentType string) string {
-	if contentType == null {
+	if contentType == "" {
 		return "others"
-	} else if strings.contentType.startsWith("image/") {
+	} else if strings.HasPrefix(contentType, "image/") {
 		return "images"
-	} else if contentType.startsWith("video/") {
+	} else if strings.HasPrefix(contentType, "video/") {
 		return "videos"
-	} else if contentType.startsWith("application/pdf") || contentType.startsWith("text/") {
+	} else if strings.HasPrefix(contentType, "application/pdf") || strings.HasPrefix("contentType", "text/") {
 		return "documents"
 	} else {
 		return "others"
