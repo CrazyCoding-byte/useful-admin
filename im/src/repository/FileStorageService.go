@@ -126,10 +126,6 @@ func (s *FileStorageService) UploadFile(ctx context.Context, file io.Reader, fil
 func (s *FileStorageService) storeFileChunk(uploadId string, chunkData []byte, fileName string, chunkIndex int, totalChunks int) {
 	chunkDir := filepath.Join(baseUrl, "chunks", uploadId)
 	chunkFile := filepath.Join(chunkDir, fmt.Sprintf("chunk_%05d", chunkIndex))
-	originHash, err := CalculateFileHash(chunkFile)
-	if err != nil {
-		slog.Error("计算文件哈希失败", "error", err)
-	}
 	//1.首先应该判断文件的hash存不存在 如果存在则直接返回
 	if checkFileExists(chunkFile) {
 		return
@@ -139,19 +135,23 @@ func (s *FileStorageService) storeFileChunk(uploadId string, chunkData []byte, f
 	if !result {
 		os.MkdirAll(chunkDir, os.ModePerm)
 	}
-	saveChunkFile(chunkData, chunkFile, chunkIndex)
+	s.saveChunkFile(chunkData, chunkFile, chunkIndex)
 	currentHash := hex.EncodeToString(chunkData)
-	verified := strings.EqualFold(currentHash, originHash)
-	SaveChunkMetadata(chunkData, chunkDir, fileName, uploadId, chunkIndex, currentHash, verified, totalChunks)
-	//验证失败就删除损坏的文件
+	fileHash, err := CalculateFileHash(chunkFile)
+	if err != nil {
+		return
+	}
+	verified := strings.EqualFold(currentHash, fileHash)
 	if !verified {
 		if checkFileExists(chunkFile) {
 			os.Remove(chunkFile)
 		}
 		slog.Error("删除分片文件{}", chunkFile)
+		return
 	}
+	SaveChunkMetadata(chunkData, chunkDir, fileName, uploadId, chunkIndex, currentHash, verified, totalChunks)
 }
-func saveChunkFile(chunkData []byte, chunkPath string, chunkIndex int) {
+func (file *FileStorageService) saveChunkFile(chunkData []byte, chunkPath string, chunkIndex int) {
 	//使用临时文件确保原子性写入
 	temp := filepath.Join(chunkPath, ".tmp")
 	defer func() {
@@ -167,11 +167,24 @@ func saveChunkFile(chunkData []byte, chunkPath string, chunkIndex int) {
 	if err == nil { //原子移动成功就直接返回
 		return
 	}
+	//原子移动失败就尝试普通替换
+	//1.删除目标文件
 	if err := os.Remove(chunkPath); err != nil && !os.IsNotExist(err) {
 		panic(err)
 	}
 	slog.Info("原子移动失败，降级为普通替换：%v", err)
+	//2.再次移动文件
+	if err := os.Rename(temp, chunkPath); err != nil {
+		//移动失败,清理临时文件
+		_ = os.Remove(temp)
+		return
+	}
+	return
 }
+
+/**
+ * 保存分片元数据到JSON文件
+ */
 func SaveChunkMetadata(chunkData []byte, chunkPath string, fileName string, uploadId string, chunkIndex int, chunkHash string, verified bool, totalChunks int) error {
 	//保存分片元数据
 	meta := model.ChunkMeta{
@@ -233,7 +246,7 @@ func (s *FileStorageService) SaveMetaData(fileSystemType, fileName, fileType, fi
 }
 func (s *FileStorageService) CompleteMergeChunks(uploadId string, fileType string, fileName string, minmeType string) {
 	chunks := filepath.Join(baseUrl, "chunk", uploadId)
-	os.Stat(chunks)
+	checkFileExists()
 	file, err := os.Open("baseUrl")
 	if err != nil {
 		slog.Error("打开文件失败: %w", err)

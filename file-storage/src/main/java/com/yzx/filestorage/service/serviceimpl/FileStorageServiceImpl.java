@@ -304,7 +304,6 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
                 }
             }
             return true;
-            //检查分片数量是否一致
         } catch (Exception e) {
             log.error("检查分片是否完成失败:{}", e);
             return false;
@@ -318,6 +317,7 @@ public class FileStorageServiceImpl extends ServiceImpl<FileStorageMapper, FileS
 
     @Override
     public String completeChunkUpload(String uploadId, String fileType, String fileName, String mimeType) throws IOException {
+        //Path chunkDir = Paths.get(fileLoadProperties.getUploadBaseDir(), "chunks", uploadId);
         Path chunks = Paths.get(fileLoadProperties.getUploadBaseDir(), "chunks", uploadId);
         if (!Files.exists(chunks)) {
             return null;
