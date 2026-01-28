@@ -10,7 +10,6 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"gorm.io/gorm"
 	"io"
-	"io/ioutil"
 	"local/im/src/config"
 	"local/im/src/model"
 	"log/slog"
@@ -80,16 +79,16 @@ func CalculateFileHash(filePath string) (string, error) {
 }
 
 // 检查文件是否已存在（秒传核心逻辑）
-func (s *FileStorageService) CheckFileExists(fileHash string) (*model.FileStorage, bool) {
+func (s *FileStorageService) CheckFileExists(fileHash string, fileType string) (*model.FileStorage, bool) {
 	var file model.FileStorage
-	result := s.db.Where("file_hash = ?", fileHash).First(&file)
+	result := s.db.Where("file_hash = ?", fileHash, "file_system_type=?", fileType).First(&file)
 	return &file, result.Error == nil
 }
 
 // 普通文件上传
-func (s *FileStorageService) UploadFile(ctx context.Context, file io.Reader, fileName, mimeType, fileHash string, fileSize int64) (*model.FileStorage, error) {
+func (s *FileStorageService) UploadFile(ctx context.Context, fileSystemType string, file io.Reader, fileName, mimeType, fileHash string, fileSize int64) (*model.FileStorage, error) {
 	// 检查是否可以秒传
-	if existingFile, exists := s.CheckFileExists(fileHash); exists {
+	if existingFile, exists := s.CheckFileExists(fileHash, fileSystemType); exists {
 		return existingFile, nil
 	}
 
@@ -244,24 +243,68 @@ func (s *FileStorageService) SaveMetaData(fileSystemType, fileName, fileType, fi
 	}
 	return fmt.Errorf("保存文件元数据失败: %w", err)
 }
-func (s *FileStorageService) CompleteMergeChunks(uploadId string, fileType string, fileName string, minmeType string) {
-	chunks := filepath.Join(baseUrl, "chunk", uploadId)
-	checkFileExists()
-	file, err := os.Open("baseUrl")
-	if err != nil {
-		slog.Error("打开文件失败: %w", err)
-	}
-	if !isChunkComplete(uploadId) {
-		slog.Error("打开文件失败: %w", err)
+func (s *FileStorageService) CompleteMergeChunks(fileSystemType string, uploadId string, fileName string, minmeType string) {
+	//首先判断文件夹存不存在
+	path := filepath.Join(baseUrl, "chunk", uploadId)
+	if !checkFileExists(path) {
+		slog.Error("分片文件夹不存在")
 		return
 	}
-	tempFile := s.MergeChunks(chunks, fileName)
-	fileHash, err := CalculateFileHash(tempFile)
-	if err != nil {
-		slog.Error("计算文件哈希失败: %w", err)
+	filePath := s.MergeChunks(path, fileName)
+	hash, err2 := CalculateFileHash(filePath)
+	if err2 != nil {
+		slog.Error("计算文件哈希失败: %w", err2)
 		return
 	}
-
+	//从数据库查询判断是否已经存在
+	if _, ok := s.CheckFileExists(hash, fileSystemType); ok == false {
+		return
+	}
+	//获取文件类型
+	mType := getMinmeType(minmeType)
+	splitName := strings.Split(fileName, ".")
+	var extType string = splitName[len(splitName)-1]
+	hashedFileName := hash + extType
+	targetPath := filepath.Join(baseUrl, fileSystemType, mType, hashedFileName)
+	copyFile(filePath, targetPath)
+	/**
+	  String hashedFileName = fileHash + extension;
+	  Path targetPath = typeDir.resolve(hashedFileName);
+	  Files.write(targetPath, fileBytes);
+	  Path downloadDir = Paths.get(fileSystemType, fileType, hashedFileName);
+	  String normalizedPath = downloadDir.toString().replace(File.separator, "/");
+	  //保存元数据
+	  FileStorage fileStorageToSave = saveMetaDate(fileSystemType, fileName, fileType, fileHash, normalizedPath, fileSize);
+	  FileDetailResponse fileDetailResponse = fileStorageTransform.toFileDetailResponse(fileStorageToSave);
+	  System.out.println("=== storeUrlFile 返回结果 ===");
+	  System.out.println("结果对象: " + fileDetailResponse);
+	  if (fileDetailResponse != null) {
+	      System.out.println("结果ID: " + fileDetailResponse.getId());
+	      System.out.println("结果文件名: " + fileDetailResponse.getFileName());
+	      System.out.println("结果文件哈希: " + fileDetailResponse.getFileHash());
+	  } else {
+	      System.err.println("错误: storeUrlFile 返回了 null 结果");
+	  }
+	*/
+	downloadDir := filepath.Join(fileSystemType, minmeType, hashedFileName)
+	s.SaveMetaData(fileSystemType, fileName, mType, hash, downloadDir, len())
+}
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("打开源文件失败: %w", err)
+	}
+	defer srcFile.Close()
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("创建目标文件失败: %w", err)
+	}
+	defer dstFile.Close()
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return fmt.Errorf("复制文件内容失败: %w", err)
+	}
+	return nil
 }
 func getMinmeType(contentType string) string {
 	if contentType == "" {
@@ -368,29 +411,4 @@ func readChunkMeta(path string, chunkIndex int) *model.ChunkMeta {
 		return nil
 	}
 	return &meta
-}
-
-// 完成分片上传
-func (s *FileStorageService) CompleteMultipartUpload(ctx context.Context, uploadID string, objectName string, parts []minio.ObjectPart) (*minio.CompleteMultipartUploadResult, error) {
-	return s.minioClient.CompleteMultipartUpload(ctx, s.bucketName, objectName, uploadID, parts, minio.CompleteMultipartUploadOptions{})
-}
-
-// 断点续传 - 获取已上传分片
-func (s *FileStorageService) ListUploadedParts(ctx context.Context, uploadID string, objectName string) ([]minio.ObjectPart, error) {
-	parts := make([]minio.ObjectPart, 0)
-	for partNumber := 1; ; partNumber++ {
-		result, err := s.minioClient.ListParts(ctx, s.bucketName, objectName, uploadID, partNumber, 1000)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
-		parts = append(parts, result.Parts...)
-		if result.IsTruncated {
-			continue
-		}
-		break
-	}
-	return parts, nil
 }
