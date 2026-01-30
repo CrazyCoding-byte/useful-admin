@@ -21,7 +21,7 @@ type FileStorage struct {
 	FileHash       string    `json:"fileHash" gorm:"column:file_hash"`
 	FilePath       string    `json:"filePath" gorm:"column:file_path"`
 	Uploader       *int64    `json:"uploader,omitempty" gorm:"column:uploader"` // 可选, 关联用户表
-	FileSize       int64     `json:"fileSize" gorm:"column:file_size"`          // 文件大小(字节)
+	FileSize       string    `json:"fileSize" gorm:"column:file_size"`          // 文件大小(字节)
 	FileSystemType string    `json:"fileSystemType" gorm:"column:file_system_type"`
 	CreatedAt      time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt      time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`

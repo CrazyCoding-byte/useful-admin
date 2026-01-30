@@ -6,9 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
-	"gorm.io/gorm"
 	"io"
 	"local/im/src/config"
 	"local/im/src/model"
@@ -19,6 +16,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+	"gorm.io/gorm"
 )
 
 var baseUrl = "/file-storage"
@@ -108,7 +109,7 @@ func (s *FileStorageService) UploadFile(ctx context.Context, fileSystemType stri
 		FileName:       fileName,
 		FileHash:       fileHash,
 		FilePath:       objectName,
-		FileSize:       fileSize,
+		FileSize:       formatFileSzie(byte(fileSize)),
 		FileType:       mimeType,
 		FileSystemType: mimeType, // 文件系统类型
 	}
@@ -197,7 +198,7 @@ func SaveChunkMetadata(chunkData []byte, chunkPath string, fileName string, uplo
 		return fmt.Errorf("分片数据为空")
 	}
 	byteLength := len(chunkData)
-	chunkSize := formatFileSzie(byteLength)
+	chunkSize := formatFileSize(int64(byteLength))
 	meta.ChunkSize = chunkSize
 	meta.Verified = verified
 	meta.FilePath = fmt.Sprintf("chunk_%05d", chunkIndex)
@@ -212,15 +213,25 @@ func SaveChunkMetadata(chunkData []byte, chunkPath string, fileName string, uplo
 	}
 	return nil
 }
-func formatFileSzie(bytes int) string {
-	if bytes >= 1024*1024 {
-		mbSize := float64(bytes) / 1024 * 1024
-		return fmt.Sprintf("%.2f MB", mbSize)
-	} else if bytes >= 1024 {
-		kbSize := float64(bytes) / 1024
-		return fmt.Sprintf("%.2f KB", kbSize)
-	} else {
-		return fmt.Sprintf("%d B", bytes)
+func formatFileSize(size int64) string {
+	const (
+		KB = 1024
+		MB = 1024 * KB
+		GB = 1024 * MB
+		TB = 1024 * GB
+	)
+
+	switch {
+	case size >= TB:
+		return fmt.Sprintf("%.2fTB", float64(size)/TB)
+	case size >= GB:
+		return fmt.Sprintf("%.2fGB", float64(size)/GB)
+	case size >= MB:
+		return fmt.Sprintf("%.2fMB", float64(size)/MB)
+	case size >= KB:
+		return fmt.Sprintf("%.2fKB", float64(size)/KB)
+	default:
+		return fmt.Sprintf("%dB", size)
 	}
 }
 
@@ -234,7 +245,7 @@ func (s *FileStorageService) SaveMetaData(fileSystemType, fileName, fileType, fi
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 		FileSystemType: fileSystemType,
-		FileSize:       fileSize,
+		FileSize:       formatFileSize(fileSize),
 	}
 
 	err := s.db.Save(metadata)
@@ -243,22 +254,26 @@ func (s *FileStorageService) SaveMetaData(fileSystemType, fileName, fileType, fi
 	}
 	return fmt.Errorf("保存文件元数据失败: %w", err)
 }
-func (s *FileStorageService) CompleteMergeChunks(fileSystemType string, uploadId string, fileName string, minmeType string) {
+func (s *FileStorageService) CompleteMergeChunks(fileSystemType string, uploadId string, fileName string, minmeType string) error {
 	//首先判断文件夹存不存在
 	path := filepath.Join(baseUrl, "chunk", uploadId)
 	if !checkFileExists(path) {
 		slog.Error("分片文件夹不存在")
-		return
+		return fmt.Errorf("分片文件夹不存在")
 	}
-	filePath := s.MergeChunks(path, fileName)
+	filePath, totalSize, err := s.MergeChunks(path, fileName)
+	if err != nil {
+		slog.Error("合并分片失败: %w", err)
+		return fmt.Errorf("合并分片失败: %w", err)
+	}
 	hash, err2 := CalculateFileHash(filePath)
 	if err2 != nil {
 		slog.Error("计算文件哈希失败: %w", err2)
-		return
+		return fmt.Errorf("计算文件哈希失败: %w", err2)
 	}
 	//从数据库查询判断是否已经存在
 	if _, ok := s.CheckFileExists(hash, fileSystemType); ok == false {
-		return
+		return fmt.Errorf("文件已存在")
 	}
 	//获取文件类型
 	mType := getMinmeType(minmeType)
@@ -287,7 +302,8 @@ func (s *FileStorageService) CompleteMergeChunks(fileSystemType string, uploadId
 	  }
 	*/
 	downloadDir := filepath.Join(fileSystemType, minmeType, hashedFileName)
-	s.SaveMetaData(fileSystemType, fileName, mType, hash, downloadDir, len())
+	s.SaveMetaData(fileSystemType, fileName, mType, hash, downloadDir, totalSize)
+	return nil
 }
 func copyFile(src, dst string) error {
 	srcFile, err := os.Open(src)
@@ -319,34 +335,76 @@ func getMinmeType(contentType string) string {
 		return "others"
 	}
 }
-func (s *FileStorageService) MergeChunks(path string, fileName string) string {
-	tempFile, err := os.CreateTemp("merge_", fileName)
+func (s *FileStorageService) MergeChunks(path string, fileName string) (tempFilePath string, totalSize int64, err error) {
+	//第一个参数""：使用系统默认临时目录；pattern：merge_*+原文件名后缀，保证唯一性
+	pattern := "merge_*" + filepath.Ext(fileName)
+	tempFile, err := os.CreateTemp("", pattern)
 	if err != nil {
 		slog.Error("创建临时文件失败: %w", err)
+		return "", 0, fmt.Errorf("创建临时文件失败: %w", err)
 	}
-	defer tempFile.Close()
+	//defer tempFile.Close()  //如果直接这样关闭会丢失错误
+	defer func() {
+		if err := tempFile.Close(); err != nil && err == nil {
+			slog.Error("关闭临时文件失败: %w", err)
+		}
+	}()
+	// 1. 遍历分片目录，收集所有chunk_*分片文件，并累加分片大小
 	var chunkFiles []string
 	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			slog.Error("遍历分片目录失败: %w", err)
+			return fmt.Errorf("遍历分片目录失败: %w", err)
 		}
-		if !info.IsDir() && strings.HasPrefix(info.Name(), "chunk_") {
+		if !info.IsDir() && strings.HasPrefix(path, "chunk_") {
 			chunkFiles = append(chunkFiles, path)
+			//go的返回值可以直接在方法里面用
+			totalSize += info.Size()
 		}
 		return nil
 	})
+	if len(chunkFiles) == 0 {
+		slog.Error("没有分片文件")
+		return "", 0, fmt.Errorf("没有分片文件")
+	}
+	//2.排序分片
 	sort.Slice(chunkFiles, func(i, j int) bool {
 		return extractChunkIndex(chunkFiles[i]) < extractChunkIndex(chunkFiles[j])
 	})
+	//3.遍历所有的分片 合并到临时文件
 	for _, chunkFile := range chunkFiles {
-		sourceFile, err := os.Open(chunkFile)
+		slog.Info("合并分片文件: %s", chunkFile)
+		//打开分片文件
+		chunkFile, err := os.Open(chunkFile)
 		if err != nil {
-			slog.Error("打开文件失败: %w", err)
+			slog.Error("打开分片文件失败: %w", err)
+			return "", 0, fmt.Errorf("打开分片文件失败: %w", err)
 		}
-		defer sourceFile.Close()
-		io.Copy(sourceFile, tempFile)
+		defer chunkFile.Close()
+		_, err = io.Copy(tempFile, chunkFile)
+		if err != nil {
+			slog.Error("复制分片文件内容失败: %w", err)
+			return "", 0, fmt.Errorf("复制分片文件内容失败: %w", err)
+		}
+		slog.Info("合并分片文件内容成功: %s", chunkFile)
 	}
-	return tempFile.Name()
+	//4.获取临时文件大小是否和总大小一致
+	if err := tempFile.Sync(); err != nil {
+		slog.Error("临时文件同步失败: %w", err)
+		return "", 0, fmt.Errorf("临时文件同步失败: %w", err)
+	}
+	tempFileInfo, err := os.Stat(tempFile.Name())
+	if err != nil {
+		slog.Error("获取临时文件信息失败: %w", err)
+		return "", 0, fmt.Errorf("获取临时文件信息失败: %w", err)
+	}
+	actualSize := tempFileInfo.Size()
+	if actualSize != totalSize {
+		slog.Error("临时文件大小不一致")
+		return "", 0, fmt.Errorf("临时文件大小不一致")
+	}
+	tempFilePath = tempFile.Name()
+	return tempFilePath, totalSize, nil
 }
 func extractChunkIndex(filePath string) int {
 	filename := filepath.Base(filePath)
