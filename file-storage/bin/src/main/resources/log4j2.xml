@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <!-- 定义属性，便于复用 -->
+    <Properties>
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss} [%t] %-5level %logger{36} - %msg%n</Property>
+        <Property name="LOG_DIR">logs</Property>
+        <Property name="LOG_FILE">file-storage.log</Property>
+        <Property name="ERROR_LOG_FILE">file-storage-error.log</Property> <!-- 新增错误日志文件 -->
+    </Properties>
+
+    <!-- 定义 Appenders -->
+    <Appenders>
+        <!-- 控制台输出 -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+
+        <!-- 按日期滚动的日志文件 -->
+        <RollingFile name="RollingFile" fileName="${LOG_DIR}/${LOG_FILE}"
+                     filePattern="${LOG_DIR}/${LOG_FILE}-%d{yyyy-MM-dd}.log">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <!-- 每天滚动一个文件 -->
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <DefaultRolloverStrategy max="14"/> <!-- 保留 14 天的日志文件 -->
+        </RollingFile>
+
+        <!-- 错误日志文件 -->
+        <RollingFile name="ErrorRollingFile" fileName="${LOG_DIR}/${ERROR_LOG_FILE}"
+                     filePattern="${LOG_DIR}/${ERROR_LOG_FILE}-%d{yyyy-MM-dd}.log">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <!-- 每天滚动一个文件 -->
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <DefaultRolloverStrategy max="14"/> <!-- 保留 14 天的错误日志文件 -->
+        </RollingFile>
+    </Appenders>
+
+    <!-- 定义日志级别 -->
+    <Loggers>
+        <!-- 单独输出 ERROR 级别日志 -->
+        <Logger name="com.cernty.whatsapp" level="error" additivity="false">
+            <AppenderRef ref="ErrorRollingFile"/> <!-- 输出到错误日志文件 -->
+            <AppenderRef ref="Console"/> <!-- 输出到控制台 -->
+        </Logger>
+
+        <!-- 应用日志 -->
+        <Logger name="com.cernty.whatsapp" level="info" additivity="false">
+            <AppenderRef ref="RollingFile"/>
+            <AppenderRef ref="Console"/> <!-- 输出到控制台 -->
+        </Logger>
+
+        <!-- 默认日志 -->
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Root>
+    </Loggers>
+</Configuration>

@@ -82,8 +82,11 @@ func CalculateFileHash(filePath string) (string, error) {
 // 检查文件是否已存在（秒传核心逻辑）
 func (s *FileStorageService) CheckFileExists(fileHash string, fileType string) (*model.FileStorage, bool) {
 	var file model.FileStorage
-	result := s.db.Where("file_hash = ?", fileHash, "file_system_type=?", fileType).First(&file)
-	return &file, result.Error == nil
+	result := s.db.Where("file_hash = ? and file_system_type=?", fileHash, fileType).First(&file)
+	if result.Error != nil {
+		return nil, false
+	}
+	return &file, true
 }
 
 // 普通文件上传
@@ -109,9 +112,9 @@ func (s *FileStorageService) UploadFile(ctx context.Context, fileSystemType stri
 		FileName:       fileName,
 		FileHash:       fileHash,
 		FilePath:       objectName,
-		FileSize:       formatFileSzie(byte(fileSize)),
+		FileSize:       formatFileSize(fileSize),
 		FileType:       mimeType,
-		FileSystemType: mimeType, // 文件系统类型
+		FileSystemType: fileSystemType, // 文件系统类型
 	}
 
 	if err := s.db.Create(fileStorage).Error; err != nil {
@@ -123,63 +126,76 @@ func (s *FileStorageService) UploadFile(ctx context.Context, fileSystemType stri
 	return fileStorage, nil
 }
 
-func (s *FileStorageService) storeFileChunk(uploadId string, chunkData []byte, fileName string, chunkIndex int, totalChunks int) {
+func (s *FileStorageService) storeFileChunk(uploadId string, chunkData []byte, fileName string, chunkIndex int, totalChunks int) error {
 	chunkDir := filepath.Join(baseUrl, "chunks", uploadId)
 	chunkFile := filepath.Join(chunkDir, fmt.Sprintf("chunk_%05d", chunkIndex))
 	//1.首先应该判断文件的hash存不存在 如果存在则直接返回
 	if checkFileExists(chunkFile) {
-		return
+		if err := os.MkdirAll(chunkDir, 0755); err != nil { // 优化：设置合理权限
+			s.logger.Error("创建分片目录失败", slog.Any("err", err), slog.String("dir", chunkDir))
+			return fmt.Errorf("创建分片目录失败: %w", err)
+		}
 	}
-	//2.如果不存在则创建文件
-	result := checkFileExists(chunkDir)
-	if !result {
-		os.MkdirAll(chunkDir, os.ModePerm)
+	if err := s.saveChunkFile(chunkData, chunkFile, chunkIndex); err != nil { // 接收saveChunkFile的错误
+		return fmt.Errorf("保存分片文件失败: %w", err)
 	}
-	s.saveChunkFile(chunkData, chunkFile, chunkIndex)
-	currentHash := hex.EncodeToString(chunkData)
+	hash := sha256.New()
+	hash.Write(chunkData)
+	currentHash := hex.EncodeToString(hash.Sum(nil))
+
 	fileHash, err := CalculateFileHash(chunkFile)
 	if err != nil {
-		return
+		slog.Error("计算文件哈希失败", slog.Any("err", err), slog.String("file", chunkFile))
+		return fmt.Errorf("计算文件哈希失败: %w", err)
 	}
 	verified := strings.EqualFold(currentHash, fileHash)
 	if !verified {
 		if checkFileExists(chunkFile) {
-			os.Remove(chunkFile)
+			if err := os.Remove(chunkFile); err != nil {
+				slog.Error("删除分片文件失败", slog.Any("err", err), slog.String("file", chunkFile))
+				return fmt.Errorf("删除分片文件失败: %w", err)
+			}
 		}
 		slog.Error("删除分片文件{}", chunkFile)
-		return
+		return fmt.Errorf("分片文件哈希校验失败: %s", chunkFile)
 	}
-	SaveChunkMetadata(chunkData, chunkDir, fileName, uploadId, chunkIndex, currentHash, verified, totalChunks)
+	// 修复：接收SaveChunkMetadata的错误
+	if err := SaveChunkMetadata(chunkData, chunkDir, fileName, uploadId, chunkIndex, currentHash, verified, totalChunks); err != nil {
+		return fmt.Errorf("保存分片元数据失败: %w", err)
+	}
+	return nil
 }
-func (file *FileStorageService) saveChunkFile(chunkData []byte, chunkPath string, chunkIndex int) {
+
+func (file *FileStorageService) saveChunkFile(chunkData []byte, chunkPath string, chunkIndex int) error {
 	//使用临时文件确保原子性写入
-	temp := filepath.Join(chunkPath, ".tmp")
+	temp := chunkPath + ".tmp"
 	defer func() {
 		if err := recover(); err != nil {
 			_ = os.Remove(temp)
 			panic(err)
 		}
 	}()
+	// 修复：处理文件写入错误，返回给上层
 	if err := os.WriteFile(temp, chunkData, 0644); err != nil {
-		return
+		file.logger.Error("写入临时分片文件失败", slog.Any("err", err), slog.String("temp", temp))
+		return fmt.Errorf("写入临时分片文件失败: %w", err)
 	}
 	err := os.Rename(temp, chunkPath)
-	if err == nil { //原子移动成功就直接返回
-		return
+	if err == nil {
+		return nil
 	}
-	//原子移动失败就尝试普通替换
-	//1.删除目标文件
+	// 原子移动失败，尝试普通替换
 	if err := os.Remove(chunkPath); err != nil && !os.IsNotExist(err) {
+		file.logger.Error("删除分片文件失败", slog.Any("err", err), slog.String("file", chunkPath))
 		panic(err)
 	}
-	slog.Info("原子移动失败，降级为普通替换：%v", err)
-	//2.再次移动文件
+	file.logger.Info("原子移动失败，降级为普通替换", slog.Any("err", err))
 	if err := os.Rename(temp, chunkPath); err != nil {
-		//移动失败,清理临时文件
 		_ = os.Remove(temp)
-		return
+		file.logger.Error("普通替换分片文件失败", slog.Any("err", err), slog.String("temp", temp))
+		return fmt.Errorf("普通替换分片文件失败: %w", err)
 	}
-	return
+	return nil
 }
 
 /**
@@ -248,62 +264,46 @@ func (s *FileStorageService) SaveMetaData(fileSystemType, fileName, fileType, fi
 		FileSize:       formatFileSize(fileSize),
 	}
 
-	err := s.db.Save(metadata)
-	if err != nil {
-		s.logger.Error("保存文件元数据失败: %w", err)
+	// 修复：正确获取Gorm错误
+	if err := s.db.Save(metadata).Error; err != nil {
+		s.logger.Error("保存文件元数据失败", slog.Any("err", err), slog.Any("metadata", metadata))
+		return fmt.Errorf("保存文件元数据失败: %w", err) // 仅错误时返回
 	}
-	return fmt.Errorf("保存文件元数据失败: %w", err)
+	return nil // 成功时返回nil
 }
-func (s *FileStorageService) CompleteMergeChunks(fileSystemType string, uploadId string, fileName string, minmeType string) error {
+func (s *FileStorageService) CompleteMergeChunks(fileSystemType string, uploadId string, fileName string, minmeType string) (downloadURL string, err error) {
 	//首先判断文件夹存不存在
-	path := filepath.Join(baseUrl, "chunk", uploadId)
+	path := filepath.Join(baseUrl, "chunks", uploadId)
 	if !checkFileExists(path) {
-		slog.Error("分片文件夹不存在")
-		return fmt.Errorf("分片文件夹不存在")
+		slog.Error("分片文件夹不存在", slog.String("path", path))
+		return "", fmt.Errorf("分片文件夹不存在: %s", path) // 修复：失败时返回错误，而非nil
 	}
 	filePath, totalSize, err := s.MergeChunks(path, fileName)
 	if err != nil {
-		slog.Error("合并分片失败: %w", err)
-		return fmt.Errorf("合并分片失败: %w", err)
+		slog.Error("合并分片失败: %w", slog.Any("err", err))
+		return "", fmt.Errorf("合并分片失败: %w", err)
 	}
 	hash, err2 := CalculateFileHash(filePath)
 	if err2 != nil {
 		slog.Error("计算文件哈希失败: %w", err2)
-		return fmt.Errorf("计算文件哈希失败: %w", err2)
+		return "", fmt.Errorf("计算文件哈希失败: %w", err)
 	}
-	//从数据库查询判断是否已经存在
-	if _, ok := s.CheckFileExists(hash, fileSystemType); ok == false {
-		return fmt.Errorf("文件已存在")
+	if existingFile, ok := s.CheckFileExists(hash, fileSystemType); ok {
+		// 秒传：删除临时文件，返回已存在的文件路径
+		_ = os.Remove(filePath)
+		return existingFile.FilePath, nil
 	}
 	//获取文件类型
 	mType := getMinmeType(minmeType)
 	splitName := strings.Split(fileName, ".")
-	var extType string = splitName[len(splitName)-1]
+	var extType string = "." + splitName[len(splitName)-1]
 	hashedFileName := hash + extType
 	targetPath := filepath.Join(baseUrl, fileSystemType, mType, hashedFileName)
+
 	copyFile(filePath, targetPath)
-	/**
-	  String hashedFileName = fileHash + extension;
-	  Path targetPath = typeDir.resolve(hashedFileName);
-	  Files.write(targetPath, fileBytes);
-	  Path downloadDir = Paths.get(fileSystemType, fileType, hashedFileName);
-	  String normalizedPath = downloadDir.toString().replace(File.separator, "/");
-	  //保存元数据
-	  FileStorage fileStorageToSave = saveMetaDate(fileSystemType, fileName, fileType, fileHash, normalizedPath, fileSize);
-	  FileDetailResponse fileDetailResponse = fileStorageTransform.toFileDetailResponse(fileStorageToSave);
-	  System.out.println("=== storeUrlFile 返回结果 ===");
-	  System.out.println("结果对象: " + fileDetailResponse);
-	  if (fileDetailResponse != null) {
-	      System.out.println("结果ID: " + fileDetailResponse.getId());
-	      System.out.println("结果文件名: " + fileDetailResponse.getFileName());
-	      System.out.println("结果文件哈希: " + fileDetailResponse.getFileHash());
-	  } else {
-	      System.err.println("错误: storeUrlFile 返回了 null 结果");
-	  }
-	*/
 	downloadDir := filepath.Join(fileSystemType, minmeType, hashedFileName)
 	s.SaveMetaData(fileSystemType, fileName, mType, hash, downloadDir, totalSize)
-	return nil
+	return downloadDir, nil
 }
 func copyFile(src, dst string) error {
 	srcFile, err := os.Open(src)
@@ -329,12 +329,13 @@ func getMinmeType(contentType string) string {
 		return "images"
 	} else if strings.HasPrefix(contentType, "video/") {
 		return "videos"
-	} else if strings.HasPrefix(contentType, "application/pdf") || strings.HasPrefix("contentType", "text/") {
+	} else if strings.HasPrefix(contentType, "application/pdf") || strings.HasPrefix(contentType, "text/") {
 		return "documents"
 	} else {
 		return "others"
 	}
 }
+
 func (s *FileStorageService) MergeChunks(path string, fileName string) (tempFilePath string, totalSize int64, err error) {
 	//第一个参数""：使用系统默认临时目录；pattern：merge_*+原文件名后缀，保证唯一性
 	pattern := "merge_*" + filepath.Ext(fileName)

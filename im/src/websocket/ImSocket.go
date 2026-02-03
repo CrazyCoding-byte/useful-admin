@@ -19,6 +19,7 @@ type WebSocketServer struct {
 	aesKey string
 }
 
+// 加载客户端必须要从oauth2服务校验
 func NewWebSocketServer() *WebSocketServer {
 	// 从配置文件加载 aseKey.key
 	// 尝试多个可能的配置文件路径

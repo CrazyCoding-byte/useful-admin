@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package filestorage;
+
+option go_package = "local/im/proto/filestorage";
+
+// 文件存储服务
+service FileStorageService {
+  // 上传文件（流式传输，支持大文件）
+  rpc UploadFile(stream UploadFileRequest) returns (UploadFileResponse);
+  
+  // 从URL上传文件
+  rpc UploadFileFromUrl(UploadFileFromUrlRequest) returns (UploadFileResponse);
+  
+  // 获取文件详情
+  rpc GetFileDetail(GetFileDetailRequest) returns (FileDetailResponse);
+}
+
+// 上传文件请求（流式）
+message UploadFileRequest {
+  oneof data {
+    FileMetadata metadata = 1;  // 第一个chunk包含元数据
+    bytes chunk = 2;             // 后续chunks包含文件数据
+  }
+}
+
+// 文件元数据
+message FileMetadata {
+  string file_system_type = 1;  // 文件系统类型（如：local, minio）
+  string file_name = 2;          // 文件名
+  string mime_type = 3;          // MIME类型（可选）
+  int64 file_size = 4;          // 文件大小（字节）
+}
+
+// 从URL上传文件请求
+message UploadFileFromUrlRequest {
+  string file_system_type = 1;
+  string download_url = 2;
+  string mime_type = 3;         // 可选
+  string file_name = 4;         // 可选
+}
+
+// 获取文件详情请求
+message GetFileDetailRequest {
+  string file_hash = 1;
+  string file_system_type = 2;
+}
+
+// 文件详情响应
+message FileDetailResponse {
+  int64 id = 1;
+  string file_name = 2;
+  string file_type = 3;
+  string file_hash = 4;
+  string file_path = 5;
+  int64 file_size = 6;
+  int64 uploader = 7;
+  string file_system_type = 8;
+  string created_at = 9;        // ISO 8601格式时间戳
+  string updated_at = 10;       // ISO 8601格式时间戳
+}
+
+// 上传文件响应
+message UploadFileResponse {
+  bool success = 1;
+  string message = 2;
+  FileDetailResponse file_detail = 3;
+}

@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-AuthServerApplication<auth-server>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "cn.poile.ucs.auth.AuthServerApplication",
+            "projectName": "auth-server",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-SystemApplication<system>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.yzx.system.SystemApplication",
+            "projectName": "system",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

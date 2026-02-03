@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{BA1F572B-0025-31E4-95FF-4036CF646B24}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

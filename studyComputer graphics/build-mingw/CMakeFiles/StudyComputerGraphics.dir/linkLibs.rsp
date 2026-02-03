@@ -1,0 +1,1 @@
+  -L"E:/vspkg/packages/sdl2_x64-mingw-dynamic/lib"  -lmingw32 "E:/vspkg/packages/sdl2_x64-mingw-dynamic/lib/libSDL2main.a" "E:/vspkg/packages/sdl2_x64-mingw-dynamic/lib/libSDL2.dll.a" -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 

@@ -1,0 +1,11 @@
+{
+    "cmake.configureSettings": {
+        "CMAKE_TOOLCHAIN_FILE": "E:/vspkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-mingw-dynamic",
+        "SDL2_DIR": "E:/vspkg/packages/sdl2_x64-mingw-dynamic"
+    },
+    "vcpkg.target.useManifest": false,
+    "cmake.configureArgs": [
+        "-DVCPKG_MANIFEST_MODE=OFF"
+    ]
+}

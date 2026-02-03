@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\CMakeFiles\a191708a17440af87a0f4370eb4256dc\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{3EF7C5D7-97D8-3349-84E8-EE9C57D9091A}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

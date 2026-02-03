@@ -1,0 +1,3 @@
+"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\StudyComputerGraphics.dir/objects.a
+C:\mingw64\bin\ar.exe qc CMakeFiles\StudyComputerGraphics.dir/objects.a @CMakeFiles\StudyComputerGraphics.dir\objects1.rsp
+C:\mingw64\bin\c++.exe -g  -mconsole -Wl,--whole-archive CMakeFiles\StudyComputerGraphics.dir/objects.a -Wl,--no-whole-archive -o StudyComputerGraphics.exe -Wl,--out-implib,libStudyComputerGraphics.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\StudyComputerGraphics.dir\linkLibs.rsp

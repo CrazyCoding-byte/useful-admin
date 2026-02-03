@@ -1,0 +1,7 @@
+[2025-09-08 10:49:04] [ERROR] - command line parsed fail. input args : [-h, -lc]  [com.hunantv.bigdata.troy.BootStrap.main(BootStrap.java:43)] 
+org.apache.commons.cli.MissingArgumentException: Missing argument for option: lc
+	at org.apache.commons.cli.Parser.processArgs(Parser.java:343)
+	at org.apache.commons.cli.Parser.processOption(Parser.java:393)
+	at org.apache.commons.cli.Parser.parse(Parser.java:199)
+	at org.apache.commons.cli.Parser.parse(Parser.java:85)
+	at com.hunantv.bigdata.troy.BootStrap.main(BootStrap.java:41)
