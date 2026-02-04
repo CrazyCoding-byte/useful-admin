@@ -1,24 +1,43 @@
 {
-    "configurations": [
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-AuthServerApplication<auth-server>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "cn.poile.ucs.auth.AuthServerApplication",
+      "projectName": "auth-server",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-SystemApplication<system>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.yzx.system.SystemApplication",
+      "projectName": "system",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "cppdbg",
+      "request": "launch",
+      "args": [],
+      "stopAtEntry": false,
+      "externalConsole": true,
+      "cwd": ".",
+      "program": "build/Debug/outDebug",
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "setupCommands": [
         {
-            "type": "java",
-            "name": "Spring Boot-AuthServerApplication<auth-server>",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "mainClass": "cn.poile.ucs.auth.AuthServerApplication",
-            "projectName": "auth-server",
-            "args": "",
-            "envFile": "${workspaceFolder}/.env"
-        },
-        {
-            "type": "java",
-            "name": "Spring Boot-SystemApplication<system>",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "mainClass": "com.yzx.system.SystemApplication",
-            "projectName": "system",
-            "args": "",
-            "envFile": "${workspaceFolder}/.env"
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
         }
-    ]
+      ]
+    }
+  ]
 }
