@@ -128,6 +128,78 @@ StudyComputerGraphics/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/build
 .PHONY : StudyComputerGraphics/fast
 
+src/circle/Circle.obj: src/circle/Circle.cpp.obj
+.PHONY : src/circle/Circle.obj
+
+# target to build an object file
+src/circle/Circle.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.obj
+.PHONY : src/circle/Circle.cpp.obj
+
+src/circle/Circle.i: src/circle/Circle.cpp.i
+.PHONY : src/circle/Circle.i
+
+# target to preprocess a source file
+src/circle/Circle.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.i
+.PHONY : src/circle/Circle.cpp.i
+
+src/circle/Circle.s: src/circle/Circle.cpp.s
+.PHONY : src/circle/Circle.s
+
+# target to generate assembly for a file
+src/circle/Circle.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.s
+.PHONY : src/circle/Circle.cpp.s
+
+src/circle/circle_util.obj: src/circle/circle_util.cpp.obj
+.PHONY : src/circle/circle_util.obj
+
+# target to build an object file
+src/circle/circle_util.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.obj
+.PHONY : src/circle/circle_util.cpp.obj
+
+src/circle/circle_util.i: src/circle/circle_util.cpp.i
+.PHONY : src/circle/circle_util.i
+
+# target to preprocess a source file
+src/circle/circle_util.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.i
+.PHONY : src/circle/circle_util.cpp.i
+
+src/circle/circle_util.s: src/circle/circle_util.cpp.s
+.PHONY : src/circle/circle_util.s
+
+# target to generate assembly for a file
+src/circle/circle_util.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.s
+.PHONY : src/circle/circle_util.cpp.s
+
+src/line/Line.obj: src/line/Line.cpp.obj
+.PHONY : src/line/Line.obj
+
+# target to build an object file
+src/line/Line.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.obj
+.PHONY : src/line/Line.cpp.obj
+
+src/line/Line.i: src/line/Line.cpp.i
+.PHONY : src/line/Line.i
+
+# target to preprocess a source file
+src/line/Line.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.i
+.PHONY : src/line/Line.cpp.i
+
+src/line/Line.s: src/line/Line.cpp.s
+.PHONY : src/line/Line.s
+
+# target to generate assembly for a file
+src/line/Line.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.s
+.PHONY : src/line/Line.cpp.s
+
 src/main.obj: src/main.cpp.obj
 .PHONY : src/main.obj
 
@@ -152,6 +224,54 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/rectangle/Rectangle.obj: src/rectangle/Rectangle.cpp.obj
+.PHONY : src/rectangle/Rectangle.obj
+
+# target to build an object file
+src/rectangle/Rectangle.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.obj
+.PHONY : src/rectangle/Rectangle.cpp.obj
+
+src/rectangle/Rectangle.i: src/rectangle/Rectangle.cpp.i
+.PHONY : src/rectangle/Rectangle.i
+
+# target to preprocess a source file
+src/rectangle/Rectangle.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.i
+.PHONY : src/rectangle/Rectangle.cpp.i
+
+src/rectangle/Rectangle.s: src/rectangle/Rectangle.cpp.s
+.PHONY : src/rectangle/Rectangle.s
+
+# target to generate assembly for a file
+src/rectangle/Rectangle.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.s
+.PHONY : src/rectangle/Rectangle.cpp.s
+
+src/utils/Color.obj: src/utils/Color.cpp.obj
+.PHONY : src/utils/Color.obj
+
+# target to build an object file
+src/utils/Color.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.obj
+.PHONY : src/utils/Color.cpp.obj
+
+src/utils/Color.i: src/utils/Color.cpp.i
+.PHONY : src/utils/Color.i
+
+# target to preprocess a source file
+src/utils/Color.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.i
+.PHONY : src/utils/Color.cpp.i
+
+src/utils/Color.s: src/utils/Color.cpp.s
+.PHONY : src/utils/Color.s
+
+# target to generate assembly for a file
+src/utils/Color.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.s
+.PHONY : src/utils/Color.cpp.s
+
 # Help Target
 help:
 	@echo The following are some of the valid targets for this Makefile:
@@ -161,9 +281,24 @@ help:
 	@echo ... edit_cache
 	@echo ... rebuild_cache
 	@echo ... StudyComputerGraphics
+	@echo ... src/circle/Circle.obj
+	@echo ... src/circle/Circle.i
+	@echo ... src/circle/Circle.s
+	@echo ... src/circle/circle_util.obj
+	@echo ... src/circle/circle_util.i
+	@echo ... src/circle/circle_util.s
+	@echo ... src/line/Line.obj
+	@echo ... src/line/Line.i
+	@echo ... src/line/Line.s
 	@echo ... src/main.obj
 	@echo ... src/main.i
 	@echo ... src/main.s
+	@echo ... src/rectangle/Rectangle.obj
+	@echo ... src/rectangle/Rectangle.i
+	@echo ... src/rectangle/Rectangle.s
+	@echo ... src/utils/Color.obj
+	@echo ... src/utils/Color.i
+	@echo ... src/utils/Color.s
 .PHONY : help
 
 

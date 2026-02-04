@@ -299,7 +299,12 @@ CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.obj: E:/studyoauth2/springclou
   E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/SDL_version.h \
   E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/SDL_video.h \
   E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/begin_code.h \
-  E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/close_code.h
+  E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/close_code.h \
+  E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/circle/Circle.hpp \
+  E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/circle/circle_util.hpp \
+  E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/line/Line.hpp \
+  E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/rectangle/Rectangle.hpp \
+  E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/utils/Color.hpp
 
 
 E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/SDL_sensor.h:
@@ -866,6 +871,8 @@ E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/SDL_log.h:
 
 E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/SDL_messagebox.h:
 
+E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/circle/Circle.hpp:
+
 E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/SDL_metal.h:
 
 E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/SDL_misc.h:
@@ -899,3 +906,11 @@ E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/SDL_version.h:
 E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/SDL_video.h:
 
 E:/vspkg/packages/sdl2_x64-mingw-dynamic/include/SDL2/begin_code.h:
+
+E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/circle/circle_util.hpp:
+
+E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/line/Line.hpp:
+
+E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/rectangle/Rectangle.hpp:
+
+E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/utils/Color.hpp:

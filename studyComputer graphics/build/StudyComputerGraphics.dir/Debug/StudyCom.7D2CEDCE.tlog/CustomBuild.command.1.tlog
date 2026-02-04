@@ -1,0 +1,10 @@
+^E:\STUDYOAUTH2\SPRINGCLOUD-OAUTH2\STUDYCOMPUTER GRAPHICS\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SE:/studyoauth2/springcloud-oauth2/studyComputer graphics" "-BE:/studyoauth2/springcloud-oauth2/studyComputer graphics/build" --check-stamp-file "E:/studyoauth2/springcloud-oauth2/studyComputer graphics/build/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

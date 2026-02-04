@@ -1,0 +1,3 @@
+"D:\CLion 2024.3.6\bin\cmake\win\x64\bin\cmake.exe" -E rm -f CMakeFiles\StudyComputerGraphics.dir/objects.a
+"D:\CLion 2024.3.6\bin\mingw\bin\ar.exe" qc CMakeFiles\StudyComputerGraphics.dir/objects.a @CMakeFiles\StudyComputerGraphics.dir\objects1.rsp
+"D:\CLion 2024.3.6\bin\mingw\bin\g++.exe"  -mconsole -Wl,--whole-archive CMakeFiles\StudyComputerGraphics.dir/objects.a -Wl,--no-whole-archive -o StudyComputerGraphics.exe -Wl,--out-implib,libStudyComputerGraphics.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\StudyComputerGraphics.dir\linkLibs.rsp

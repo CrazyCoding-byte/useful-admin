@@ -84,12 +84,12 @@ clean: CMakeFiles/StudyComputerGraphics.dir/clean
 CMakeFiles/StudyComputerGraphics.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=1,2 "Built target StudyComputerGraphics"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=1,2,3,4,5,6,7 "Built target StudyComputerGraphics"
 .PHONY : CMakeFiles/StudyComputerGraphics.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/StudyComputerGraphics.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" 2
+	$(CMAKE_COMMAND) -E cmake_progress_start "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" 7
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 CMakeFiles/StudyComputerGraphics.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" 0
 .PHONY : CMakeFiles/StudyComputerGraphics.dir/rule
@@ -101,7 +101,7 @@ StudyComputerGraphics: CMakeFiles/StudyComputerGraphics.dir/rule
 # codegen rule for target.
 CMakeFiles/StudyComputerGraphics.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\StudyComputerGraphics.dir\build.make CMakeFiles/StudyComputerGraphics.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=1,2 "Finished codegen for target StudyComputerGraphics"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=1,2,3,4,5,6,7 "Finished codegen for target StudyComputerGraphics"
 .PHONY : CMakeFiles/StudyComputerGraphics.dir/codegen
 
 # clean rule for target.

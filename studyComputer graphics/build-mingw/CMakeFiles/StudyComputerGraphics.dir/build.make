@@ -71,11 +71,56 @@ include CMakeFiles/StudyComputerGraphics.dir/flags.make
 CMakeFiles/StudyComputerGraphics.dir/codegen:
 .PHONY : CMakeFiles/StudyComputerGraphics.dir/codegen
 
+CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/flags.make
+CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/includes_CXX.rsp
+CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.obj: E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/circle/Circle.cpp
+CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.obj"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.obj -MF CMakeFiles\StudyComputerGraphics.dir\src\circle\Circle.cpp.obj.d -o CMakeFiles\StudyComputerGraphics.dir\src\circle\Circle.cpp.obj -c "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\circle\Circle.cpp"
+
+CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.i"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\circle\Circle.cpp" > CMakeFiles\StudyComputerGraphics.dir\src\circle\Circle.cpp.i
+
+CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.s"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\circle\Circle.cpp" -o CMakeFiles\StudyComputerGraphics.dir\src\circle\Circle.cpp.s
+
+CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/flags.make
+CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/includes_CXX.rsp
+CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.obj: E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/circle/circle_util.cpp
+CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.obj"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.obj -MF CMakeFiles\StudyComputerGraphics.dir\src\circle\circle_util.cpp.obj.d -o CMakeFiles\StudyComputerGraphics.dir\src\circle\circle_util.cpp.obj -c "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\circle\circle_util.cpp"
+
+CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.i"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\circle\circle_util.cpp" > CMakeFiles\StudyComputerGraphics.dir\src\circle\circle_util.cpp.i
+
+CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.s"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\circle\circle_util.cpp" -o CMakeFiles\StudyComputerGraphics.dir\src\circle\circle_util.cpp.s
+
+CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/flags.make
+CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/includes_CXX.rsp
+CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.obj: E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/line/Line.cpp
+CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.obj"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.obj -MF CMakeFiles\StudyComputerGraphics.dir\src\line\Line.cpp.obj.d -o CMakeFiles\StudyComputerGraphics.dir\src\line\Line.cpp.obj -c "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\line\Line.cpp"
+
+CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.i"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\line\Line.cpp" > CMakeFiles\StudyComputerGraphics.dir\src\line\Line.cpp.i
+
+CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.s"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\line\Line.cpp" -o CMakeFiles\StudyComputerGraphics.dir\src\line\Line.cpp.s
+
 CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/flags.make
 CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/includes_CXX.rsp
 CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.obj: E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/main.cpp
 CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.obj"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.obj"
 	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.obj -MF CMakeFiles\StudyComputerGraphics.dir\src\main.cpp.obj.d -o CMakeFiles\StudyComputerGraphics.dir\src\main.cpp.obj -c "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\main.cpp"
 
 CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.i: cmake_force
@@ -86,21 +131,61 @@ CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.s"
 	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\main.cpp" -o CMakeFiles\StudyComputerGraphics.dir\src\main.cpp.s
 
+CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/flags.make
+CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/includes_CXX.rsp
+CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.obj: E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/rectangle/Rectangle.cpp
+CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.obj"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.obj -MF CMakeFiles\StudyComputerGraphics.dir\src\rectangle\Rectangle.cpp.obj.d -o CMakeFiles\StudyComputerGraphics.dir\src\rectangle\Rectangle.cpp.obj -c "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\rectangle\Rectangle.cpp"
+
+CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.i"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\rectangle\Rectangle.cpp" > CMakeFiles\StudyComputerGraphics.dir\src\rectangle\Rectangle.cpp.i
+
+CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.s"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\rectangle\Rectangle.cpp" -o CMakeFiles\StudyComputerGraphics.dir\src\rectangle\Rectangle.cpp.s
+
+CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/flags.make
+CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/includes_CXX.rsp
+CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.obj: E:/studyoauth2/springcloud-oauth2/studyComputer\ graphics/src/utils/Color.cpp
+CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.obj: CMakeFiles/StudyComputerGraphics.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.obj"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.obj -MF CMakeFiles\StudyComputerGraphics.dir\src\utils\Color.cpp.obj.d -o CMakeFiles\StudyComputerGraphics.dir\src\utils\Color.cpp.obj -c "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\utils\Color.cpp"
+
+CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.i"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\utils\Color.cpp" > CMakeFiles\StudyComputerGraphics.dir\src\utils\Color.cpp.i
+
+CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.s"
+	C:\mingw64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "E:\studyoauth2\springcloud-oauth2\studyComputer graphics\src\utils\Color.cpp" -o CMakeFiles\StudyComputerGraphics.dir\src\utils\Color.cpp.s
+
 # Object files for target StudyComputerGraphics
 StudyComputerGraphics_OBJECTS = \
-"CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.obj"
+"CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.obj" \
+"CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.obj" \
+"CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.obj" \
+"CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.obj" \
+"CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.obj" \
+"CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.obj"
 
 # External object files for target StudyComputerGraphics
 StudyComputerGraphics_EXTERNAL_OBJECTS =
 
+StudyComputerGraphics.exe: CMakeFiles/StudyComputerGraphics.dir/src/circle/Circle.cpp.obj
+StudyComputerGraphics.exe: CMakeFiles/StudyComputerGraphics.dir/src/circle/circle_util.cpp.obj
+StudyComputerGraphics.exe: CMakeFiles/StudyComputerGraphics.dir/src/line/Line.cpp.obj
 StudyComputerGraphics.exe: CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.obj
+StudyComputerGraphics.exe: CMakeFiles/StudyComputerGraphics.dir/src/rectangle/Rectangle.cpp.obj
+StudyComputerGraphics.exe: CMakeFiles/StudyComputerGraphics.dir/src/utils/Color.cpp.obj
 StudyComputerGraphics.exe: CMakeFiles/StudyComputerGraphics.dir/build.make
 StudyComputerGraphics.exe: E:/vspkg/packages/sdl2_x64-mingw-dynamic/lib/libSDL2main.a
 StudyComputerGraphics.exe: E:/vspkg/packages/sdl2_x64-mingw-dynamic/lib/libSDL2.dll.a
 StudyComputerGraphics.exe: CMakeFiles/StudyComputerGraphics.dir/linkLibs.rsp
 StudyComputerGraphics.exe: CMakeFiles/StudyComputerGraphics.dir/objects1.rsp
 StudyComputerGraphics.exe: CMakeFiles/StudyComputerGraphics.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable StudyComputerGraphics.exe"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir="E:\studyoauth2\springcloud-oauth2\studyComputer graphics\build-mingw\CMakeFiles" --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX executable StudyComputerGraphics.exe"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles\StudyComputerGraphics.dir\link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

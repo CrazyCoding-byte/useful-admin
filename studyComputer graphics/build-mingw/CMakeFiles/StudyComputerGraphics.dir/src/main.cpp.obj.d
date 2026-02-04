@@ -297,4 +297,9 @@ CMakeFiles/StudyComputerGraphics.dir/src/main.cpp.obj: \
  C:/mingw64/lib/gcc/x86_64-w64-mingw32/12.1.0/include/c++/bits/basic_ios.tcc \
  C:/mingw64/lib/gcc/x86_64-w64-mingw32/12.1.0/include/c++/bits/ostream.tcc \
  C:/mingw64/lib/gcc/x86_64-w64-mingw32/12.1.0/include/c++/istream \
- C:/mingw64/lib/gcc/x86_64-w64-mingw32/12.1.0/include/c++/bits/istream.tcc
+ C:/mingw64/lib/gcc/x86_64-w64-mingw32/12.1.0/include/c++/bits/istream.tcc \
+ E:\studyoauth2\springcloud-oauth2\studyComputer\ graphics\src\utils/Color.hpp \
+ E:\studyoauth2\springcloud-oauth2\studyComputer\ graphics\src\line/Line.hpp \
+ E:\studyoauth2\springcloud-oauth2\studyComputer\ graphics\src\rectangle/Rectangle.hpp \
+ E:\studyoauth2\springcloud-oauth2\studyComputer\ graphics\src\circle/circle_util.hpp \
+ E:\studyoauth2\springcloud-oauth2\studyComputer\ graphics\src\circle/Circle.hpp
