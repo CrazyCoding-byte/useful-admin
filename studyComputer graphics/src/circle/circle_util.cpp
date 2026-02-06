@@ -1,16 +1,17 @@
 #include "circle_util.hpp"
-#include <cmath>
 #include "../line/Line.hpp"
+#include <cmath>
 
-void drawCirclePoint(SDL_Renderer *renderer, int x0, int y0, int x, int y, Color c) {
+void drawCirclePoint(SDL_Renderer *renderer, int x0, int y0, int x, int y,
+                     Color c) {
   SDL_RenderDrawPoint(renderer, x0 + x, y0 + y);
   SDL_RenderDrawPoint(renderer, x0 + y, y0 + x);
-  SDL_RenderDrawPoint(renderer, x0 + y, y0 - x);
-  SDL_RenderDrawPoint(renderer, x0 + x, y0 - y);
-  SDL_RenderDrawPoint(renderer, x0 - x, y0 - y);
-  SDL_RenderDrawPoint(renderer, x0 - y, y0 - x);
   SDL_RenderDrawPoint(renderer, x0 - y, y0 + x);
   SDL_RenderDrawPoint(renderer, x0 - x, y0 + y);
+  SDL_RenderDrawPoint(renderer, x0 - x, y0 - y);
+  SDL_RenderDrawPoint(renderer, x0 - y, y0 - x);
+  SDL_RenderDrawPoint(renderer, x0 + y, y0 - x);
+  SDL_RenderDrawPoint(renderer, x0 + x, y0 - y);
 }
 
 void drawCircle(SDL_Renderer *renderer, int x0, int y0, int r, Color c) {
@@ -20,6 +21,8 @@ void drawCircle(SDL_Renderer *renderer, int x0, int y0, int r, Color c) {
   drawCirclePoint(renderer, x0, y0, x, y, c);
   while (x < y) {
     if (d < 0) {
+      d += 2 * x + 3;
+    } else {
       d += 2 * (x - y) + 5;
       y--;
     }

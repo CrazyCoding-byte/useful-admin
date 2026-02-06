@@ -22,7 +22,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var baseUrl = "/file-storage"
+var baseUrl = "file-storage"
 
 // FileStorageService 整合MinIO的文件存储服务
 type FileStorageService struct {
@@ -129,12 +129,15 @@ func (s *FileStorageService) UploadFile(ctx context.Context, fileSystemType stri
 func (s *FileStorageService) storeFileChunk(uploadId string, chunkData []byte, fileName string, chunkIndex int, totalChunks int) error {
 	chunkDir := filepath.Join(baseUrl, "chunks", uploadId)
 	chunkFile := filepath.Join(chunkDir, fmt.Sprintf("chunk_%05d", chunkIndex))
-	//1.首先应该判断文件的hash存不存在 如果存在则直接返回
+	//先创建分片目录（MkdirAll已做存在判断，重复调用无副作用，直接调用即可）
+	if err := os.MkdirAll(chunkDir, 0755); err != nil { // 优化：设置合理权限
+		s.logger.Error("创建分片目录失败", slog.Any("err", err), slog.String("dir", chunkDir))
+		return fmt.Errorf("创建分片目录失败: %w", err)
+	}
+	// 再判断分片文件是否存在
 	if checkFileExists(chunkFile) {
-		if err := os.MkdirAll(chunkDir, 0755); err != nil { // 优化：设置合理权限
-			s.logger.Error("创建分片目录失败", slog.Any("err", err), slog.String("dir", chunkDir))
-			return fmt.Errorf("创建分片目录失败: %w", err)
-		}
+		s.logger.Info("分片文件已存在，跳过存储", slog.String("chunkFile", chunkFile))
+		return nil
 	}
 	if err := s.saveChunkFile(chunkData, chunkFile, chunkIndex); err != nil { // 接收saveChunkFile的错误
 		return fmt.Errorf("保存分片文件失败: %w", err)

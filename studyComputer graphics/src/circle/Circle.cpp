@@ -3,15 +3,16 @@
 
 Circle::Circle(int x, int y, int radius) : x0(x), y0(y), r(radius) {}
 
-void Circle::drawCirclePoint(SDL_Renderer *renderer, int x0, int y0, int x, int y, Color c) {
+void Circle::drawCirclePoint(SDL_Renderer *renderer, int x0, int y0, int x,
+                             int y, Color c) {
   SDL_RenderDrawPoint(renderer, x0 + x, y0 + y);
   SDL_RenderDrawPoint(renderer, x0 + y, y0 + x);
-  SDL_RenderDrawPoint(renderer, x0 + y, y0 - x);
-  SDL_RenderDrawPoint(renderer, x0 + x, y0 - y);
-  SDL_RenderDrawPoint(renderer, x0 - x, y0 - y);
-  SDL_RenderDrawPoint(renderer, x0 - y, y0 - x);
   SDL_RenderDrawPoint(renderer, x0 - y, y0 + x);
   SDL_RenderDrawPoint(renderer, x0 - x, y0 + y);
+  SDL_RenderDrawPoint(renderer, x0 - x, y0 - y);
+  SDL_RenderDrawPoint(renderer, x0 - y, y0 - x);
+  SDL_RenderDrawPoint(renderer, x0 + y, y0 - x);
+  SDL_RenderDrawPoint(renderer, x0 + x, y0 - y);
 }
 
 void Circle::drawCircle(SDL_Renderer *renderer, Color c) {
@@ -21,7 +22,9 @@ void Circle::drawCircle(SDL_Renderer *renderer, Color c) {
   drawCirclePoint(renderer, x0, y0, x, y, c);
   while (x < y) {
     if (d < 0) {
-      d += 2 * (x - y) + 5;
+      d += 2 * x + 3; //当d=(x-x0)^2+(y-y0)^2<r^2时 d=d+2x+3
+    } else {
+      d += 2 * (x - y) + 5; //当d=(x-x0)^2+(y-y0)^2>=r^2时 d=d+2(x-y)+5
       y--;
     }
     x++;
@@ -31,7 +34,7 @@ void Circle::drawCircle(SDL_Renderer *renderer, Color c) {
 
 void Circle::drawFillCircle(SDL_Renderer *renderer, Color c) {
   for (int y = -r; y <= r; y++) {
-    int x = static_cast<int>(sqrt(r * r - y * y));
+    int x = static_cast<int>(sqrt(r * r - y * y)); // 计算当前行的x坐标 x^2+y^2=r^2 x=sqrt(r^2-y^2)
     drawLine(renderer, x0 - x, y0 + y, x0 + x, y0 + y, c);
   }
 }
