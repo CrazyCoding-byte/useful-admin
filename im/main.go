@@ -62,7 +62,6 @@ func main() {
 	_db, err := cfg.Database.InitDatabase()
 	// 自动迁移，观察 GORM 如何创建表
 	_db.AutoMigrate(&User{}, &Profile{}, &Article{}, &Tag{})
-
 	// 查看生成的 SQL
 	var users []User
 	statement := _db.Session(&gorm.Session{DryRun: true}).Preload("Profile").Find(&users)

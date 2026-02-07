@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"local/im/src/config"
 	"local/im/src/model"
 	"log/slog"
 	"os"
@@ -18,7 +17,6 @@ import (
 	"time"
 
 	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	"gorm.io/gorm"
 )
 
@@ -29,37 +27,14 @@ type FileStorageService struct {
 	minioClient *minio.Client
 	bucketName  string
 	db          *gorm.DB
-	logger      *slog.Logger
 }
 
 // NewFileStorageService 创建文件存储服务实例
-func NewFileStorageService(cfg *config.MinIOConfig, db *gorm.DB, logger *slog.Logger) (*FileStorageService, error) {
-	// 初始化MinIO客户端
-	client, err := minio.New(cfg.Endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
-		Secure: cfg.UseSSL,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("初始化MinIO客户端失败: %w", err)
-	}
-
-	// 检查并创建存储桶
-	ctx := context.Background()
-	exists, err := client.BucketExists(ctx, cfg.BucketName)
-	if err != nil {
-		return nil, fmt.Errorf("检查存储桶失败: %w", err)
-	}
-	if !exists {
-		if err := client.MakeBucket(ctx, cfg.BucketName, minio.MakeBucketOptions{}); err != nil {
-			return nil, fmt.Errorf("创建存储桶失败: %w", err)
-		}
-	}
-
+func NewFileStorageService(cfg *minio.Client, db *gorm.DB, bucketName string) (*FileStorageService, error) {
 	return &FileStorageService{
-		minioClient: client,
-		bucketName:  cfg.BucketName,
+		minioClient: cfg,
+		bucketName:  bucketName,
 		db:          db,
-		logger:      logger,
 	}, nil
 }
 
@@ -131,12 +106,12 @@ func (s *FileStorageService) storeFileChunk(uploadId string, chunkData []byte, f
 	chunkFile := filepath.Join(chunkDir, fmt.Sprintf("chunk_%05d", chunkIndex))
 	//先创建分片目录（MkdirAll已做存在判断，重复调用无副作用，直接调用即可）
 	if err := os.MkdirAll(chunkDir, 0755); err != nil { // 优化：设置合理权限
-		s.logger.Error("创建分片目录失败", slog.Any("err", err), slog.String("dir", chunkDir))
+		slog.Error("创建分片目录失败", slog.Any("err", err), slog.String("dir", chunkDir))
 		return fmt.Errorf("创建分片目录失败: %w", err)
 	}
 	// 再判断分片文件是否存在
 	if checkFileExists(chunkFile) {
-		s.logger.Info("分片文件已存在，跳过存储", slog.String("chunkFile", chunkFile))
+		slog.Info("分片文件已存在，跳过存储", slog.String("chunkFile", chunkFile))
 		return nil
 	}
 	if err := s.saveChunkFile(chunkData, chunkFile, chunkIndex); err != nil { // 接收saveChunkFile的错误
@@ -180,7 +155,7 @@ func (file *FileStorageService) saveChunkFile(chunkData []byte, chunkPath string
 	}()
 	// 修复：处理文件写入错误，返回给上层
 	if err := os.WriteFile(temp, chunkData, 0644); err != nil {
-		file.logger.Error("写入临时分片文件失败", slog.Any("err", err), slog.String("temp", temp))
+		slog.Error("写入临时分片文件失败", slog.Any("err", err), slog.String("temp", temp))
 		return fmt.Errorf("写入临时分片文件失败: %w", err)
 	}
 	err := os.Rename(temp, chunkPath)
@@ -189,13 +164,13 @@ func (file *FileStorageService) saveChunkFile(chunkData []byte, chunkPath string
 	}
 	// 原子移动失败，尝试普通替换
 	if err := os.Remove(chunkPath); err != nil && !os.IsNotExist(err) {
-		file.logger.Error("删除分片文件失败", slog.Any("err", err), slog.String("file", chunkPath))
+		slog.Error("删除分片文件失败", slog.Any("err", err), slog.String("file", chunkPath))
 		panic(err)
 	}
-	file.logger.Info("原子移动失败，降级为普通替换", slog.Any("err", err))
+	slog.Info("原子移动失败，降级为普通替换", slog.Any("err", err))
 	if err := os.Rename(temp, chunkPath); err != nil {
 		_ = os.Remove(temp)
-		file.logger.Error("普通替换分片文件失败", slog.Any("err", err), slog.String("temp", temp))
+		slog.Error("普通替换分片文件失败", slog.Any("err", err), slog.String("temp", temp))
 		return fmt.Errorf("普通替换分片文件失败: %w", err)
 	}
 	return nil
@@ -269,7 +244,7 @@ func (s *FileStorageService) SaveMetaData(fileSystemType, fileName, fileType, fi
 
 	// 修复：正确获取Gorm错误
 	if err := s.db.Save(metadata).Error; err != nil {
-		s.logger.Error("保存文件元数据失败", slog.Any("err", err), slog.Any("metadata", metadata))
+		slog.Error("保存文件元数据失败", slog.Any("err", err), slog.Any("metadata", metadata))
 		return fmt.Errorf("保存文件元数据失败: %w", err) // 仅错误时返回
 	}
 	return nil // 成功时返回nil

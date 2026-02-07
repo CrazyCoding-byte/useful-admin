@@ -1,7 +1,10 @@
 package config
 
 import (
+	"context"
 	"fmt"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log/slog"
@@ -85,4 +88,69 @@ func (dc *DatabaseConfig) InitDatabase() (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(20)
 	slog.Info("数据库初始化成功", "driver", dc.Driver, "host", dc.Host, "dbname", dc.Dbname)
 	return db, nil // 返回初始化后的 db 实例
+}
+
+// 初始化minio配置
+func (mc *MinIOConfig) InitMinIO() (*minio.Client, error) {
+	// 第一步：校验必要配置项（不能为空）
+	if err := mc.validate(); err != nil {
+		return nil, fmt.Errorf("minio config validate failed: %w", err)
+	}
+
+	// 第二步：创建 MinIO 客户端实例
+	// credentials.NewStaticV4：使用静态的 AccessKeyID/SecretAccessKey 创建凭证
+	// 参数说明：endpoint(服务地址)、凭证、useSSL(是否加密连接)、区域(留空自动检测)
+	minioClient, err := minio.New(mc.Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(mc.AccessKeyID, mc.SecretAccessKey, ""),
+		Secure: mc.UseSSL,
+		// 可选：指定区域，如 "us-east-1"，不指定则自动检测
+		// Region: "cn-north-1",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create minio client failed: %w", err)
+	}
+
+	// 第三步（可选但实用）：检查配置的 Bucket 是否存在，不存在则自动创建
+	// 注：如果不需要自动创建桶，可删除这部分逻辑
+	ctx := context.Background()
+	exists, err := minioClient.BucketExists(ctx, mc.BucketName)
+	if err != nil {
+		return nil, fmt.Errorf("check bucket [%s] exists failed: %w", mc.BucketName, err)
+	}
+	if !exists {
+		// 创建桶（默认私有权限，如需公读可修改 ObjectLockingEnabled 或添加 Policy）
+		err = minioClient.MakeBucket(ctx, mc.BucketName, minio.MakeBucketOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("create bucket [%s] failed: %w", mc.BucketName, err)
+		}
+		fmt.Printf("minio bucket [%s] created successfully\n", mc.BucketName)
+	}
+
+	// 初始化成功，返回客户端实例
+	return minioClient, nil
+}
+
+// validate 校验 MinIO 配置的必要字段
+func (mc *MinIOConfig) validate() error {
+	// 去除字段前后空格（避免配置中多打空格导致的错误）
+	mc.Endpoint = strings.TrimSpace(mc.Endpoint)
+	mc.AccessKeyID = strings.TrimSpace(mc.AccessKeyID)
+	mc.SecretAccessKey = strings.TrimSpace(mc.SecretAccessKey)
+	mc.BucketName = strings.TrimSpace(mc.BucketName)
+
+	// 校验核心字段不能为空
+	if mc.Endpoint == "" {
+		return fmt.Errorf("endpoint is empty")
+	}
+	if mc.AccessKeyID == "" {
+		return fmt.Errorf("accessKeyID is empty")
+	}
+	if mc.SecretAccessKey == "" {
+		return fmt.Errorf("secretAccessKey is empty")
+	}
+	if mc.BucketName == "" {
+		return fmt.Errorf("bucketName is empty")
+	}
+
+	return nil
 }
