@@ -25,6 +25,7 @@ type FileStorage struct {
 	FileSystemType string    `json:"fileSystemType" gorm:"column:file_system_type"`
 	CreatedAt      time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt      time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
+	ETag           string    `json:"eTag" gorm:"column:e_tag"`
 }
 
 // TableName 指定数据库表名
