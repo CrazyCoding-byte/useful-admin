@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log/slog"
@@ -93,6 +94,8 @@ func (dc *DatabaseConfig) InitDatabase() (*gorm.DB, error) {
 // 初始化minio配置
 func (mc *MinIOConfig) InitMinIO() (*minio.Client, error) {
 	// 第一步：校验必要配置项（不能为空）
+	fmt.Printf("AccessKeyId:%s", mc.AccessKeyID)
+	fmt.Printf("SecretAccessKey:%s", mc.SecretAccessKey)
 	if err := mc.validate(); err != nil {
 		return nil, fmt.Errorf("minio config validate failed: %w", err)
 	}
@@ -100,6 +103,7 @@ func (mc *MinIOConfig) InitMinIO() (*minio.Client, error) {
 	// 第二步：创建 MinIO 客户端实例
 	// credentials.NewStaticV4：使用静态的 AccessKeyID/SecretAccessKey 创建凭证
 	// 参数说明：endpoint(服务地址)、凭证、useSSL(是否加密连接)、区域(留空自动检测)
+
 	minioClient, err := minio.New(mc.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(mc.AccessKeyID, mc.SecretAccessKey, ""),
 		Secure: mc.UseSSL,
@@ -133,6 +137,7 @@ func (mc *MinIOConfig) InitMinIO() (*minio.Client, error) {
 // validate 校验 MinIO 配置的必要字段
 func (mc *MinIOConfig) validate() error {
 	// 去除字段前后空格（避免配置中多打空格导致的错误）
+
 	mc.Endpoint = strings.TrimSpace(mc.Endpoint)
 	mc.AccessKeyID = strings.TrimSpace(mc.AccessKeyID)
 	mc.SecretAccessKey = strings.TrimSpace(mc.SecretAccessKey)
@@ -153,4 +158,11 @@ func (mc *MinIOConfig) validate() error {
 	}
 
 	return nil
+}
+func (r *RedisConfig) InitRedisClient(redisClient *redis.Client, err error) {
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%d", r.Host, r.Port),
+		Password: r.Password,
+		DB:       0,
+	})
 }

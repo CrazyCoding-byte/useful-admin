@@ -22,4 +22,16 @@ log:
 aseKey:
   key: "yangzhixuan944166810@qq.com1150614966@qq.com13735713859" # 对称加密密钥（需安全存储，如配置中心）
 file:
-  uploadBaseUrl: "file-storage" # 文件下载基础 URL
+  upload-baseUrl: "file-storage" # 文件下载基础 URL
+  max-file-size: 200
+  max-chunk-size: 5
+minio:
+  endpoint: localhost:19000       # MinIO服务地址（本地部署的话默认9000）
+  access-key-id: minioadmin      # 你的MinIO AccessKey
+  secret-access-key: minioadmin  # 你的MinIO SecretKey
+  bucket-name: imbucket          # 桶名（和你测试代码里的imbucket一致）
+  use-ssl: false                 # 本地测试一般关闭SSL
+redis:
+  host: localhost
+  port: 6379
+  password:

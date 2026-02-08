@@ -6,6 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/bsm/redislock"
+	"github.com/minio/minio-go/v7"
+	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 	"io"
 	"local/im/src/model"
 	"log/slog"
@@ -15,42 +19,51 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/minio/minio-go/v7"
-	"gorm.io/gorm"
 )
-
-var baseUrl = "file-storage"
 
 // FileStorageService 整合MinIO的文件存储服务
 type FileStorageService struct {
-	minioClient *minio.Client
-	bucketName  string
-	db          *gorm.DB
+	minioClient  *minio.Client
+	bucketName   string
+	db           *gorm.DB
+	baseUrl      string
+	maxFileSize  int
+	maxChunkSize int
 }
 
 // NewFileStorageService 创建文件存储服务实例
-func NewFileStorageService(cfg *minio.Client, db *gorm.DB, bucketName string) (*FileStorageService, error) {
+func NewFileStorageService(cfg *minio.Client, db *gorm.DB, bucketName string, baseUrl string, maxFileSize int, maxChunkSize int) (*FileStorageService, error) {
 	return &FileStorageService{
-		minioClient: cfg,
-		bucketName:  bucketName,
-		db:          db,
+		minioClient:  cfg,
+		bucketName:   bucketName,
+		db:           db,
+		baseUrl:      baseUrl,
+		maxFileSize:  maxFileSize,
+		maxChunkSize: maxChunkSize,
 	}, nil
 }
 
-// 计算文件哈希（用于秒传判断）
-func CalculateFileHash(filePath string) (string, error) {
+// 保留你原来的调用方式，无感知替换，解决大文件内存问题
+func CalculateFileHashByPath(filePath string) (string, error) {
+	// 打开文件（只读模式，避免锁文件）
 	file, err := os.Open(filePath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("打开本地文件失败: %w", err)
 	}
 	defer file.Close()
 
-	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return "", err
-	}
+	// 调用流式计算逻辑，不加载整个文件到内存
+	return CalculateFileHash(file)
+}
 
+// CalculateFileHash 【核心流式逻辑】计算io.Reader的哈希（支持本地文件/用户上传流）
+// IM场景扩展：用户上传文件时，可直接传HTTP请求的file流（不用先存本地）
+func CalculateFileHash(file io.Reader) (string, error) {
+	hash := sha256.New()
+	// 流式拷贝：每次读一小块数据到哈希器，不占满内存
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", fmt.Errorf("流式计算哈希失败: %w", err)
+	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
@@ -65,7 +78,26 @@ func (s *FileStorageService) CheckFileExists(fileHash string, fileType string) (
 }
 
 // 普通文件上传
-func (s *FileStorageService) UploadFile(ctx context.Context, fileSystemType string, file io.Reader, fileName, mimeType, fileHash string, fileSize int64) (*model.FileStorage, error) {
+func (s *FileStorageService) UploadFile(ctx context.Context, redisClient *redis.Client, fileSystemType string, file io.Reader, fileName, mimeType, fileHash string, fileSize int64) (*model.FileStorage, error) {
+	if fileSize > int64(s.maxFileSize) {
+		return nil, fmt.Errorf("文件大小超出限制")
+	}
+	// 加锁：key = "file_lock:" + fileHash
+	locker := redislock.New(redisClient)
+	lock, err := locker.Obtain(ctx, "file_lock:"+fileHash, 30*time.Second, nil)
+	if err == redislock.ErrNotObtained {
+		// 细化错误：明确是“锁被占用”，而非泛化的“获取失败”
+		return nil, fmt.Errorf("文件上传冲突（锁被占用）: %w", err)
+	} else if err != nil {
+		return nil, fmt.Errorf("获取锁失败: %w", err)
+	}
+	defer func() {
+		// 释放锁时捕获错误（可选，生产环境建议记录日志）
+		if releaseErr := lock.Release(ctx); releaseErr != nil {
+			// 这里可以用日志库记录，比如 log.Printf("释放锁失败: %v", releaseErr)
+			slog.Error("释放锁失败: %v", releaseErr)
+		}
+	}()
 	// 检查是否可以秒传
 	if existingFile, exists := s.CheckFileExists(fileHash, fileSystemType); exists {
 		return existingFile, nil
@@ -75,7 +107,7 @@ func (s *FileStorageService) UploadFile(ctx context.Context, fileSystemType stri
 	objectName := fmt.Sprintf("files/%s/%s", time.Now().Format("2006-01-02"), fileHash+filepath.Ext(fileName))
 
 	// 上传到MinIO
-	_, err := s.minioClient.PutObject(ctx, s.bucketName, objectName, file, fileSize, minio.PutObjectOptions{
+	_, err = s.minioClient.PutObject(ctx, s.bucketName, objectName, file, fileSize, minio.PutObjectOptions{
 		ContentType: mimeType,
 	})
 	if err != nil {
@@ -102,7 +134,10 @@ func (s *FileStorageService) UploadFile(ctx context.Context, fileSystemType stri
 }
 
 func (s *FileStorageService) storeFileChunk(uploadId string, chunkData []byte, fileName string, chunkIndex int, totalChunks int) error {
-	chunkDir := filepath.Join(baseUrl, "chunks", uploadId)
+	if len(chunkData) > s.maxChunkSize {
+		return fmt.Errorf("分片索引超出范围")
+	}
+	chunkDir := filepath.Join(s.baseUrl, "chunks", uploadId)
 	chunkFile := filepath.Join(chunkDir, fmt.Sprintf("chunk_%05d", chunkIndex))
 	//先创建分片目录（MkdirAll已做存在判断，重复调用无副作用，直接调用即可）
 	if err := os.MkdirAll(chunkDir, 0755); err != nil { // 优化：设置合理权限
@@ -121,7 +156,7 @@ func (s *FileStorageService) storeFileChunk(uploadId string, chunkData []byte, f
 	hash.Write(chunkData)
 	currentHash := hex.EncodeToString(hash.Sum(nil))
 
-	fileHash, err := CalculateFileHash(chunkFile)
+	fileHash, err := CalculateFileHashByPath(chunkFile)
 	if err != nil {
 		slog.Error("计算文件哈希失败", slog.Any("err", err), slog.String("file", chunkFile))
 		return fmt.Errorf("计算文件哈希失败: %w", err)
@@ -165,7 +200,7 @@ func (file *FileStorageService) saveChunkFile(chunkData []byte, chunkPath string
 	// 原子移动失败，尝试普通替换
 	if err := os.Remove(chunkPath); err != nil && !os.IsNotExist(err) {
 		slog.Error("删除分片文件失败", slog.Any("err", err), slog.String("file", chunkPath))
-		panic(err)
+		return fmt.Errorf("删除分片文件失败: %w", err) // 返回错误而非panic
 	}
 	slog.Info("原子移动失败，降级为普通替换", slog.Any("err", err))
 	if err := os.Rename(temp, chunkPath); err != nil {
@@ -188,7 +223,7 @@ func SaveChunkMetadata(chunkData []byte, chunkPath string, fileName string, uplo
 		ChunkHash:   chunkHash,
 		TotalChunks: totalChunks,
 	}
-	if chunkData == nil && len(chunkData) == 0 {
+	if chunkData == nil || len(chunkData) == 0 {
 		return fmt.Errorf("分片数据为空")
 	}
 	byteLength := len(chunkData)
@@ -251,7 +286,7 @@ func (s *FileStorageService) SaveMetaData(fileSystemType, fileName, fileType, fi
 }
 func (s *FileStorageService) CompleteMergeChunks(fileSystemType string, uploadId string, fileName string, minmeType string) (downloadURL string, err error) {
 	//首先判断文件夹存不存在
-	path := filepath.Join(baseUrl, "chunks", uploadId)
+	path := filepath.Join(s.baseUrl, "chunks", uploadId)
 	if !checkFileExists(path) {
 		slog.Error("分片文件夹不存在", slog.String("path", path))
 		return "", fmt.Errorf("分片文件夹不存在: %s", path) // 修复：失败时返回错误，而非nil
@@ -261,10 +296,10 @@ func (s *FileStorageService) CompleteMergeChunks(fileSystemType string, uploadId
 		slog.Error("合并分片失败: %w", slog.Any("err", err))
 		return "", fmt.Errorf("合并分片失败: %w", err)
 	}
-	hash, err2 := CalculateFileHash(filePath)
+	hash, err2 := CalculateFileHashByPath(filePath)
 	if err2 != nil {
 		slog.Error("计算文件哈希失败: %w", err2)
-		return "", fmt.Errorf("计算文件哈希失败: %w", err)
+		return "", fmt.Errorf("计算文件哈希失败: %w", err2)
 	}
 	if existingFile, ok := s.CheckFileExists(hash, fileSystemType); ok {
 		// 秒传：删除临时文件，返回已存在的文件路径
@@ -276,9 +311,12 @@ func (s *FileStorageService) CompleteMergeChunks(fileSystemType string, uploadId
 	splitName := strings.Split(fileName, ".")
 	var extType string = "." + splitName[len(splitName)-1]
 	hashedFileName := hash + extType
-	targetPath := filepath.Join(baseUrl, fileSystemType, mType, hashedFileName)
+	targetPath := filepath.Join(s.baseUrl, fileSystemType, mType, hashedFileName)
 
-	copyFile(filePath, targetPath)
+	if err := copyFile(filePath, targetPath); err != nil {
+		slog.Error("复制合并后的文件失败", "err", err, "src", filePath, "dst", targetPath)
+		return "", fmt.Errorf("复制文件失败: %w", err)
+	}
 	downloadDir := filepath.Join(fileSystemType, minmeType, hashedFileName)
 	s.SaveMetaData(fileSystemType, fileName, mType, hash, downloadDir, totalSize)
 	return downloadDir, nil
@@ -317,15 +355,19 @@ func getMinmeType(contentType string) string {
 func (s *FileStorageService) MergeChunks(path string, fileName string) (tempFilePath string, totalSize int64, err error) {
 	//第一个参数""：使用系统默认临时目录；pattern：merge_*+原文件名后缀，保证唯一性
 	pattern := "merge_*" + filepath.Ext(fileName)
-	tempFile, err := os.CreateTemp("", pattern)
+	tempDir := filepath.Join(s.baseUrl, "temp")
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return "", 0, fmt.Errorf("创建临时目录失败: %w", err)
+	}
+	tempFile, err := os.CreateTemp(tempDir, pattern)
 	if err != nil {
 		slog.Error("创建临时文件失败: %w", err)
 		return "", 0, fmt.Errorf("创建临时文件失败: %w", err)
 	}
 	//defer tempFile.Close()  //如果直接这样关闭会丢失错误
 	defer func() {
-		if err := tempFile.Close(); err != nil && err == nil {
-			slog.Error("关闭临时文件失败: %w", err)
+		if err := tempFile.Close(); err != nil {
+			slog.Error("关闭临时文件失败", "err", err, "path", tempFile.Name())
 		}
 	}()
 	// 1. 遍历分片目录，收集所有chunk_*分片文件，并累加分片大小
@@ -335,10 +377,12 @@ func (s *FileStorageService) MergeChunks(path string, fileName string) (tempFile
 			slog.Error("遍历分片目录失败: %w", err)
 			return fmt.Errorf("遍历分片目录失败: %w", err)
 		}
-		if !info.IsDir() && strings.HasPrefix(path, "chunk_") {
-			chunkFiles = append(chunkFiles, path)
-			//go的返回值可以直接在方法里面用
-			totalSize += info.Size()
+		if !info.IsDir() {
+			fileName := filepath.Base(path)            // 获取文件名
+			if strings.HasPrefix(fileName, "chunk_") { // 判断文件名是否以"chunk_"开头
+				chunkFiles = append(chunkFiles, path)
+				totalSize += info.Size()
+			}
 		}
 		return nil
 	})
@@ -399,8 +443,8 @@ func extractChunkIndex(filePath string) int {
 	}
 	return index
 }
-func isChunkComplete(uploadId string) bool {
-	chunks := filepath.Join(baseUrl, "chunk", uploadId)
+func (s *FileStorageService) isChunkComplete(uploadId string) bool {
+	chunks := filepath.Join(s.baseUrl, "chunks", uploadId)
 	if !checkFileExists(chunks) {
 		return false
 	}
@@ -410,7 +454,7 @@ func isChunkComplete(uploadId string) bool {
 	}
 	for chunkIndex := 0; chunkIndex < chunkMeta.TotalChunks; chunkIndex++ {
 		meta := readChunkMeta(chunks, chunkIndex)
-		if meta == nil && !meta.Verified {
+		if meta == nil || !meta.Verified {
 			slog.Error("分片文件损坏")
 			return false
 		}
@@ -432,19 +476,24 @@ func checkFileExists(filename string) bool {
 }
 func readChunkMeta(path string, chunkIndex int) *model.ChunkMeta {
 	chunkFilePath := filepath.Join(path, fmt.Sprintf("chunk_%05d.json", chunkIndex))
-	file, err := os.Open(chunkFilePath)
-	if err != nil {
-		slog.Error("打开文件失败: %w", err)
-	}
 	if !checkFileExists(chunkFilePath) {
 		return nil
 	}
+	file, err := os.Open(chunkFilePath)
+	if err != nil {
+		slog.Error("打开文件失败: %w", err)
+		return nil
+	}
 	defer file.Close()
+
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		slog.Error("读取分片元数据失败", "err", err)
+		return nil
+	}
 	var meta model.ChunkMeta
-	var bytes = make([]byte, 1024)
-	file.Read(bytes)
 	if err := json.Unmarshal(bytes, &meta); err != nil {
-		slog.Error("解析文件元数据失败: %w", err)
+		slog.Error("解析分片元数据失败", "err", err)
 		return nil
 	}
 	return &meta

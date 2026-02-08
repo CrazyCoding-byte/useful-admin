@@ -30,4 +30,5 @@ func (m *MessageHandler) Handle(session *model.Session, message []byte) error {
 	if req.FromUserID == "" || req.ToType == 0 || req.ToID == "" {
 		return fmt.Errorf("缺少必填参数")
 	}
+	return nil
 }
