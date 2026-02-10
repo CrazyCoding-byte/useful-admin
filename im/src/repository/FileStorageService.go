@@ -26,6 +26,21 @@ import (
 	"time"
 )
 
+/**
+你的本地分片上传流程是：
+前端直接传第一个分片 → 你创建分片目录 → 保存这个分片的元数据（JSON 文件）；
+后续分片基于这个目录继续上传，元数据随分片逐步生成；
+核心特点：没有 “提前创建上传任务” 的步骤，有分片数据才有元数据。
+这是因为本地存储是 “文件驱动”—— 只有收到分片数据，才会在磁盘创建文件 / 目录，元数据依附于分片文件存在。
+
+
+二、MinIO 分片上传的核心规则（必须先创建任务，再传分片）
+MinIO/S3 标准的分片上传流程和本地完全不同，是 “任务驱动”：
+plaintext
+第一步：调用 NewMultipartUpload → MinIO 生成唯一的 UploadID（上传任务ID），表示“这个文件的分片上传任务已创建”；
+第二步：基于 UploadID 上传所有分片（PutObjectPart）→ 每个分片必须关联 UploadID，否则MinIO不知道归属于哪个任务；
+第三步：基于 UploadID 合并分片（CompleteMultipartUpload）→ 只有关联同一个 UploadID 的分片才能合并。
+*/
 // -------------------------- 1. 严格匹配源码的 Core 客户端初始化 --------------------------
 // NewMinioCore 完全匹配你提供的 Core 源码初始化方式
 func NewMinioCore(endpoint string, opts *minio.Options) (*minio.Core, error) {
@@ -66,6 +81,7 @@ type MinioUploadMeta struct {
 	ObjectKey      string         `json:"object_key" gorm:"column:object_key"`
 	CreateTime     int64          `json:"create_time" gorm:"column:create_time"`
 	ChunkHashes    map[int]string `json:"chunk_hashes" gorm:"column:chunk_hashes;serializer:json"`
+	ChunkMD5s      map[int]string `json:"chunk_md5s" gorm:"column:chunk_md5s;serializer:json"`
 }
 
 func (MinioUploadMeta) TableName() string {
@@ -216,7 +232,7 @@ func (u *MinioCoreChunkUploader) InitUpload(
 	fileSize int64,
 	fileHash string,
 ) (string, error) {
-	// 1. 秒传校验
+	// 1. 秒传校验 判断文件整体hash
 	if existingFile, exists := u.CheckMinioFileExists(ctx, fileHash); exists {
 		return "", fmt.Errorf("file_exists|%s", existingFile.FilePath)
 	}
@@ -264,6 +280,7 @@ func (u *MinioCoreChunkUploader) InitUpload(
 		ObjectKey:      objectKey,
 		CreateTime:     time.Now().Unix(),
 		ChunkHashes:    make(map[int]string), // 分片索引→SHA256哈希
+		ChunkMD5s:      make(map[int]string),
 	}
 
 	// 7. 保存元数据（Redis+DB双存储）
@@ -372,7 +389,7 @@ func (u *MinioCoreChunkUploader) UploadChunk(
 	sort.Ints(meta.UploadedChunks)
 	// 记录分片哈希
 	meta.ChunkHashes[chunkIndex] = sha256Hex
-
+	meta.ChunkMD5s[chunkIndex] = md5Base64
 	// 9. 保存更新后的元数据（Redis+DB）
 	if err := u.saveUploadMeta(ctx, meta); err != nil {
 		return fmt.Errorf("更新元数据失败: %w", err)
@@ -435,16 +452,21 @@ func (u *MinioCoreChunkUploader) isChunkComplete(ctx context.Context, uploadID s
 	}
 	//3.对比每个分片的Etag和本地记录的hash
 	for _, part := range allParts {
-		chunkIndex := part.PartNumber - 1
-		localHash, exists := meta.ChunkHashes[chunkIndex]
+		chunkIndex := part.PartNumber - 1 //partNumber //从1开始 索引从0开始
+		localMD5Base64, exists := meta.ChunkMD5s[chunkIndex]
 		if !exists {
 			return false, fmt.Errorf("分片%d哈希未记录", chunkIndex)
 		}
-		// 校验MinIO侧分片MD5（ETag）和本地计算的MD5一致
-		localMD5 := calculateChunkMD5Base64([]byte{}) // 这里需要从元数据取分片数据/哈希，简化示例
-		remoteETag := strings.Trim(part.ETag, "\"")
-		if localMD5 != remoteETag {
-			return false, fmt.Errorf("分片%d哈希不一致（本地：%s，MinIO：%s）", chunkIndex, localMD5, remoteETag)
+		remoteEtg := strings.Trim(part.ETag, "\"") //去除ETag的双引号,得到MD5 Hex
+		//吧本地MD5(base64)转HEX,和Etag对比(minio Etag是MD5 Hex)
+		localMD5Bytes, err := base64.StdEncoding.DecodeString(localMD5Base64)
+		if err != nil {
+			slog.Error("base64解码失败", "chunkIndex", chunkIndex, "err", err)
+			return false, fmt.Errorf("分片%d哈希校验失败（本地MD5：%s，MinIO ETag：%s）", chunkIndex, localMD5Bytes, remoteEtg)
+		}
+		localMD5Hex := hex.EncodeToString(localMD5Bytes)
+		if localMD5Hex != remoteEtg { //哈希校验失败
+			return false, fmt.Errorf("分片%d哈希校验失败（本地MD5：%s，MinIO ETag：%s）", chunkIndex, localMD5Hex, remoteEtg)
 		}
 	}
 	return true, nil
