@@ -31,7 +31,12 @@ minio:
   secret-access-key: minioadmin  # 你的MinIO SecretKey
   bucket-name: imbucket          # 桶名（和你测试代码里的imbucket一致）
   use-ssl: false                 # 本地测试一般关闭SSL
+  redis-prefix: "minio_core_upload:" # Redis 元数据前缀（必填）
+  expire-time: 168h                # 元数据过期时间（7天）
 redis:
   host: localhost
   port: 6379
   password:
+retry:
+  max-retries: 3                   # 重试次数
+  retry-delay: 100ms               # 重试间隔

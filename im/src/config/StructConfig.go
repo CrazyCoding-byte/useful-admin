@@ -1,13 +1,16 @@
 package config
 
+import "time"
+
 // Config 总配置结构体（对应整个 YAML 配置文件，包含所有子配置）
 type Config struct {
-	Log        LogConfig      `yaml:"log"`      // 日志配置节点
-	Database   DatabaseConfig `yaml:"database"` // 数据库配置节点
-	AES        AESConfig      `yaml:"aseKey"`   // 对称加密密钥配置（yaml 中节点名为 aseKey）
-	MinIO      MinIOConfig    `yaml:"minio"`    // MinIO配置
-	Redis      RedisConfig    `yaml:"redis"`    // Redis配置
-	FileConfig FileConfig     `yaml:"file"`     // 文件配置
+	Log          LogConfig       `yaml:"log"`        // 日志配置节点
+	Database     DatabaseConfig  `yaml:"database"`   // 数据库配置节点
+	AES          AESConfig       `yaml:"aseKey"`     // 对称加密密钥配置（yaml 中节点名为 aseKey）
+	MinIO        MinIOConfig     `yaml:"minio"`      // MinIO配置
+	Redis        RedisConfig     `yaml:"redis"`      // Redis配置
+	FileConfig   FileConfig      `yaml:"file"`       // 文件配置
+	MinioCoreCfg MinioCoreConfig `yaml:"minio-core"` // MinIO 专属配置
 }
 
 // DatabaseConfig 数据库配置结构体（对应 YAML 中的 database 节点）
@@ -56,6 +59,14 @@ type RedisConfig struct {
 */
 type FileConfig struct {
 	BaseUrl      string `yaml:"upload-baseUrl"`
-	MaxFileSize  int    `yaml:"max-file-size"`
-	MaxChunkSize int    `yaml:"max-chunk-size"`
+	MaxFileSize  int64  `yaml:"max-file-size"`
+	MaxChunkSize int64  `yaml:"max-chunk-size"`
+}
+
+type MinioCoreConfig struct {
+	BucketName  string        `yaml:"bucket-name"`
+	RedisPrefix string        `yaml:"redis-prefix"`
+	ExpireTime  time.Duration `yaml:"expire-time"`
+	MaxRetries  int           `yaml:"max-retries"`
+	RetryDelay  time.Duration `yaml:"retry-delay"`
 }

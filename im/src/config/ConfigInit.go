@@ -159,10 +159,11 @@ func (mc *MinIOConfig) validate() error {
 
 	return nil
 }
-func (r *RedisConfig) InitRedisClient(redisClient *redis.Client, err error) {
-	redisClient = redis.NewClient(&redis.Options{
+func (r *RedisConfig) InitRedisClient() (*redis.Client, error) {
+	redisClient := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", r.Host, r.Port),
 		Password: r.Password,
 		DB:       0,
 	})
+	return redisClient, nil
 }
