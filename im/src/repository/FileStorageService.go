@@ -15,6 +15,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 	"io"
+	"local/im/src/config"
 	"local/im/src/model"
 	"log/slog"
 	"net/http"
@@ -48,43 +49,13 @@ func NewMinioCore(endpoint string, opts *minio.Options) (*minio.Core, error) {
 
 // -------------------------- 2. 独立的 MinIO Core 分片上传器（无本地耦合） --------------------------
 type MinioCoreChunkUploader struct {
-	Core        *minio.Core       // 你提供的 Core 客户端
-	RedisClient *redis.Client     // Redis（进度/断点）
-	Db          *gorm.DB          // 数据库（秒传元数据）
-	Cfg         MinioChunkConfig  // 分片配置
-	Locker      *redislock.Client // 分布式锁
+	Core        *minio.Core        // 你提供的 Core 客户端
+	RedisClient *redis.Client      // Redis（进度/断点）
+	Db          *gorm.DB           // 数据库（秒传元数据）
+	Cfg         config.MinIOConfig // 分片配置
+	Locker      *redislock.Client  // 分布式锁
 	Client      *minio.Client
-}
-
-// MinioChunkConfig 分片配置（仅含 Core 所需参数）
-type MinioChunkConfig struct {
-	ChunkSize   int64         // 单分片大小（5MB）
-	MaxFileSize int64         // 最大文件大小
-	BucketName  string        // MinIO桶名
-	RedisPrefix string        // Redis键前缀
-	ExpireTime  time.Duration // 元数据过期时间
-	MaxRetries  int           // MinIO接口重试次数
-	RetryDelay  time.Duration // 重试间隔
-}
-
-// MinioUploadMeta Redis存储的上传元数据（断点续传核心）
-type MinioUploadMeta struct {
-	UploadID       string         `json:"upload_id" gorm:"column:upload_id;primaryKey"`
-	FileHash       string         `json:"file_hash" gorm:"column:file_hash"`
-	FileName       string         `json:"file_name" gorm:"column:file_name"`
-	MimeType       string         `json:"mime_type" gorm:"column:mime_type"`
-	TotalChunks    int            `json:"total_chunks" gorm:"column:total_chunks"`
-	ChunkSize      int64          `json:"chunk_size" gorm:"column:chunk_size"`
-	FileSize       int64          `json:"file_size" gorm:"column:file_size"`
-	UploadedChunks []int          `json:"uploaded_chunks" gorm:"column:uploaded_chunks;serializer:json"`
-	ObjectKey      string         `json:"object_key" gorm:"column:object_key"`
-	CreateTime     int64          `json:"create_time" gorm:"column:create_time"`
-	ChunkHashes    map[int]string `json:"chunk_hashes" gorm:"column:chunk_hashes;serializer:json"`
-	ChunkMD5s      map[int]string `json:"chunk_md5s" gorm:"column:chunk_md5s;serializer:json"`
-}
-
-func (MinioUploadMeta) TableName() string {
-	return "minio_upload_meta"
+	Retry       config.Retry
 }
 
 // -------------------------- 4. 初始化 Core 分片上传器（修复回滚nil风险） --------------------------
@@ -93,31 +64,9 @@ func NewMinioCoreChunkUploader(
 	Client *minio.Client, // 显式传入顶层Client，避免nil
 	RedisClient *redis.Client,
 	Db *gorm.DB,
-	Cfg MinioChunkConfig,
+	Cfg config.MinIOConfig,
+	retry config.Retry,
 ) *MinioCoreChunkUploader {
-	// 默认配置兜底
-	if Cfg.ExpireTime == 0 {
-		Cfg.ExpireTime = 7 * 24 * time.Hour
-	}
-	if Cfg.RedisPrefix == "" {
-		Cfg.RedisPrefix = "minio_core_upload:"
-	}
-	if Cfg.ChunkSize == 0 {
-		Cfg.ChunkSize = 5 * 1024 * 1024 // 5MB
-	}
-	if Cfg.MaxRetries == 0 {
-		Cfg.MaxRetries = 3 // 默认重试3次
-	}
-	if Cfg.RetryDelay == 0 {
-		Cfg.RetryDelay = 100 * time.Millisecond // 默认重试间隔100ms
-	}
-	if Cfg.MaxFileSize == 0 {
-		Cfg.MaxFileSize = 200 * 1024 * 1024 // 默认200MB
-	}
-	if Cfg.BucketName == "" {
-		Cfg.BucketName = "test-bucket"
-	}
-
 	return &MinioCoreChunkUploader{
 		Core:        Core,
 		Client:      Client, // 必传，避免回滚时nil panic
@@ -125,6 +74,7 @@ func NewMinioCoreChunkUploader(
 		Db:          Db,
 		Cfg:         Cfg,
 		Locker:      redislock.New(RedisClient),
+		Retry:       retry,
 	}
 }
 
@@ -186,7 +136,7 @@ func (u *MinioCoreChunkUploader) CheckMinioFileExists(ctx context.Context, fileH
 
 	return &file, true
 }
-func (u *MinioCoreChunkUploader) saveUploadMeta(ctx context.Context, meta *MinioUploadMeta) error {
+func (u *MinioCoreChunkUploader) saveUploadMeta(ctx context.Context, meta *model.MinioUploadMeta) error {
 	// 1. 保存到Redis（断点续传快速读取）
 	metaJSON, err := json.Marshal(meta)
 	if err != nil {
@@ -205,12 +155,12 @@ func (u *MinioCoreChunkUploader) saveUploadMeta(ctx context.Context, meta *Minio
 
 	return nil
 }
-func (u *MinioCoreChunkUploader) GetUploadMeta(ctx context.Context, uploadID string) (*MinioUploadMeta, error) {
+func (u *MinioCoreChunkUploader) GetUploadMeta(ctx context.Context, uploadID string) (*model.MinioUploadMeta, error) {
 	// 1. 优先读Redis
 	redisKey := u.Cfg.RedisPrefix + uploadID
 	metaJSON, err := u.RedisClient.Get(ctx, redisKey).Bytes()
 	if err == nil {
-		var meta MinioUploadMeta
+		var meta model.MinioUploadMeta
 		if err := json.Unmarshal(metaJSON, &meta); err != nil {
 			return nil, fmt.Errorf("解析Redis元数据失败: %w", err)
 		}
@@ -218,7 +168,7 @@ func (u *MinioCoreChunkUploader) GetUploadMeta(ctx context.Context, uploadID str
 	}
 
 	// 2. Redis失败，从DB兜底
-	var meta MinioUploadMeta
+	var meta model.MinioUploadMeta
 	result := u.Db.WithContext(ctx).Where("upload_id = ?", uploadID).First(&meta)
 	if result.Error != nil {
 		return nil, fmt.Errorf("Redis+DB均未找到元数据: %w", result.Error)
@@ -243,10 +193,10 @@ func (u *MinioCoreChunkUploader) InitUpload(
 	}
 	fmt.Println("当前文件大小", formatFileSize(fileSize))
 	fmt.Println("当前文件名", fileName)
-	fmt.Println("文件hash")
+	fmt.Println("文件hash", fileHash)
 	fmt.Println("maxFileSize", u.Cfg.MaxFileSize)
 	// 2. 大小校验
-	if fileSize > u.Cfg.MaxFileSize {
+	if formatData(fileSize) > u.Cfg.MaxFileSize {
 		return "", fmt.Errorf("文件大小超出限制（最大%.2fMB）", float64(u.Cfg.MaxFileSize)/1024/1024)
 	}
 
@@ -261,7 +211,7 @@ func (u *MinioCoreChunkUploader) InitUpload(
 
 	// 4. 调用Core NewMultipartUpload（增加重试）
 	var uploadID string
-	err := retry(u.Cfg.MaxRetries, u.Cfg.RetryDelay, func() error {
+	err := retry(u.Retry.MaxRetries, u.Retry.RetryDelay, func() error {
 		var innerErr error
 		uploadID, innerErr = u.Core.NewMultipartUpload(ctx, u.Cfg.BucketName, objectKey, minio.PutObjectOptions{
 			ContentType: mimeType,
@@ -276,7 +226,7 @@ func (u *MinioCoreChunkUploader) InitUpload(
 	totalChunks := int((fileSize + u.Cfg.ChunkSize - 1) / u.Cfg.ChunkSize)
 
 	// 6. 初始化元数据（增加分片哈希映射）
-	meta := MinioUploadMeta{
+	meta := model.MinioUploadMeta{
 		UploadID:       uploadID,
 		FileHash:       fileHash,
 		FileName:       fileName,
@@ -294,13 +244,18 @@ func (u *MinioCoreChunkUploader) InitUpload(
 	// 7. 保存元数据（Redis+DB双存储）
 	if err := u.saveUploadMeta(ctx, &meta); err != nil {
 		// 回滚：取消分片上传（增加重试）
-		_ = retry(u.Cfg.MaxRetries, u.Cfg.RetryDelay, func() error {
+		_ = retry(u.Retry.MaxRetries, u.Retry.RetryDelay, func() error {
 			return u.Core.AbortMultipartUpload(ctx, u.Cfg.BucketName, objectKey, uploadID)
 		})
 		return "", fmt.Errorf("保存元数据失败: %w", err)
 	}
 
 	return uploadID, nil
+}
+
+// 将字节转为mb
+func formatData(size int64) int64 {
+	return int64(float64(size) / 1024 / 1024)
 }
 
 // -------------------------- 9. 上传单个分片（修复：哈希校验+反向验证+重试） --------------------------
@@ -352,7 +307,7 @@ func (u *MinioCoreChunkUploader) UploadChunk(
 
 	// 6. 调用Core PutObjectPart（增加重试）
 	var part minio.ObjectPart
-	err = retry(u.Cfg.MaxRetries, u.Cfg.RetryDelay, func() error {
+	err = retry(u.Retry.MaxRetries, u.Retry.RetryDelay, func() error {
 		var innerErr error
 		part, innerErr = u.Core.PutObjectPart(ctx,
 			u.Cfg.BucketName,           // bucket
@@ -534,7 +489,7 @@ func (u *MinioCoreChunkUploader) CompleteUpload(ctx context.Context, uploadID st
 	})
 	// 6. 合并分片（增加重试）
 	var uploadInfo minio.UploadInfo
-	err = retry(u.Cfg.MaxRetries, u.Cfg.RetryDelay, func() error {
+	err = retry(u.Retry.MaxRetries, u.Retry.RetryDelay, func() error {
 		var innerErr error
 		uploadInfo, innerErr = u.Core.CompleteMultipartUpload(ctx,
 			u.Cfg.BucketName,
@@ -568,7 +523,7 @@ func (u *MinioCoreChunkUploader) CompleteUpload(ctx context.Context, uploadID st
 		// 核心修复：回滚删除MinIO文件（确保client非nil）
 		slog.Error("保存数据库元数据失败，执行回滚", "err", err, "objectKey", meta.ObjectKey)
 		if u.Client != nil {
-			_ = retry(u.Cfg.MaxRetries, u.Cfg.RetryDelay, func() error {
+			_ = retry(u.Retry.MaxRetries, u.Retry.RetryDelay, func() error {
 				return u.Client.RemoveObject(ctx, u.Cfg.BucketName, meta.ObjectKey, minio.RemoveObjectOptions{})
 			})
 		}
@@ -580,7 +535,7 @@ func (u *MinioCoreChunkUploader) CompleteUpload(ctx context.Context, uploadID st
 	if err := u.RedisClient.Del(ctx, redisKey).Err(); err != nil {
 		slog.Warn("清理Redis元数据失败", "err", err, "uploadID", uploadID)
 	}
-	if err := u.Db.WithContext(ctx).Delete(&MinioUploadMeta{}, "upload_id = ?", uploadID).Error; err != nil {
+	if err := u.Db.WithContext(ctx).Delete(&model.MinioUploadMeta{}, "upload_id = ?", uploadID).Error; err != nil {
 		slog.Warn("清理DB元数据失败", "err", err, "uploadID", uploadID)
 	}
 
@@ -595,7 +550,7 @@ func (u *MinioCoreChunkUploader) AbortUpload(ctx context.Context, uploadID strin
 	}
 
 	// 取消分片上传（增加重试）
-	err = retry(u.Cfg.MaxRetries, u.Cfg.RetryDelay, func() error {
+	err = retry(u.Retry.MaxRetries, u.Retry.RetryDelay, func() error {
 		return u.Core.AbortMultipartUpload(ctx, u.Cfg.BucketName, meta.ObjectKey, uploadID)
 	})
 	if err != nil {
@@ -607,7 +562,7 @@ func (u *MinioCoreChunkUploader) AbortUpload(ctx context.Context, uploadID strin
 	if err := u.RedisClient.Del(ctx, redisKey).Err(); err != nil {
 		slog.Error("删除Redis元数据失败", "err", err, "uploadID", uploadID)
 	}
-	if err := u.Db.WithContext(ctx).Delete(&MinioUploadMeta{}, "upload_id = ?", uploadID).Error; err != nil {
+	if err := u.Db.WithContext(ctx).Delete(&model.MinioUploadMeta{}, "upload_id = ?", uploadID).Error; err != nil {
 		slog.Error("删除DB元数据失败", "err", err, "uploadID", uploadID)
 	}
 

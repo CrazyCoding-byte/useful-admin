@@ -33,6 +33,8 @@ minio:
   use-ssl: false                 # 本地测试一般关闭SSL
   redis-prefix: "minio_core_upload:" # Redis 元数据前缀（必填）
   expire-time: 168h                # 元数据过期时间（7天）
+  chunkSize: 5         # 单分片大小（mb）
+  max-file-size: 200     # 最大文件大小（mb）
 redis:
   host: localhost
   port: 6379

@@ -4,13 +4,13 @@ import "time"
 
 // Config 总配置结构体（对应整个 YAML 配置文件，包含所有子配置）
 type Config struct {
-	Log          LogConfig       `yaml:"log"`        // 日志配置节点
-	Database     DatabaseConfig  `yaml:"database"`   // 数据库配置节点
-	AES          AESConfig       `yaml:"aseKey"`     // 对称加密密钥配置（yaml 中节点名为 aseKey）
-	MinIO        MinIOConfig     `yaml:"minio"`      // MinIO配置
-	Redis        RedisConfig     `yaml:"redis"`      // Redis配置
-	FileConfig   FileConfig      `yaml:"file"`       // 文件配置
-	MinioCoreCfg MinioCoreConfig `yaml:"minio-core"` // MinIO 专属配置
+	Log        LogConfig      `yaml:"log"`      // 日志配置节点
+	Database   DatabaseConfig `yaml:"database"` // 数据库配置节点
+	AES        AESConfig      `yaml:"aseKey"`   // 对称加密密钥配置（yaml 中节点名为 aseKey）
+	MinIO      MinIOConfig    `yaml:"minio"`    // MinIO配置
+	Redis      RedisConfig    `yaml:"redis"`    // Redis配置
+	FileConfig FileConfig     `yaml:"file"`     // 文件配置
+	Retry      Retry          `yaml:"retry"`    //重试配置
 }
 
 // DatabaseConfig 数据库配置结构体（对应 YAML 中的 database 节点）
@@ -24,11 +24,15 @@ type DatabaseConfig struct {
 	Charset  string `yaml:"charset"`  // 字符集（如 "utf8mb4"）
 }
 type MinIOConfig struct {
-	Endpoint        string `yaml:"endpoint"`          // 对应yml: minio.endpoint
-	AccessKeyID     string `yaml:"access-key-id"`     // 对应yml: minio.access-key-id（关键！）
-	SecretAccessKey string `yaml:"secret-access-key"` // 对应yml: minio.secret-access-key（关键！）
-	UseSSL          bool   `yaml:"use-ssl"`           // 对应yml: minio.use-ssl
-	BucketName      string `yaml:"bucket-name"`       // 对应yml: minio.bucket-name
+	Endpoint        string        `yaml:"endpoint"`          // 对应yml: minio.endpoint
+	AccessKeyID     string        `yaml:"access-key-id"`     // 对应yml: minio.access-key-id（关键！）
+	SecretAccessKey string        `yaml:"secret-access-key"` // 对应yml: minio.secret-access-key（关键！）
+	UseSSL          bool          `yaml:"use-ssl"`           // 对应yml: minio.use-ssl
+	BucketName      string        `yaml:"bucket-name"`       // 对应yml: minio.bucket-name
+	ChunkSize       int64         `yaml:"chunk-size"`        // 单分片大小（字节）
+	MaxFileSize     int64         `yaml:"max-file-size"`     // 最大文件大小（字节）
+	RedisPrefix     string        `yaml:"redis-prefix"`      // Redis键前缀
+	ExpireTime      time.Duration `yaml:"expire-time"`       // 元数据过期时间
 }
 
 // LogConfig 日志配置结构体（对应 YAML 中的 log 节点）
@@ -63,10 +67,7 @@ type FileConfig struct {
 	MaxChunkSize int64  `yaml:"max-chunk-size"`
 }
 
-type MinioCoreConfig struct {
-	BucketName  string        `yaml:"bucket-name"`
-	RedisPrefix string        `yaml:"redis-prefix"`
-	ExpireTime  time.Duration `yaml:"expire-time"`
-	MaxRetries  int           `yaml:"max-retries"`
-	RetryDelay  time.Duration `yaml:"retry-delay"`
+type Retry struct {
+	MaxRetries int           `yaml:"max-retries"` // MinIO接口重试次数
+	RetryDelay time.Duration `yaml:"retry-delay"` // 重试间隔
 }
