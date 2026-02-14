@@ -11,14 +11,13 @@ import (
 	"fmt"
 	"github.com/bsm/redislock"
 	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/encrypt"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 	"io"
 	"local/im/src/config"
 	"local/im/src/model"
 	"log/slog"
-	"net/http"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -56,6 +55,9 @@ type MinioCoreChunkUploader struct {
 	Locker      *redislock.Client  // 分布式锁
 	Client      *minio.Client
 	Retry       config.Retry
+	// 新增：缓存转换后的字节值（避免重复计算）
+	chunkSizeBytes   int64 // 分片大小（字节）= Cfg.ChunkSize * 1024 * 1024
+	maxFileSizeBytes int64 // 最大文件大小（字节）= Cfg.MaxFileSize * 1024 * 1024
 }
 
 // -------------------------- 4. 初始化 Core 分片上传器（修复回滚nil风险） --------------------------
@@ -67,14 +69,27 @@ func NewMinioCoreChunkUploader(
 	Cfg config.MinIOConfig,
 	retry config.Retry,
 ) *MinioCoreChunkUploader {
+	// 核心：将MB转为字节（1MB = 1024*1024 字节）
+	chunkSizeBytes := int64(Cfg.ChunkSize) * 1024 * 1024
+	maxFileSizeBytes := int64(Cfg.MaxFileSize) * 1024 * 1024
+
+	// 兜底默认值（如果配置没填，用5MB/200MB）
+	if chunkSizeBytes <= 0 {
+		chunkSizeBytes = 5 * 1024 * 1024 // 默认5MB
+	}
+	if maxFileSizeBytes <= 0 {
+		maxFileSizeBytes = 200 * 1024 * 1024 // 默认200MB
+	}
 	return &MinioCoreChunkUploader{
-		Core:        Core,
-		Client:      Client, // 必传，避免回滚时nil panic
-		RedisClient: RedisClient,
-		Db:          Db,
-		Cfg:         Cfg,
-		Locker:      redislock.New(RedisClient),
-		Retry:       retry,
+		Core:             Core,
+		Client:           Client, // 必传，避免回滚时nil panic
+		RedisClient:      RedisClient,
+		Db:               Db,
+		Cfg:              Cfg,
+		Locker:           redislock.New(RedisClient),
+		Retry:            retry,
+		chunkSizeBytes:   chunkSizeBytes,
+		maxFileSizeBytes: maxFileSizeBytes,
 	}
 }
 
@@ -189,25 +204,47 @@ func (u *MinioCoreChunkUploader) InitUpload(
 ) (string, error) {
 	// 1. 秒传校验 判断文件整体hash
 	if existingFile, exists := u.CheckMinioFileExists(ctx, fileHash); exists {
-		return "", fmt.Errorf("file_exists|%s", existingFile.FilePath)
+		return existingFile.FilePath, fmt.Errorf("file_exists|%s", existingFile.FilePath)
 	}
 	fmt.Println("当前文件大小", formatFileSize(fileSize))
 	fmt.Println("当前文件名", fileName)
 	fmt.Println("文件hash", fileHash)
 	fmt.Println("maxFileSize", u.Cfg.MaxFileSize)
 	// 2. 大小校验
-	if formatData(fileSize) > u.Cfg.MaxFileSize {
+	if fileSize > u.maxFileSizeBytes {
 		return "", fmt.Errorf("文件大小超出限制（最大%.2fMB）", float64(u.Cfg.MaxFileSize)/1024/1024)
 	}
 
 	// 3. 生成唯一ObjectKey（对齐本地实现的目录结构）
 	mType := GetMinmeType(mimeType) // 复用本地实现的MIME分类
-	objectKey := fmt.Sprintf("minio_core_files/%s/%s/%s%s",
-		mType,
-		time.Now().Format("2006-01-02"),
-		fileHash,
-		filepath.Ext(fileName),
-	)
+	var objectKey string
+	fileExt := filepath.Ext(fileName)
+	//提取原文件的名称
+	baseFileName := strings.TrimSuffix(fileName, fileExt)
+	// 处理原文件名特殊字符（避免MinIO路径报错，比如空格、括号）
+	safeBaseName := sanitizeFileName(baseFileName)
+
+	if strings.HasPrefix(mimeType, "image/") {
+		// 图片：按你要求用Hash命名
+		objectKey = fmt.Sprintf("minio_core_files/%s/%s/%s%s",
+			mType,
+			time.Now().Format("2006-01-02"),
+			fileHash,
+			fileExt,
+		)
+	} else {
+		// 非图片（zip/文档等）：保留原文件名，加Hash后缀防重名
+		// 最终路径示例：minio_core_files/others/2026-02-13/资料(2)_bc41adb9.zip
+		objectKey = fmt.Sprintf("minio_core_files/%s/%s/%s_%s%s",
+			mType,
+			time.Now().Format("2006-01-02"),
+			safeBaseName, // 保留原文件名（比如"资料(2)"）
+			fileHash[:8], // 取Hash前8位防重名，不影响主文件名
+			fileExt,      // 保留原扩展名（比如.zip）
+		)
+	}
+	// 打印验证：确认生成的路径是你要的
+	fmt.Println("最终存储路径：", objectKey)
 
 	// 4. 调用Core NewMultipartUpload（增加重试）
 	var uploadID string
@@ -223,7 +260,7 @@ func (u *MinioCoreChunkUploader) InitUpload(
 	}
 
 	// 5. 计算总分片数
-	totalChunks := int((fileSize + u.Cfg.ChunkSize - 1) / u.Cfg.ChunkSize)
+	totalChunks := int(math.Ceil(float64(fileSize) / float64(u.chunkSizeBytes)))
 
 	// 6. 初始化元数据（增加分片哈希映射）
 	meta := model.MinioUploadMeta{
@@ -232,7 +269,7 @@ func (u *MinioCoreChunkUploader) InitUpload(
 		FileName:       fileName,
 		MimeType:       mimeType,
 		TotalChunks:    totalChunks,
-		ChunkSize:      u.Cfg.ChunkSize,
+		ChunkSize:      u.chunkSizeBytes,
 		FileSize:       fileSize,
 		UploadedChunks: []int{},
 		ObjectKey:      objectKey,
@@ -253,9 +290,24 @@ func (u *MinioCoreChunkUploader) InitUpload(
 	return uploadID, nil
 }
 
-// 将字节转为mb
-func formatData(size int64) int64 {
-	return int64(float64(size) / 1024 / 1024)
+// 辅助函数：处理文件名特殊字符（比如空格、括号、斜杠），避免MinIO报错
+func sanitizeFileName(name string) string {
+	// 替换危险字符为下划线，保留中文/数字/字母/括号
+	replaceMap := map[string]string{
+		"/":  "_",
+		"\\": "_",
+		":":  "_",
+		"*":  "_",
+		"?":  "_",
+		"\"": "_",
+		"<":  "_",
+		">":  "_",
+		"|":  "_",
+	}
+	for old, new := range replaceMap {
+		name = strings.ReplaceAll(name, old, new)
+	}
+	return name
 }
 
 // -------------------------- 9. 上传单个分片（修复：哈希校验+反向验证+重试） --------------------------
@@ -285,7 +337,7 @@ func (u *MinioCoreChunkUploader) UploadChunk(
 	if chunkIndex >= meta.TotalChunks {
 		return fmt.Errorf("分片索引超出范围（总分片数：%d）", meta.TotalChunks)
 	}
-	if int64(len(chunkData)) > u.Cfg.ChunkSize && chunkIndex != meta.TotalChunks-1 {
+	if int64(len(chunkData)) > u.chunkSizeBytes && chunkIndex != meta.TotalChunks-1 {
 		return fmt.Errorf("分片大小超出限制（最大%.2fMB）", float64(u.Cfg.ChunkSize)/1024/1024)
 	}
 
@@ -319,9 +371,6 @@ func (u *MinioCoreChunkUploader) UploadChunk(
 			minio.PutObjectPartOptions{
 				Md5Base64:            md5Base64,
 				Sha256Hex:            sha256Hex,
-				SSE:                  encrypt.NewSSE(),
-				CustomHeader:         http.Header{},
-				Trailer:              http.Header{},
 				DisableContentSha256: false,
 			},
 		)
@@ -332,24 +381,20 @@ func (u *MinioCoreChunkUploader) UploadChunk(
 	}
 
 	// 7. 反向校验：MinIO返回的ETag和本地MD5一致（核心，对齐本地实现的哈希对比）
-	localMD5Hex := hex.EncodeToString(md5.New().Sum(chunkData))
+	h := md5.New()
+	h.Write(chunkData)
+	localMD5 := h.Sum(nil)
+	localMD5Hex := hex.EncodeToString(localMD5)
 	remoteETag := strings.Trim(part.ETag, "\"") // MinIO返回的ETag带引号，需去除
 	if localMD5Hex != remoteETag {
 		return fmt.Errorf("分片%d哈希校验失败（本地MD5：%s，MinIO ETag：%s）", chunkIndex, localMD5Hex, remoteETag)
 	}
 
 	// 8. 更新元数据
-	meta.UploadedChunks = append(meta.UploadedChunks, chunkIndex)
-	// 去重+排序
-	uniqueChunks := make(map[int]struct{})
-	for _, idx := range meta.UploadedChunks {
-		uniqueChunks[idx] = struct{}{}
+	if !contains(meta.UploadedChunks, chunkIndex) {
+		meta.UploadedChunks = append(meta.UploadedChunks, chunkIndex) //uploaderChunks 插入索引
+		sort.Ints(meta.UploadedChunks)
 	}
-	meta.UploadedChunks = []int{}
-	for idx := range uniqueChunks {
-		meta.UploadedChunks = append(meta.UploadedChunks, idx)
-	}
-	sort.Ints(meta.UploadedChunks)
 	// 记录分片哈希
 	meta.ChunkHashes[chunkIndex] = sha256Hex
 	meta.ChunkMD5s[chunkIndex] = md5Base64
@@ -359,6 +404,14 @@ func (u *MinioCoreChunkUploader) UploadChunk(
 	}
 
 	return nil
+}
+func contains(slice []int, item int) bool {
+	for _, v := range slice {
+		if v == item {
+			return true
+		}
+	}
+	return false
 }
 
 // -------------------------- 10. 查询上传进度（断点续传必备） --------------------------

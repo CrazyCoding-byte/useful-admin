@@ -1,8 +1,19 @@
 package repository
 
-import "local/im/src/model"
+import (
+	"gorm.io/gorm"
+	"local/im/src/model"
+)
 
-// 添加用户之间消息
+type MessageService struct {
+	Db *gorm.DB
+}
+
+/*
+ 场景1:单聊消息存储+查询(对齐你的业务规则)
+*/
+
+// saveUserMessage 存储单聊消息(用户->用户/客服,生成有序SessionId)
 func SaveUserMessage(m *MessageService, fromUserId string, receiveUserId string, content string) {
 	message := model.Message{
 		FromUserID: fromUserId,
