@@ -10,12 +10,6 @@ import (
 	"strings"
 )
 
-// MessageService 消息服务层，聚合 GroupMessageRepository 和 UserMessageRepository 的所有方法
-type MessageService struct {
-	db                *gorm.DB
-	fileStorageClient *client.FileStorageClient // 新增
-}
-
 // NewMessageService 创建消息服务实例
 func NewMessageService(db *gorm.DB, fileStorageAddr string) (*MessageService, error) {
 	// 创建文件存储客户端
@@ -25,7 +19,7 @@ func NewMessageService(db *gorm.DB, fileStorageAddr string) (*MessageService, er
 	}
 
 	return &MessageService{
-		db:                db,
+		Db:                db,
 		fileStorageClient: fileClient,
 	}, nil
 }
@@ -50,7 +44,7 @@ func (m *MessageService) SaveVideoMessage(fromUserId string, receiveUserId strin
 		SessionID:  fromUserId + receiveUserId,
 	}
 
-	if err := m.db.Create(&message).Error; err != nil {
+	if err := m.Db.Create(&message).Error; err != nil {
 		return "", fmt.Errorf("保存消息失败: %w", err)
 	}
 
@@ -81,7 +75,7 @@ func (m *MessageService) AddGroupMember(groupId string, userIds string) error {
 
 	// 验证群是否存在
 	var group model.Group
-	if err := m.db.Where("group_id = ?", groupId).First(&group).Error; err != nil {
+	if err := m.Db.Where("group_id = ?", groupId).First(&group).Error; err != nil {
 		return fmt.Errorf("群不存在：%w", err)
 	}
 
@@ -94,13 +88,13 @@ func (m *MessageService) AddGroupMember(groupId string, userIds string) error {
 
 		// 检查成员是否已存在
 		var existingMember model.GroupMember
-		result := m.db.Where("group_id = ? AND member_id = ?", groupId, userId).First(&existingMember)
+		result := m.Db.Where("group_id = ? AND member_id = ?", groupId, userId).First(&existingMember)
 
 		if result.Error == nil {
 			// 如果成员已存在且已退出，则恢复
 			if existingMember.IsQuit {
 				existingMember.IsQuit = false
-				if err := m.db.Save(&existingMember).Error; err != nil {
+				if err := m.Db.Save(&existingMember).Error; err != nil {
 					return fmt.Errorf("恢复群成员失败：%w", err)
 				}
 			}
@@ -114,7 +108,7 @@ func (m *MessageService) AddGroupMember(groupId string, userIds string) error {
 			MemberID: userId,
 			Role:     3, // 默认普通成员
 		}
-		if err := m.db.Create(&groupMember).Error; err != nil {
+		if err := m.Db.Create(&groupMember).Error; err != nil {
 			return fmt.Errorf("添加群成员失败（用户ID: %s）：%w", userId, err)
 		}
 	}
@@ -125,12 +119,12 @@ func (m *MessageService) AddGroupMember(groupId string, userIds string) error {
 // RemoveGroupMember 移除群成员（软删除）
 func (m *MessageService) RemoveGroupMember(groupId string, userId string) error {
 	var member model.GroupMember
-	if err := m.db.Where("group_id = ? AND member_id = ? AND is_quit = false", groupId, userId).First(&member).Error; err != nil {
+	if err := m.Db.Where("group_id = ? AND member_id = ? AND is_quit = false", groupId, userId).First(&member).Error; err != nil {
 		return fmt.Errorf("群成员不存在：%w", err)
 	}
 
 	member.IsQuit = true
-	if err := m.db.Save(&member).Error; err != nil {
+	if err := m.Db.Save(&member).Error; err != nil {
 		return fmt.Errorf("移除群成员失败：%w", err)
 	}
 
@@ -139,7 +133,7 @@ func (m *MessageService) RemoveGroupMember(groupId string, userId string) error 
 
 func (m *MessageService) GetGroupMembers(groupId string) ([]string, error) {
 	var memberId []string
-	result := m.db.Model(&model.GroupMember{}).
+	result := m.Db.Model(&model.GroupMember{}).
 		Where("group_id=? And is_quit=false", groupId).
 		Pluck("member_id", &memberId)
 	if result.Error != nil {
