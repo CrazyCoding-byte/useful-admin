@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"local/im/src/config"
+	"local/im/src/model"
+	"local/im/src/repository"
 	"local/im/src/utils"
 	"log"
 	"log/slog"
@@ -16,11 +18,12 @@ import (
 )
 
 type WebSocketServer struct {
-	aesKey string
+	aesKey  string
+	msgRepo *repository.MessageService
 }
 
 // 加载客户端必须要从oauth2服务校验
-func NewWebSocketServer() *WebSocketServer {
+func NewWebSocketServer(msgRepo *repository.MessageService) *WebSocketServer {
 	// 从配置文件加载 aseKey.key
 	// 尝试多个可能的配置文件路径
 	configPaths := []string{
@@ -45,7 +48,8 @@ func NewWebSocketServer() *WebSocketServer {
 	}
 
 	return &WebSocketServer{
-		aesKey: cfg.AES.Key,
+		aesKey:  cfg.AES.Key,
+		msgRepo: msgRepo,
 	}
 }
 
@@ -73,7 +77,6 @@ func (s *WebSocketServer) handleWebSocket(w http.ResponseWriter, r *http.Request
 		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
-
 	// 升级到 WebSocket 连接
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		InsecureSkipVerify: true,
@@ -141,8 +144,18 @@ func (s *WebSocketServer) extractToken(r *http.Request) (string, error) {
 }
 
 func (s *WebSocketServer) handleConnection(conn *websocket.Conn, userID, username string) error {
+	//1.创建UserSession实力
+	userSession := model.UserSession{
+		UserID:     userID,
+		Username:   username,
+		Conn:       conn,
+		LoginTime:  time.Now(),
+		LastActive: time.Now(),
+		DeviceInfo: "web",
+		IsOnline:   true,
+	}
 	// 连接建立事件
-	s.onConnect(conn, userID, username)
+	s.onConnect(&userSession)
 
 	defer func() {
 		// 连接断开事件
@@ -169,28 +182,32 @@ func (s *WebSocketServer) handleConnection(conn *websocket.Conn, userID, usernam
 	}
 }
 
-func (s *WebSocketServer) onConnect(conn *websocket.Conn, userID, username string) {
-	log.Printf("用户上线 - ID: %s, 用户名: %s", userID, username)
-
+func (s *WebSocketServer) onConnect(userSession *model.UserSession) {
+	log.Printf("用户上线 - ID: %s, 用户名: %s", userSession.UserID, userSession.Username)
+	//加入全局Session管理器
+	model.GlobalSessionManager.Add(userSession.UserID, userSession)
 	welcomeMsg := map[string]interface{}{
 		"type":      "welcome",
 		"message":   "连接成功",
-		"user_id":   userID,
-		"username":  username,
+		"user_id":   userSession.UserID,
+		"username":  userSession.Username,
 		"timestamp": time.Now().Unix(),
 	}
-	wsjson.Write(context.Background(), conn, welcomeMsg)
+	if err := userSession.SendJSON(welcomeMsg); err != nil {
+		log.Printf("发送欢迎消息失败: %v", err)
+	}
 }
 
-func (s *WebSocketServer) onMessage(conn *websocket.Conn, userID, username string, message interface{}) {
-	log.Printf("收到消息 - 用户: %s, 内容: %v", username, message)
+func (s *WebSocketServer) onDisconnect(userSession *model.UserSession) {
+	log.Printf("用户下线 - ID: %s, 用户名: %s", userSession.UserID, userSession.Username)
+	model.GlobalSessionManager.Remove(userSession.UserID, userSession)
+	userSession.IsOnline = false
 }
-
-func (s *WebSocketServer) onDisconnect(userID, username string) {
-	log.Printf("用户下线 - ID: %s, 用户名: %s", userID, username)
+func (s *WebSocketServer) onMessage(userSession *model.UserSession, message interface{}) {
+	userSession.LastActive = time.Now()
+	log.Printf("收到消息 - ID: %s, 用户名: %s, 消息内容: %v", userSession.UserID, userSession.Username, message)
 }
-
-func (s *WebSocketServer) handleMessage(ctx context.Context, conn *websocket.Conn, userID, username string, message map[string]interface{}) error {
+func (s *WebSocketServer) handleMessage(ctx context.Context, conn *websocket.Conn, userSession *model.UserSession, message map[string]interface{}) error {
 	msgType, ok := message["type"].(string)
 	if !ok {
 		return fmt.Errorf("消息类型缺失")
@@ -198,13 +215,13 @@ func (s *WebSocketServer) handleMessage(ctx context.Context, conn *websocket.Con
 
 	switch msgType {
 	case "ping":
-		return s.handlePing(ctx, conn)
+		return s.handlePing(ctx, userSession)
 	case "chat":
-		return s.handleChat(ctx, conn, username, message)
+		return s.handleChat(ctx, userSession, message)
 	case "broadcast":
-		return s.handleBroadcast(ctx, conn, username, message)
+		return s.handleBroadcast(ctx, userSession, message)
 	default:
-		return s.handleUnknown(ctx, conn, message)
+		return s.handleUnknown(ctx, userSession, message)
 	}
 }
 

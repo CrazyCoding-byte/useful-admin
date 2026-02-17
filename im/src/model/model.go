@@ -1,7 +1,6 @@
 package model
 
 import (
-	"nhooyr.io/websocket"
 	"time"
 )
 
@@ -49,36 +48,6 @@ type GroupMember struct {
 	IsQuit   bool      `gorm:"column:is_quit"`         // 是否退出群
 	JoinTime time.Time `gorm:"column:join_time"`
 	QuitTime time.Time `gorm:"column:quit_time;null"`
-}
-
-// -------------------------- 完善已有会话结构体 --------------------------
-// UserSession 用户WebSocket连接会话（关联用户和连接）
-type UserSession struct {
-	UserID     string          `json:"user_id"`     // 关联用户ID
-	Username   string          `json:"username"`    // 用户名
-	Conn       *websocket.Conn `json:"-"`           // WebSocket连接（不序列化）
-	LoginTime  time.Time       `json:"login_time"`  // 登录时间
-	LastActive time.Time       `json:"last_active"` // 最后活跃时间
-	DeviceInfo string          `json:"device_info"` // 设备信息（如web/ios/android）
-	IsOnline   bool            `json:"is_online"`   // 是否在线
-}
-
-// ChatSession 聊天会话（单聊/群聊的会话元信息）
-type ChatSession struct {
-	SessionID    string    `json:"session_id"`   // 会话ID
-	Type         int       `json:"type"`         // 1-单聊；2-群聊
-	Participants []string  `json:"participants"` // 参与者ID（单聊：[u1,u2]；群聊：群成员列表）
-	CreatedAt    time.Time `json:"created_at"`   // 会话创建时间
-	LastMessage  time.Time `json:"last_message"` // 最后一条消息时间
-}
-
-// GroupMsgRead 群消息已读表（可选，群聊已读状态专用）
-type GroupMsgRead struct {
-	ID       uint64    `gorm:"primaryKey;autoIncrement;column:id"`
-	MsgID    uint64    `gorm:"column:msg_id;index"`    // 消息ID
-	GroupID  string    `gorm:"column:group_id;index"`  // 群ID
-	MemberID string    `gorm:"column:member_id;index"` // 成员ID
-	ReadTime time.Time `gorm:"column:read_time"`       // 已读时间
 }
 
 // -------------------------- 原有会话管理结构体（完善） --------------------------
