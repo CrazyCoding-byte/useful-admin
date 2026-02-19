@@ -144,7 +144,7 @@ func (s *WebSocketServer) extractToken(r *http.Request) (string, error) {
 }
 
 func (s *WebSocketServer) handleConnection(conn *websocket.Conn, userID, username string) error {
-	//1.创建UserSession实力
+	//1.创建UserSession实例
 	userSession := model.UserSession{
 		UserID:     userID,
 		Username:   username,
@@ -159,7 +159,7 @@ func (s *WebSocketServer) handleConnection(conn *websocket.Conn, userID, usernam
 
 	defer func() {
 		// 连接断开事件
-		s.onDisconnect(userID, username)
+		s.onDisconnect(&userSession)
 	}()
 
 	// 使用 background context，因为不需要从 HTTP 请求继承上下文
@@ -173,10 +173,10 @@ func (s *WebSocketServer) handleConnection(conn *websocket.Conn, userID, usernam
 		}
 
 		// 消息接收事件
-		s.onMessage(conn, userID, username, message)
+		s.onMessage(&userSession, message)
 
 		// 处理不同类型的消息
-		if err := s.handleMessage(ctx, conn, userID, username, message); err != nil {
+		if err := s.handleMessage(ctx, &userSession, message); err != nil {
 			return err
 		}
 	}
@@ -207,7 +207,7 @@ func (s *WebSocketServer) onMessage(userSession *model.UserSession, message inte
 	userSession.LastActive = time.Now()
 	log.Printf("收到消息 - ID: %s, 用户名: %s, 消息内容: %v", userSession.UserID, userSession.Username, message)
 }
-func (s *WebSocketServer) handleMessage(ctx context.Context, conn *websocket.Conn, userSession *model.UserSession, message map[string]interface{}) error {
+func (s *WebSocketServer) handleMessage(ctx context.Context, userSession *model.UserSession, message map[string]interface{}) error {
 	msgType, ok := message["type"].(string)
 	if !ok {
 		return fmt.Errorf("消息类型缺失")
@@ -218,51 +218,71 @@ func (s *WebSocketServer) handleMessage(ctx context.Context, conn *websocket.Con
 		return s.handlePing(ctx, userSession)
 	case "chat":
 		return s.handleChat(ctx, userSession, message)
-	case "broadcast":
-		return s.handleBroadcast(ctx, userSession, message)
-	default:
-		return s.handleUnknown(ctx, userSession, message)
+	case "group_chat":
+		return s.handleGroupChat(ctx, userSession, message)
 	}
 }
 
-func (s *WebSocketServer) handlePing(ctx context.Context, conn *websocket.Conn) error {
+func (s *WebSocketServer) handlePing(ctx context.Context, userSession *model.UserSession) error {
 	response := map[string]interface{}{
 		"type":      "pong",
 		"timestamp": time.Now().Unix(),
 	}
-	return wsjson.Write(ctx, conn, response)
+	return userSession.SendJSON(response)
 }
 
-func (s *WebSocketServer) handleChat(ctx context.Context, conn *websocket.Conn, username string, message map[string]interface{}) error {
+func (s *WebSocketServer) handleChat(ctx context.Context, fromSession *model.UserSession, message map[string]interface{}) error {
 	content, ok := message["content"].(string)
 	if !ok {
 		return fmt.Errorf("聊天内容缺失")
 	}
 
-	response := map[string]interface{}{
+	toUserId, ok := message["to_user_id"].(string)
+	if !ok {
+		return fmt.Errorf("接收用户ID缺失")
+	}
+	//保存
+	err := s.msgRepo.SaveUserMessage(fromSession.UserID, toUserId, content)
+	if err != nil {
+		return err
+	}
+	//构造推送消息
+	pushMsg := map[string]interface{}{
 		"type":      "chat",
-		"from":      username,
+		"from":      fromSession.UserID,
+		"from_name": fromSession.Username,
+		"to":        toUserId,
 		"content":   content,
 		"timestamp": time.Now().Unix(),
 	}
-	return wsjson.Write(ctx, conn, response)
+	//推送接受方
+	toSessions := model.GlobalSessionManager.GetUserSession(toUserId)
+	for _, toSession := range toSessions {
+		go func(s *model.UserSession) {
+			if err := s.SendJSON(pushMsg); err != nil {
+				slog.Info("推送单聊消息失败,移除无效连接:%v", err)
+				model.GlobalSessionManager.Remove(toUserId, toSession)
+			}
+		}(toSession)
+	}
+	//回显
+	return fromSession.SendJSON(pushMsg)
 }
 
-func (s *WebSocketServer) handleBroadcast(ctx context.Context, conn *websocket.Conn, username string, message map[string]interface{}) error {
+func (s *WebSocketServer) handleGroupChat(ctx context.Context, fromSession *model.UserSession, message map[string]interface{}) error {
 	content, ok := message["content"].(string)
 	if !ok {
-		return fmt.Errorf("广播内容缺失")
+		return s.sendError(fromSession, "聊天内容缺失")
 	}
-
-	// 这里可以实现广播逻辑
-	log.Printf("广播消息 - 用户: %s, 内容: %s", username, content)
-
-	response := map[string]interface{}{
-		"type":      "broadcast_ack",
-		"status":    "sent",
-		"timestamp": time.Now().Unix(),
+	groupId, ok := message["group_id"].(string)
+	if !ok {
+		return s.sendError(fromSession, "群组ID缺失")
 	}
-	return wsjson.Write(ctx, conn, response)
+	//保存
+	err := s.msgRepo.SaveGroupMessage(fromSession.UserID, groupId, content)
+	if err != nil {
+		return s.sendError(fromSession, "保存群聊消息失败")
+	}
 }
 
 func (s *WebSocketServer) handleUnknown(ctx context.Context, conn *websocket.Conn, message map[string]interface{}) error {
@@ -272,4 +292,11 @@ func (s *WebSocketServer) handleUnknown(ctx context.Context, conn *websocket.Con
 		"timestamp": time.Now().Unix(),
 	}
 	return wsjson.Write(ctx, conn, response)
+}
+func (s *WebSocketServer) sendError(userSession *model.UserSession, errMsg string) error {
+	return userSession.SendJSON(map[string]interface{}{
+		"type":      "error",
+		"message":   errMsg,
+		"timestamp": time.Now().Unix(),
+	})
 }
