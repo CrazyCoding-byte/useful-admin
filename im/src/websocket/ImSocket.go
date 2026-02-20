@@ -220,6 +220,8 @@ func (s *WebSocketServer) handleMessage(ctx context.Context, userSession *model.
 		return s.handleChat(ctx, userSession, message)
 	case "group_chat":
 		return s.handleGroupChat(ctx, userSession, message)
+	default:
+		return fmt.Errorf("未知的消息类型")
 	}
 }
 
@@ -283,6 +285,34 @@ func (s *WebSocketServer) handleGroupChat(ctx context.Context, fromSession *mode
 	if err != nil {
 		return s.sendError(fromSession, "保存群聊消息失败")
 	}
+	pushMsg := map[string]interface{}{
+		"type":      "group_chat",
+		"from":      fromSession.UserID,
+		"from_name": fromSession.Username,
+		"group_id":  groupId,
+		"content":   content,
+		"timestamp": time.Now().Unix(),
+	}
+	//获取群成员并推送
+	memberIDs, err := s.msgRepo.GetGroupMemberIDs(groupId)
+	if err != nil {
+		return s.sendError(fromSession, "获取群成员失败")
+	}
+	for _, memberID := range memberIDs {
+		if memberID == fromSession.UserID {
+			continue
+		}
+		memberSessions := model.GlobalSessionManager.GetUserSession(memberID)
+		for _, memberSession := range memberSessions {
+			go func(s *model.UserSession, mid string) {
+				if err := s.SendJSON(pushMsg); err != nil {
+					slog.Info("推送群聊消息失败,移除无效连接:%v", err)
+					model.GlobalSessionManager.Remove(memberID, s)
+				}
+			}(memberSession, memberID)
+		}
+	}
+	return fromSession.SendJSON(pushMsg)
 }
 
 func (s *WebSocketServer) handleUnknown(ctx context.Context, conn *websocket.Conn, message map[string]interface{}) error {

@@ -9,15 +9,16 @@ import (
 
 // 消息处理器
 type MessageHandler struct {
-	sessionManage *model.SessionManager
-	imService     *repository.MessageService
+	imService *repository.MessageService
 }
 
 func NewMessageHandler(s *model.SessionManager, imService *repository.MessageService) *MessageHandler {
 	return &MessageHandler{
-		sessionManage: s,
-		imService:     imService,
+		imService: imService,
 	}
+}
+func getCurrentUserId() string {
+
 }
 func (m *MessageHandler) Handle(session *model.Session, message []byte) error {
 	// 步骤1：解析前端消息
