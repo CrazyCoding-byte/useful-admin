@@ -10,6 +10,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -26,10 +27,12 @@ type WebSocketServer struct {
 func NewWebSocketServer(msgRepo *repository.MessageService) *WebSocketServer {
 	// 从配置文件加载 aseKey.key
 	// 尝试多个可能的配置文件路径
-	configPaths := []string{
-		"src/application.yml",    // 从 im 目录运行
-		"../src/application.yml", // 从其他目录运行
-		"E:\\studyoauth2\\springcloud-oauth2\\im\\src\\application.yml", // 绝对路径（兼容 main.go）
+	configPath := os.Getenv("IM_CONFIG_PATH")
+	var configPaths []string
+	if configPath == "" {
+		configPaths = []string{"src/application.yml", "../src/application.yml"}
+	} else {
+		configPaths = []string{configPath}
 	}
 
 	var cfg *config.Config
@@ -261,6 +264,12 @@ func (s *WebSocketServer) handleChat(ctx context.Context, fromSession *model.Use
 	toSessions := model.GlobalSessionManager.GetUserSession(toUserId)
 	for _, toSession := range toSessions {
 		go func(s *model.UserSession) {
+			defer func() {
+				if err := recover(); err != nil {
+					slog.Error("推送单聊消息失败,移除无效连接:%v", err)
+					model.GlobalSessionManager.Remove(toUserId, toSession)
+				}
+			}()
 			if err := s.SendJSON(pushMsg); err != nil {
 				slog.Info("推送单聊消息失败,移除无效连接:%v", err)
 				model.GlobalSessionManager.Remove(toUserId, toSession)

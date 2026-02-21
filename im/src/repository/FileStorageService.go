@@ -212,7 +212,7 @@ func (u *MinioCoreChunkUploader) InitUpload(
 	fmt.Println("maxFileSize", u.Cfg.MaxFileSize)
 	// 2. 大小校验
 	if fileSize > u.maxFileSizeBytes {
-		return "", fmt.Errorf("文件大小超出限制（最大%.2fMB）", float64(u.Cfg.MaxFileSize)/1024/1024)
+		return "", fmt.Errorf("文件大小超出限制（最大%.2fMB）", float64(u.Cfg.MaxFileSize))
 	}
 
 	// 3. 生成唯一ObjectKey（对齐本地实现的目录结构）

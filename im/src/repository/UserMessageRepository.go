@@ -82,7 +82,7 @@ func (m *MessageService) GetGroupMessageByCursor(groupId string, cursor int64, s
 		cursorTime := time.UnixMilli(cursor)
 		query = query.Where("send_time < ?", cursorTime)
 	}
-	err := query.Limit(size).Find(&messages).Error
+	err := query.Limit(size + 1).Find(&messages).Error
 	if err != nil {
 		return nil, fmt.Errorf("查询消息失败：%w", err)
 	}
@@ -321,7 +321,7 @@ func (m *MessageService) GetUserAllSessions(userID string) (
 		Where("member_id = ? AND is_quit = false", userID).
 		Pluck("group_id", &groupSessions).Error
 	if groupErr != nil {
-		slog.Error("查询群聊会话失败", "user_id", userID, "error", err)
+		slog.Error("查询群聊会话失败", "user_id", userID, "error", groupErr)
 	}
 	// 3. 最终错误处理：
 	// - 如果两个都失败了，才返回错误

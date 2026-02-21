@@ -8,15 +8,18 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 type AuthMiddleware struct {
 	aeskey     string
 	tokenCache sync.Map
 }
+
 type UserClaims struct {
 	UserId   string
 	UserName string
+	ExpireAt int64 //过期时间戳
 }
 
 func NewAuthMiddleWare(cfg *config.Config) *AuthMiddleware {
@@ -24,6 +27,7 @@ func NewAuthMiddleWare(cfg *config.Config) *AuthMiddleware {
 		aeskey: cfg.AES.Key,
 	}
 }
+
 func (m *AuthMiddleware) HandlerFunc(token string) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
@@ -36,6 +40,11 @@ func (m *AuthMiddleware) HandlerFunc(token string) gin.HandlerFunc {
 		//先从缓冲获取
 		if claim, ok := m.tokenCache.Load(token); ok {
 			userClaims := claim.(*UserClaims)
+			if userClaims.ExpireAt < time.Now().Unix() {
+				c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "未授权"})
+				c.Abort() //终止请求
+				return
+			}
 			c.Set("user_id", userClaims.UserId)
 			c.Set("username", userClaims.UserName)
 			c.Next()
