@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"local/im/src/model"
+	"log/slog"
 	"time"
 )
 
@@ -44,21 +45,61 @@ func buildSingleSessionId(userID1, userID2 string) string {
 	return fmt.Sprintf("%s_%s", userID2, userID1)
 }
 
-// GetUserMessage 拉取当前用户与目标用户的双向聊天数据
-func (m *MessageService) GetUserMessage(currentUserID string, targetUserID string, page, size int) ([]model.Message, error) {
-	var messages []model.Message
+func (m *MessageService) GetUserMessageByCursor(currentUserID string, targetUserID string, cursor int64, size int) (*model.CursorPageResult, error) {
 	sessionId := buildSingleSessionId(currentUserID, targetUserID)
-
-	result := m.Db.Where("session_id=? AND type=1", sessionId).
-		Order("send_time DESC").
-		Limit(size).Offset((page - 1) * size).
-		Find(&messages)
-
-	// 移除冗余错误判断
-	if result.Error != nil {
-		return nil, fmt.Errorf("查询单聊消息失败：%w", result.Error)
+	var messages []model.Message
+	query := m.Db.Where("session_id=? AND type=1", sessionId).
+		Order("send_time desc")
+	//如果当前是有时间戳的就要跳过这个时间戳
+	if cursor > 0 {
+		//把毫秒转成time.Time
+		cursorTime := time.UnixMilli(cursor)
+		query = query.Where("send_time < ?", cursorTime)
 	}
-	return messages, nil
+	err := query.Limit(size + 1).Find(&messages).Error
+	if err != nil {
+		return nil, fmt.Errorf("查询消息失败：%w", err)
+	}
+	//判断是否有下一页
+	hasMore := false
+	nextCursor := int64(0)
+	realSize := len(messages)
+	if realSize > size {
+		hasMore = true
+		messages = messages[:size]
+	}
+	//设置下一页游标
+	if realSize > 0 {
+		nextCursor = messages[len(messages)-1].SendTime.UnixMilli()
+	}
+	return model.NewCursorPageResult(messages, hasMore, nextCursor, size), nil
+}
+func (m *MessageService) GetGroupMessageByCursor(groupId string, cursor int64, size int) (*model.CursorPageResult, error) {
+	var messages []model.Message
+	query := m.Db.Where("session_id=? AND type=2", groupId).
+		Order("send_time desc")
+	if cursor > 0 {
+		cursorTime := time.UnixMilli(cursor)
+		query = query.Where("send_time < ?", cursorTime)
+	}
+	err := query.Limit(size).Find(&messages).Error
+	if err != nil {
+		return nil, fmt.Errorf("查询消息失败：%w", err)
+	}
+
+	hasMore := false
+	nextCursor := int64(0)
+	realSize := len(messages)
+
+	if realSize > size {
+		hasMore = true
+		messages = messages[:size]
+	}
+
+	if realSize > 0 {
+		nextCursor = messages[len(messages)-1].SendTime.UnixMilli()
+	}
+	return model.NewCursorPageResult(messages, hasMore, nextCursor, size), nil
 }
 
 /*
@@ -272,14 +313,23 @@ func (m *MessageService) GetUserAllSessions(userID string) (
 		Distinct("session_id").
 		Find(&singleSessions).Error
 	if err != nil {
-		return nil, nil, err
+		slog.Error("查询单聊会话失败", "user_id", userID, "error", err)
 	}
 
 	// 2. 查所有群聊会话（用户加入的群）
-	err = m.Db.Model(&model.GroupMember{}).
+	groupErr := m.Db.Model(&model.GroupMember{}).
 		Where("member_id = ? AND is_quit = false", userID).
 		Pluck("group_id", &groupSessions).Error
-	return
+	if groupErr != nil {
+		slog.Error("查询群聊会话失败", "user_id", userID, "error", err)
+	}
+	// 3. 最终错误处理：
+	// - 如果两个都失败了，才返回错误
+	// - 如果至少有一个成功了，就返回数据，err 为 nil（或者返回第一个非 nil 的 err）
+	if err != nil && groupErr != nil {
+		return nil, nil, fmt.Errorf("查询会话失败：单聊错误=%v，群聊错误=%v", err, groupErr)
+	}
+	return singleSessions, groupSessions, nil
 }
 
 // IsGroupMember 校验用户是否在群里

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"local/im/src/config"
+	"local/im/src/utils"
 	"net/http"
 	"strings"
 	"sync"
@@ -23,7 +24,7 @@ func NewAuthMiddleWare(cfg *config.Config) *AuthMiddleware {
 		aeskey: cfg.AES.Key,
 	}
 }
-func (m *AuthMiddleware) Auth(token string) (*UserClaims, error) {
+func (m *AuthMiddleware) HandlerFunc(token string) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		token, err := m.extraToken(c)
@@ -35,9 +36,28 @@ func (m *AuthMiddleware) Auth(token string) (*UserClaims, error) {
 		//先从缓冲获取
 		if claim, ok := m.tokenCache.Load(token); ok {
 			userClaims := claim.(*UserClaims)
-
+			c.Set("user_id", userClaims.UserId)
+			c.Set("username", userClaims.UserName)
+			c.Next()
+			return
 		}
-	}, nil
+
+		userId, username, err := utils.ParseAndVerifyToken(token, m.aeskey)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "未授权"})
+			c.Abort() //终止请求
+			return
+		}
+		//存入缓冲
+		userClaims := &UserClaims{
+			UserId:   userId,
+			UserName: username,
+		}
+		m.tokenCache.Store(token, userClaims)
+		c.Set("user_id", userId)
+		c.Set("username", username)
+		c.Next()
+	}
 }
 func (m *AuthMiddleware) extraToken(c *gin.Context) (string, error) {
 	//从参数获取
