@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -67,5 +68,25 @@ public class OrderController {
         return AjaxResult.success(one.getStatus());
     }
 
+
+    /**
+     *  @GetMapping("/order/getOrderInfo/{orderSn}")
+     *     public AjaxResult getOrderInfo(@PathVariable String orderSn);
+     *
+     *     @PostMapping("/order/updateOrder/{orderSn}")
+     *     public AjaxResult updateOrder(@PathVariable String orderSn, @RequestBody String codeUrl);
+     *
+     *     @GetMapping("/order/getOrderStatus")
+     *     public AjaxResult getOrderStatus(@RequestParam String orderSn);
+     *
+     *     @PostMapping("/order/getUserAllOrder")
+     *     public AjaxResult getUserAllOrders(@RequestBody String userId);
+     */
+    //获取用户所有的订单信息
+    @PostMapping("/getUserAllOrder")
+    public AjaxResult getUserAllOrders(@RequestBody String userId) {
+        List<OrderEntity> list = orderService.list(new LambdaQueryWrapper<OrderEntity>());
+        return AjaxResult.success(list);
+    }
 
 }

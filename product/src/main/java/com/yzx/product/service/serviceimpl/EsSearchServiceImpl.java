@@ -17,6 +17,7 @@ public class EsSearchServiceImpl  implements EsSearchService {
 
     @Override
     public Result search(SearchParam searchParam) {
+
         return null;
     }
 }

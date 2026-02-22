@@ -30,4 +30,5 @@ public class ProductController {
     public Result upPd(String spuId) {
         return spuInfoService.up(spuId);
     }
+
 }

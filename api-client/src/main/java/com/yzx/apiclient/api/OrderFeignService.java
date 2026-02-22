@@ -2,10 +2,7 @@ package com.yzx.apiclient.api;
 
 import com.yzx.model.AjaxResult;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -25,5 +22,10 @@ public interface OrderFeignService {
     public AjaxResult updateOrder(@PathVariable String orderSn, @RequestBody String codeUrl);
 
     @GetMapping("/order/getOrderStatus")
-    AjaxResult getOrderStatus(String orderSn);
+    public AjaxResult getOrderStatus(@RequestParam String orderSn);
+
+    @PostMapping("/order/getUserAllOrder")
+    public AjaxResult getUserAllOrders(@RequestBody String userId);
+
+
 }
