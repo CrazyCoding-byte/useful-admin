@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class AgentChatService {
     @Autowired
-    private EcommerceAgentConfig.AgentService agentService;
+    private EcommerceAgentConfig.EcommerceAgent ecommerceAgent; // 修复：改用统一的EcommerceAgent
     @Autowired
     private SensitiveDataMasker masker;
     @Autowired
@@ -33,7 +33,7 @@ public class AgentChatService {
     private ChatAuditService auditService;
 
     // 用户级限流：每分钟最多20条消息
-    private static final String USER_RATE_LIMIT_KEY = "agent:rate:user:";
+    private static final String USER_RAET_LIMIT_KEY = "agent:rate:user:";
 
     /**
      * 核心聊天入口：加了限流、熔断、脱敏、审计
@@ -45,7 +45,7 @@ public class AgentChatService {
         log.info("[用户对话] 用户ID：{}，消息：{}", userId, userMessage);
 
         // 1. 用户级限流防刷
-        String rateKey = USER_RATE_LIMIT_KEY + userId;
+        String rateKey = USER_RAET_LIMIT_KEY + userId;
         Long count = redisTemplate.opsForValue().increment(rateKey);
         if (count == 1) {
             redisTemplate.expire(rateKey, 1, TimeUnit.MINUTES);
@@ -58,7 +58,7 @@ public class AgentChatService {
         String maskedMessage = masker.mask(userMessage);
 
         // 3. 调用Agent核心引擎
-        String reply = agentService.chat(userId, maskedMessage);
+        String reply = ecommerceAgent.chat(userId, maskedMessage);
 
         // 4. 全链路审计入库（商用必须）
         long costTime = System.currentTimeMillis() - startTime;

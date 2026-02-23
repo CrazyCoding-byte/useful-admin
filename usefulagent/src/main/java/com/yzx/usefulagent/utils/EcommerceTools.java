@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import static com.yzx.model.utils.ImageUtils.log;
 
 /**
  * @className: EcommerceTools
@@ -40,6 +39,7 @@ public class EcommerceTools {
     @Autowired
     private StringRedisTemplate redisTemplate;
     private static final String REFUND_LIMIT_KEY = "agent:refund:limit:";
+
     private static final String TOOL_LOG_PREFIX = "[工具调用]";
 
     @Tool("查询用户的所有订单列表,入参是用户的id")

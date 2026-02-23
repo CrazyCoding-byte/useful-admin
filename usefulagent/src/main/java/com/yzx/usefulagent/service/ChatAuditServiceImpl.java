@@ -1,5 +1,7 @@
 package com.yzx.usefulagent.service;
 
+import com.yzx.model.agent.ChatAuditLog;
+import com.yzx.usefulagent.mapper.ChatAuditLogMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +19,12 @@ public class ChatAuditServiceImpl implements ChatAuditService {
 
     @Override
     public void saveChatLog(String userId, String userMsg, String agentReply, long cost, String status) {
-
+        ChatAuditLog log = new ChatAuditLog();
+        log.setUserId(userId);
+        log.setUserMessage(userMsg);
+        log.setAgentReply(agentReply);
+        log.setCostTime((int) cost);
+        log.setStatus(status);
+        auditLogMapper.insert(log);
     }
 }
