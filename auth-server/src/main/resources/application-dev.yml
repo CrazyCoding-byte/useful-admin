@@ -29,7 +29,7 @@ encrypt:
     alias: xzkey
     password: xiaozuo
 AES:
-  key: yangzhixuan944166810@qq.com1150614966@qq.com13735713859
+  key: yangzhixuan944166810
 auth:
   tokenValiditySecondsMobile: 31536000 #token存储到redis的过期时间
   tokenValiditySecondsComputer: 172800

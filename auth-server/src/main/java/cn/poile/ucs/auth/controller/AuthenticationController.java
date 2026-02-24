@@ -104,13 +104,13 @@ public class AuthenticationController {
             return AjaxResult.error("用户未登录");
         }
         // 角色集合
-        Set<String> roles = systemApi.getRolePermissionByUserId(userJwt.getId());
+        AjaxResult roles = systemApi.getRolePermissionByUserId(userJwt.getId());
         // 权限集合
-        Set<String> permissions = systemApi.getMenuPermissionByUserId(userJwt.getId());
+        AjaxResult permissions = systemApi.getMenuPermissionByUserId(userJwt.getId());
         AjaxResult ajax = AjaxResult.success();
         ajax.put("user", userJwt);
-        ajax.put("roles", roles);
-        ajax.put("permissions", permissions);
+        ajax.put("roles", roles.get("data"));
+        ajax.put("permissions", permissions.get("data"));
         return ajax;
     }
 

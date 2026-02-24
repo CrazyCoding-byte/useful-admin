@@ -1,5 +1,6 @@
 package com.yzx.system.controller;
 
+import com.yzx.model.AjaxResult;
 import com.yzx.system.service.ISysPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,8 +30,8 @@ public class SysPermissionController {
      * @return 角色权限信息
      */
     @GetMapping("/getRolePermissionByUserId/{userId}")
-    public Set<String> getRolePermissionByUserId(@PathVariable Long userId){
-        return sysPermissionService.getRolePermission(userId);
+    public AjaxResult getRolePermissionByUserId(@PathVariable Long userId) {
+        return AjaxResult.success(sysPermissionService.getRolePermission(userId));
     }
 
     /**
@@ -40,8 +41,8 @@ public class SysPermissionController {
      * @return 菜单权限信息
      */
     @GetMapping("/getMenuPermissionByUserId/{userId}")
-    public Set<String> getMenuPermissionByUserId(@PathVariable Long userId){
-        return sysPermissionService.getMenuPermission(userId);
+    public AjaxResult getMenuPermissionByUserId(@PathVariable Long userId) {
+        return AjaxResult.success(sysPermissionService.getMenuPermission(userId));
     }
 
 }

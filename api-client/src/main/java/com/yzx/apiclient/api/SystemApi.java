@@ -27,7 +27,7 @@ public interface SystemApi {
      * @return 角色权限信息
      */
     @GetMapping("/system/permission/getRolePermissionByUserId/{userId}")
-    Set<String> getRolePermissionByUserId(@PathVariable(name = "userId") Long userId);
+    AjaxResult getRolePermissionByUserId(@PathVariable(name = "userId") Long userId);
 
     /**
      * 获取菜单数据权限
@@ -36,7 +36,7 @@ public interface SystemApi {
      * @return 菜单权限信息
      */
     @GetMapping("/system/permission/getMenuPermissionByUserId/{userId}")
-    Set<String> getMenuPermissionByUserId(@PathVariable(name = "userId") Long userId);
+    AjaxResult getMenuPermissionByUserId(@PathVariable(name = "userId") Long userId);
 
     /**
      * 获取菜单树

@@ -83,7 +83,6 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         if (StringUtils.isBlank(token)) {
             return buildErrorResponse(exchange, "未提供认证令牌（Authorization 头缺失或格式错误）");
         }
-
         // 3. 校验令牌是否过期（核心：本地解析 JWT，无远程请求）
         try {
             // JwtTokenStore 会用本地公钥验签并解析 JWT，直接判断过期状态
