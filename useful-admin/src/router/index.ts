@@ -26,13 +26,18 @@ const defaultRouterList: Array<RouteRecordRaw> = [
     component: () => import('@/pages/login/index.vue'),
   },
   {
+    path: '/dashboard/base',
+    name: 'DashboardBase',
+    component: () => import('@/pages/dashboard/base/index.vue'),
+  },
+  {
     path: '/',
     redirect: '/login',
   },
   {
-    path: '/:w+',
+    path: '/:pathMatch(.*)*',
     name: '404Page',
-    redirect: '/result/404',
+    component: () => import('@/pages/result/404/index.vue'),
   },
 ];
 
@@ -58,17 +63,23 @@ export const getRoutesExpanded = () => {
 };
 
 export const getActive = (maxLevel = 3): string => {
-  // 非组件内调用必须通过Router实例获取当前路由
-  const route = router.currentRoute.value;
+  // 简化实现，避免在路由初始化时访问 router.currentRoute
+  try {
+    // 非组件内调用必须通过Router实例获取当前路由
+    const route = router.currentRoute.value;
 
-  if (!route.path) {
+    if (!route.path) {
+      return '';
+    }
+    return route.path
+      .split('/')
+      .filter((_item: string, index: number) => index <= maxLevel && index > 0)
+      .map((item: string) => `/${item}`)
+      .join('');
+  } catch (error) {
+    // 如果路由未初始化完成，返回空字符串
     return '';
   }
-  return route.path
-    .split('/')
-    .filter((_item: string, index: number) => index <= maxLevel && index > 0)
-    .map((item: string) => `/${item}`)
-    .join('');
 };
 
 const router = createRouter({

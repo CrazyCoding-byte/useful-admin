@@ -1,10 +1,14 @@
 package cn.poile.ucs.auth.excetion;
 
 import com.yzx.model.AjaxResult;
+import com.yzx.model.exception.CustomException;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @className: GlobalExceptionHandler
@@ -32,5 +36,15 @@ public class GlobalExceptionHandler {
     public AjaxResult handleFeignException(FeignException e) {
         log.error("Feign远程调用异常：", e);
         return AjaxResult.error("远程服务调用失败：" + e.getMessage());
+    }
+
+    @ExceptionHandler(CustomException.class)
+    public AjaxResult handleCustomException(CustomException e) {
+        return AjaxResult.error(e.getMessage());
+    }
+
+    @ExceptionHandler(Exception.class)
+    public AjaxResult handleException(Exception e) {
+        return AjaxResult.error("服务器内部错误:" + e.getMessage());
     }
 }

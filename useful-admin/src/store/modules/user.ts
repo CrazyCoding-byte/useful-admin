@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { TOKEN_NAME } from '@/config/global';
 import { store, usePermissionStore } from '@/store';
+import { Message, MessagePlugin } from 'tdesign-vue-next';
 
 const InitUserInfo = {
   roles: [],
@@ -19,21 +20,8 @@ export const useUserStore = defineStore('user', {
   actions: {
     async login(userInfo: Record<string, unknown>) {
       const { account, password } = userInfo as { account: string; password: string };
-      
-      // 模拟登录功能，当 OAuth2 服务不可用时使用
-      if (account === 'yaohw' && password === 'yaohw') {
-        const mockToken = 'mock_token_' + Date.now();
-        this.token = mockToken;
-        localStorage.setItem(TOKEN_NAME, mockToken);
-        return {
-          code: 200,
-          message: '登录成功',
-          data: mockToken,
-        };
-      }
-      
+    try{
       // 实际的 OAuth2 登录逻辑
-      try {
         const response = await fetch('/auth/user/login', {
           method: 'POST',
           headers: {
@@ -46,35 +34,18 @@ export const useUserStore = defineStore('user', {
             password: password,
           }),
         });
-        
-        if (!response.ok) {
-          throw new Error('登录失败: ' + response.statusText);
-        }
-        
         const data = await response.json();
         if (data.code === 200) {
           this.token = data.token;
           localStorage.setItem(TOKEN_NAME, data.token);
+        }else{
+          throw new Error(data.msg || '登录失败');
         }
-        return data;
-      } catch (error) {
-        console.error('登录错误:', error);
-        // 如果 OAuth2 服务不可用，使用模拟登录
-        if (account === 'yaohw' && password === 'yaohw') {
-          const mockToken = 'mock_token_' + Date.now();
-          this.token = mockToken;
-          localStorage.setItem(TOKEN_NAME, mockToken);
-          return {
-            code: 200,
-            message: '登录成功（模拟）',
-            data: mockToken,
-          };
+      }catch(error){
+         const errMsg=(error as Error).message||"网络异常,登录失败";
+         MessagePlugin.error(errMsg);
+         throw new Error(errMsg);
         }
-        throw {
-          code: 401,
-          message: error instanceof Error ? error.message : '登录失败',
-        };
-      }
     },
     async getUserInfo() {
       try {
@@ -85,7 +56,7 @@ export const useUserStore = defineStore('user', {
             'Authorization': 'Bearer ' + this.token,
           },
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           this.userInfo = {
@@ -97,12 +68,7 @@ export const useUserStore = defineStore('user', {
       } catch (error) {
         console.error('获取用户信息错误:', error);
       }
-      
-      // 如果 OAuth2 服务不可用，返回模拟的用户信息
-      this.userInfo = {
-        name: 'yaohw',
-        roles: ['admin'],
-      };
+
     },
     async logout() {
       try {
@@ -123,14 +89,6 @@ export const useUserStore = defineStore('user', {
     },
     async removeToken() {
       this.token = '';
-    },
-  },
-  persist: {
-    afterRestore: (ctx) => {
-      if (ctx.store.roles && ctx.store.roles.length > 0) {
-        const permissionStore = usePermissionStore();
-        permissionStore.initRoutes(ctx.store.roles);
-      }
     },
   },
 });

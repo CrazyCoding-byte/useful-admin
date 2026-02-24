@@ -16,47 +16,53 @@ router.beforeEach(async (to, from, next) => {
 
   const { token } = userStore;
   console.log("当前的token:", token);
+  
+  // 白名单路由直接放行
+  if (whiteListRouters.indexOf(to.path) !== -1) {
+    next();
+    NProgress.done();
+    return;
+  }
+  
+  // 有token的情况
   if (token) {
+    // 登录页重定向到仪表盘
     if (to.path === '/login') {
-      next('/dashboard/base'); 
+      next('/dashboard/base');
+      NProgress.done();
       return;
     }
+    
+    // 检查是否有角色信息
     const { roles } = userStore;
     if (roles && roles.length > 0) {
+      // 有角色信息，直接放行
       next();
-      
+      NProgress.done();
+      return;
     } else {
+      // 没有角色信息，尝试获取
       try {
         await userStore.getUserInfo();
-
-        const { roles } = userStore;
-
-        await permissionStore.initRoutes(roles);
-
-        if (router.hasRoute(to.name)) {
-          next();
-        } else {
-          next(`/`);
-        }
+        // 获取成功后放行
+        next();
       } catch (error) {
-        MessagePlugin.error(error);
+        // 获取失败，跳转到登录页
+        console.error('获取用户信息失败:', error);
         next({
           path: '/login',
           query: { redirect: encodeURIComponent(to.fullPath) },
         });
+      } finally {
         NProgress.done();
       }
     }
   } else {
-    /* white list router */
-    if (whiteListRouters.indexOf(to.path) !== -1) {
-      next();
-    } else {
-      next({
-        path: '/login',
-        query: { redirect: encodeURIComponent(to.fullPath) },
-      });
-    }
+    // 没有token，跳转到登录页
+    next({
+      path: '/login',
+      query: { redirect: encodeURIComponent(to.fullPath) },
+    });
     NProgress.done();
   }
 });
