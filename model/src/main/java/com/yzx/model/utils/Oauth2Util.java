@@ -16,26 +16,33 @@ import java.util.Map;
  * @create: 2020-02-14 17:07
  */
 public class Oauth2Util {
-    public UserJwt getUserJwtFromHeader(HttpServletRequest request){
+    public UserJwt getUserJwtFromHeader(HttpServletRequest request) {
         Map jwtClaims = Oauth2Util.getJwtClaimsFromHeader(request);
-        if(jwtClaims == null){
+        if (jwtClaims == null) {
             return null;
         }
-        Integer id = (Integer)jwtClaims.get("u_id");
-        //Integer companyId = (Integer)jwtClaims.get("companyId")
+
+        // 核心修改：先转成字符串（不管原始类型是Integer/String/Long），再转Integer
+        String idStr = String.valueOf(jwtClaims.get("id"));
+        // 避免空字符串/非数字导致的NumberFormatException
+        Integer id = null;
+        if (StringUtils.isNotBlank(idStr) && idStr.matches("\\d+")) {
+            id = Integer.valueOf(idStr);
+        }
 
         UserJwt userJwt = new UserJwt();
-        userJwt.setId(id.longValue());
+        if (id != null) {
+            userJwt.setId(id.longValue());
+        }
         userJwt.setUsername((String) jwtClaims.get("username"));
-        //userJwt.setCompanyId(companyId.longValue())
         userJwt.setUtype((String) jwtClaims.get("utype"));
         userJwt.setAvatar((String) jwtClaims.get("avatar"));
-        userJwt.setRole((String)jwtClaims.get("role"));
+        userJwt.setRole((String) jwtClaims.get("role"));
         return userJwt;
     }
 
     @Data
-    public static class UserJwt{
+    public static class UserJwt {
         private Long id;
         private String username;
         private String avatar;
@@ -68,7 +75,7 @@ public class Oauth2Util {
         return map;
     }
 
-    public boolean checkJwt(String token){
+    public boolean checkJwt(String token) {
         try {
             JwtHelper.decode(token);
         } catch (Exception e) {

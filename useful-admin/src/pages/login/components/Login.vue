@@ -133,7 +133,8 @@ const sendCode = () => {
 const onSubmit = async ({ validateResult }) => {
   if (validateResult === true) {
     try {
-      await userStore.login(formData.value);
+      const loginResult = await userStore.login(formData.value);
+
       const redirect = route.query.redirect as string;
       const redirectUrl = redirect ? decodeURIComponent(redirect) : '/dashboard';
       router.push(redirectUrl);

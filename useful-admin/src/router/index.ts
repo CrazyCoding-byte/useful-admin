@@ -15,24 +15,72 @@ Object.keys(modules).forEach((key) => {
 console.log("当前的routeModulesList:", routeModuleList);
 // 关于单层路由，meta 中设置 { single: true } 即可为单层路由，{ hidden: true } 即可在侧边栏隐藏该路由
 
-// 存放动态路由
-export const asyncRouterList: Array<RouteRecordRaw> = [...routeModuleList];
-
-// 存放固定的路由
-const defaultRouterList: Array<RouteRecordRaw> = [
+// 存放固定的路由并导出
+export const defaultRouterList: Array<RouteRecordRaw> = [
   {
     path: '/login',
     name: 'login',
     component: () => import('@/pages/login/index.vue'),
   },
   {
-    path: '/dashboard/base',
-    name: 'DashboardBase',
-    component: () => import('@/pages/dashboard/base/index.vue'),
-  },
-  {
     path: '/',
     redirect: '/login',
+  },
+  {
+    path: '/system',
+    name: 'system',
+    component: () => import('@/layouts/index.vue'),
+    redirect: '/system/user',
+    children: [
+      {
+        path: 'user',
+        name: 'system-user',
+        component: () => import('@/pages/system/user/index.vue'),
+        meta: { title: '用户管理' },
+      },
+      {
+        path: 'role',
+        name: 'system-role',
+        component: () => import('@/pages/system/role/index.vue'),
+        meta: { title: '角色管理' },
+      },
+      {
+        path: 'menu',
+        name: 'system-menu',
+        component: () => import('@/pages/system/menu/index.vue'),
+        meta: { title: '菜单管理' },
+      },
+      {
+        path: 'dept',
+        name: 'system-dept',
+        component: () => import('@/pages/system/dept/index.vue'),
+        meta: { title: '部门管理' },
+      },
+      {
+        path: 'post',
+        name: 'system-post',
+        component: () => import('@/pages/system/post/index.vue'),
+        meta: { title: '岗位管理' },
+      },
+      {
+        path: 'dict',
+        name: 'system-dict',
+        component: () => import('@/pages/system/dict/index.vue'),
+        meta: { title: '字典管理' },
+      },
+      {
+        path: 'config',
+        name: 'system-config',
+        component: () => import('@/pages/system/config/index.vue'),
+        meta: { title: '参数设置' },
+      },
+      {
+        path: 'notice',
+        name: 'system-notice',
+        component: () => import('@/pages/system/notice/index.vue'),
+        meta: { title: '通知公告' },
+      },
+    ],
   },
   {
     path: '/:pathMatch(.*)*',
@@ -40,6 +88,9 @@ const defaultRouterList: Array<RouteRecordRaw> = [
     component: () => import('@/pages/result/404/index.vue'),
   },
 ];
+
+// 存放动态路由（初始为空，由后端获取）
+export const asyncRouterList: Array<RouteRecordRaw> = [];
 
 export const allRoutes = [...defaultRouterList, ...asyncRouterList];
 

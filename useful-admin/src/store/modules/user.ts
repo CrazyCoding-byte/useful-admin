@@ -39,12 +39,14 @@ export const useUserStore = defineStore('user', {
           this.token = data.token;
           localStorage.setItem(TOKEN_NAME, data.token);
         }else{
-          throw new Error(data.msg || '登录失败');
+          const errmsg=data.msg||'登录失败'
+          MessagePlugin.error(errmsg);
+          return Promise.reject(new Error(errmsg))
         }
       }catch(error){
          const errMsg=(error as Error).message||"网络异常,登录失败";
          MessagePlugin.error(errMsg);
-         throw new Error(errMsg);
+         return Promise.reject(new Error(errMsg));
         }
     },
     async getUserInfo() {
@@ -70,6 +72,7 @@ export const useUserStore = defineStore('user', {
       }
 
     },
+
     async logout() {
       try {
         // 可选：调用 OAuth2 登出端点
