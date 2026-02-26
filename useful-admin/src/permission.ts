@@ -133,9 +133,14 @@ router.beforeEach(async (to, from, next) => {
           next(redirectPath);
         }
       } else {
-        // 没有后端路由，跳转到登录页
-        console.log('没有后端路由，跳转到登录页');
-        next('/login');
+        // 没有后端路由，清除token并跳转到登录页
+        console.log('没有后端路由，清除token并跳转到登录页');
+        userStore.logout();
+        permissionStore.restore();
+        next({
+          path: '/login',
+          query: { redirect: encodeURIComponent(to.fullPath) },
+        });
       }
     } catch (error) {
       console.error('初始化路由失败:', error);
@@ -155,11 +160,5 @@ router.afterEach((to) => {
   // 所有导航完成后，统一结束进度条（唯一的done()调用处）
   NProgress.done();
 
-  // 登录页清除状态（原有逻辑保留）
-  if (to.path === '/login') {
-    const userStore = getUserStore();
-    const permissionStore = getPermissionStore();
-    userStore.logout();
-    permissionStore.restore();
-  }
+  // 登录页不需要清除状态，因为在beforeEach中已经处理了
 });

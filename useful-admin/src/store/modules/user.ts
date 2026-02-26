@@ -38,6 +38,8 @@ export const useUserStore = defineStore('user', {
         if (data.code === 200) {
           this.token = data.token;
           localStorage.setItem(TOKEN_NAME, data.token);
+          // 登录成功后获取用户信息
+          await this.getUserInfo();
         }else{
           const errmsg=data.msg||'登录失败'
           MessagePlugin.error(errmsg);
@@ -59,13 +61,20 @@ export const useUserStore = defineStore('user', {
           },
         });
 
+        console.log('获取用户信息响应:', response);
+
         if (response.ok) {
           const data = await response.json();
+          console.log('获取用户信息数据:', data);
           this.userInfo = {
             name: data.user?.username || 'yaohw',
             roles: Array.from(data.roles || ['admin']),
           };
+          console.log('设置用户信息:', this.userInfo);
           return;
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('获取用户信息失败:', errorData);
         }
       } catch (error) {
         console.error('获取用户信息错误:', error);

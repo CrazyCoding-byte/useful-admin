@@ -1,6 +1,8 @@
 package cn.poile.ucs.auth.convert;
 
 import cn.poile.ucs.auth.security.UserNameUserDetailService;
+import cn.poile.ucs.auth.utils.AESEncryptUtil;
+import com.alibaba.fastjson.JSON;
 import com.yzx.model.ucenter.BaseUserDetail;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -44,14 +46,34 @@ public class CustomUserAuthenticationConverter extends DefaultUserAuthentication
         response.put("userName", baseUserDetail.getBaseAuth().getUserName());
         response.put("nickName", baseUserDetail.getBaseUser().getNickName());
         response.put("sex", baseUserDetail.getBaseUser().getSex());
-        response.put("phone", baseUserDetail.getBaseAuth().getPhoneNumber());
-        response.put("id", baseUserDetail.getBaseUser().getUserId());
+        try {
+            response.put("phone", AESEncryptUtil.encrypt(baseUserDetail.getBaseAuth().getPhoneNumber()));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        try {
+            response.put("id", AESEncryptUtil.encrypt(String.valueOf(baseUserDetail.getBaseUser().getUserId())));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         response.put("isServant", baseUserDetail.getBaseUser().getIsServant());
         response.put("avatar", baseUserDetail.getBaseUser().getAvatar());
-        response.put("ID", baseUserDetail.getBaseUser().getIdNumber());
-        response.put("permissions", baseUserDetail.getPermissions());
+        try {
+            response.put("ID", AESEncryptUtil.encrypt(JSON.toJSONString(baseUserDetail.getBaseUser().getIdNumber())));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        try {
+            response.put("permissions", AESEncryptUtil.encrypt(JSON.toJSONString(baseUserDetail.getPermissions())));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         if (authentication.getAuthorities() != null && !authentication.getAuthorities().isEmpty()) {
-            response.put("authorities", AuthorityUtils.authorityListToSet(authentication.getAuthorities()));
+            try {
+                response.put("authorities", AESEncryptUtil.encrypt(JSON.toJSONString(authentication.getAuthorities())));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
         return response;
     }
