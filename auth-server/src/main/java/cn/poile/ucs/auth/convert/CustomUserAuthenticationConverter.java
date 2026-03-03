@@ -1,14 +1,13 @@
 package cn.poile.ucs.auth.convert;
 
 import cn.poile.ucs.auth.security.UserNameUserDetailService;
-import cn.poile.ucs.auth.utils.AESEncryptUtil;
 import com.alibaba.fastjson.JSON;
 import com.yzx.model.ucenter.BaseUserDetail;
+import com.yzx.model.utils.AESEncryptUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.provider.token.DefaultUserAuthenticationConverter;
 import org.springframework.stereotype.Component;
@@ -27,6 +26,8 @@ public class CustomUserAuthenticationConverter extends DefaultUserAuthentication
 
     @Autowired
     UserNameUserDetailService userDetailsService;
+    @Autowired
+    private AESEncryptUtil aesEncryptUtil;
 
     @Override
     public Map<String, ?> convertUserAuthentication(Authentication authentication) {
@@ -47,30 +48,30 @@ public class CustomUserAuthenticationConverter extends DefaultUserAuthentication
         response.put("nickName", baseUserDetail.getBaseUser().getNickName());
         response.put("sex", baseUserDetail.getBaseUser().getSex());
         try {
-            response.put("phone", AESEncryptUtil.encrypt(baseUserDetail.getBaseAuth().getPhoneNumber()));
+            response.put("phone", aesEncryptUtil.encrypt(baseUserDetail.getBaseAuth().getPhoneNumber()));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         try {
-            response.put("id", AESEncryptUtil.encrypt(String.valueOf(baseUserDetail.getBaseUser().getUserId())));
+            response.put("id", aesEncryptUtil.encrypt(String.valueOf(baseUserDetail.getBaseUser().getUserId())));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         response.put("isServant", baseUserDetail.getBaseUser().getIsServant());
         response.put("avatar", baseUserDetail.getBaseUser().getAvatar());
         try {
-            response.put("ID", AESEncryptUtil.encrypt(JSON.toJSONString(baseUserDetail.getBaseUser().getIdNumber())));
+            response.put("ID", aesEncryptUtil.encrypt(JSON.toJSONString(baseUserDetail.getBaseUser().getIdNumber())));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         try {
-            response.put("permissions", AESEncryptUtil.encrypt(JSON.toJSONString(baseUserDetail.getPermissions())));
+            response.put("permissions", aesEncryptUtil.encrypt(JSON.toJSONString(baseUserDetail.getPermissions())));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         if (authentication.getAuthorities() != null && !authentication.getAuthorities().isEmpty()) {
             try {
-                response.put("authorities", AESEncryptUtil.encrypt(JSON.toJSONString(authentication.getAuthorities())));
+                response.put("authorities", aesEncryptUtil.encrypt(JSON.toJSONString(authentication.getAuthorities())));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

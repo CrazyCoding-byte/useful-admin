@@ -45,7 +45,11 @@ export default ({ mode }: ConfigEnv): UserConfig => {
       port: 3002,
       host: '0.0.0.0',
       proxy: {
-        '/api': 'http://127.0.0.1:3000/',
+        '/api': {
+          target: 'http://127.0.0.1:8120/',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
         '/auth': 'http://127.0.0.1:8001/',
       },
     },

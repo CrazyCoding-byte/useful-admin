@@ -20,9 +20,19 @@ router.beforeEach(async (to, from, next) => {
 
   // 1. 白名单路由：直接放行（无需任何路由初始化）
   if (whiteListRouters.includes(to.path)) {
-    // 有token的话，登录页重定向到仪表盘（白名单里的特殊处理）
+    // 有token的话，登录页重定向到第一个后端路由或默认路由
     if (token && to.path === '/login') {
-      next('/dashboard/base');
+      if (permissionStore.routers && permissionStore.routers.length > 0) {
+        // 有后端路由，跳转到第一个可用路由
+        const firstRoute = permissionStore.routers[0];
+        const redirectPath = firstRoute.path || '/';
+        console.log('跳转到第一个后端路由:', redirectPath);
+        next(redirectPath);
+      } else {
+        // 没有后端路由，跳转到系统管理页面
+        console.log('没有后端路由，跳转到系统管理页面');
+        next('/system');
+      }
       return;
     }
     next(); // 其他白名单路由直接放行
@@ -122,8 +132,16 @@ router.beforeEach(async (to, from, next) => {
 
         // 路由初始化完成后，重新导航到目标路由
         try {
-          console.log('路由初始化完成，重新导航到目标路由:', to.path);
-          next({ ...to, replace: true });
+          if (targetRouteExists) {
+            console.log('路由初始化完成，重新导航到目标路由:', to.path);
+            next({ ...to, replace: true });
+          } else {
+            // 目标路由不存在，跳转到第一个后端路由
+            const firstRoute = permissionStore.routers[0];
+            const redirectPath = firstRoute.path || '/';
+            console.log('目标路由不存在，跳转到第一个后端路由:', redirectPath);
+            next(redirectPath);
+          }
         } catch (error) {
           console.error('导航失败:', error);
           // 导航失败，跳转到第一个后端路由

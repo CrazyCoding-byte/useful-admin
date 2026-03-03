@@ -1,8 +1,8 @@
 package cn.poile.ucs.auth.convert;
 
 import cn.poile.ucs.auth.security.UserNameUserDetailService;
-import cn.poile.ucs.auth.utils.AESEncryptUtil;
 import com.yzx.model.ucenter.BaseUserDetail;
+import com.yzx.model.utils.AESEncryptUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.bootstrap.encrypt.KeyProperties;
@@ -41,7 +41,8 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
 
     @Resource(name = "keyProp")
     private KeyProperties keyProperties;
-
+    @Autowired
+    private AESEncryptUtil aesEncryptUtil;
     @Autowired
     private UserNameUserDetailService userNameUserDetailService;
 
@@ -51,11 +52,7 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
     @PostConstruct
     public void init() {
         // 设置密钥对
-        KeyPair keyPair = new KeyStoreKeyFactory(
-                keyProperties.getKeyStore().getLocation(),
-                keyProperties.getKeyStore().getSecret().toCharArray())
-                .getKeyPair(keyProperties.getKeyStore().getAlias(),
-                        keyProperties.getKeyStore().getPassword().toCharArray());
+        KeyPair keyPair = new KeyStoreKeyFactory(keyProperties.getKeyStore().getLocation(), keyProperties.getKeyStore().getSecret().toCharArray()).getKeyPair(keyProperties.getKeyStore().getAlias(), keyProperties.getKeyStore().getPassword().toCharArray());
         this.setKeyPair(keyPair);
         // 设置自定义的用户认证转换器
         DefaultAccessTokenConverter tokenConverter = (DefaultAccessTokenConverter) getAccessTokenConverter();
@@ -79,8 +76,8 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
         DefaultOAuth2AccessToken token = (DefaultOAuth2AccessToken) oAuth2AccessToken;
         try {
             // 对敏感字段进行AES加密
-            String encryptedUid = AESEncryptUtil.encrypt(baseUserDetail.getBaseUser().getUserId().toString());
-            String encryptedUsername = AESEncryptUtil.encrypt(baseUserDetail.getBaseAuth().getUserName());
+            String encryptedUid = aesEncryptUtil.encrypt(baseUserDetail.getBaseUser().getUserId().toString());
+            String encryptedUsername = aesEncryptUtil.encrypt(baseUserDetail.getBaseAuth().getUserName());
             map.put("username", encryptedUsername);
 //        map.put("mobile", baseUserDetail.getBaseAuth().getPhoneNumber());
             map.put("u_id", encryptedUid);

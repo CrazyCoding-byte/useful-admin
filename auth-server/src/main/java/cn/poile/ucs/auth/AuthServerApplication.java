@@ -17,10 +17,11 @@ import org.springframework.context.annotation.FilterType;
 @EnableDiscoveryClient
 @MapperScan({"cn.poile.ucs.auth.mapper"})
 @ComponentScan(
-    excludeFilters = @ComponentScan.Filter(
-        type = FilterType.REGEX,
-        pattern = "com\\.yzx\\.common\\.config\\..*"
-    )
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.REGEX,
+                pattern = "com\\.yzx\\.common\\.config\\..*"
+        ),
+        basePackages = {"cn.poile.ucs.auth", "com.yzx.model.utils"}
 )
 @EnableFeignClients(basePackages = "com.yzx.apiclient.api")
 public class AuthServerApplication {

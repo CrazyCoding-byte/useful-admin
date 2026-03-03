@@ -1,3 +1,4 @@
+# 统一不同编辑器（VSCode、WebStorm 等）的代码格式，比如缩进、换行符等。
 root = true
 
 [*]

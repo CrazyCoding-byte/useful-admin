@@ -2,6 +2,7 @@ package com.yzx.system.controller;
 
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.StringUtils;
 import com.yzx.model.annotation.Log;
@@ -11,6 +12,10 @@ import com.yzx.model.system.SysRole;
 import com.yzx.model.system.SysUser;
 import com.yzx.model.system.TableDataInfo;
 import com.yzx.model.utils.SecurityUtils;
+
+
+
+import com.yzx.system.annotation.RequiresPermission;
 import com.yzx.system.service.ISysRoleService;
 import com.yzx.system.service.ISysUserService;
 import org.apache.commons.lang3.ArrayUtils;
@@ -47,10 +52,11 @@ public class SysUserController extends BaseController {
      * 获取用户列表
      */
     @GetMapping("/list")
-    public TableDataInfo list(SysUser user) {
-        startPage();
-        List<SysUser> list = userService.selectUserList(user);
-        return getDataTable(list);
+    @RequiresPermission("system:user:list")
+    public AjaxResult list(SysUser user, @Validated @RequestParam(defaultValue = "1") Integer pageNum, @RequestParam(defaultValue = "10") Integer pageSize) {
+        Page<SysUser> page = new Page<>(pageNum, pageSize);
+        Page<SysUser> result = userService.selectUserList(user, page);
+        return AjaxResult.success(result);
     }
 
 //    @Log(title = "用户管理", businessType = BusinessType.EXPORT)

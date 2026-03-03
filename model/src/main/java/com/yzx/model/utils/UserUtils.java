@@ -10,7 +10,7 @@ public class UserUtils {
 
     /** 判断用户是不是超级管理员 */
     public static boolean isAdmin(Long userId) {
-        return userId != null && 1L == userId;
+        return userId != null && 222L == userId;
     }
 
 }

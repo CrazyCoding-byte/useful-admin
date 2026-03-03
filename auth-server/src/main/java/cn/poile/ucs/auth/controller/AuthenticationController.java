@@ -37,6 +37,8 @@ public class AuthenticationController {
     SystemApi systemApi;
     @Autowired
     private AuthService authService;
+    @Autowired
+    private Oauth2Util oauth2Util;
 
     @PostMapping("/user/login")
     public AjaxResult login(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
@@ -98,7 +100,7 @@ public class AuthenticationController {
     public AjaxResult getInfo(HttpServletRequest request) {
         String bear = request.getHeader("Authorization");
         System.out.println(bear);
-        Oauth2Util.UserJwt userJwt = new Oauth2Util().getUserJwtFromHeader(ServletUtils.getRequest());
+        Oauth2Util.UserJwt userJwt = oauth2Util.getUserJwtFromHeader(ServletUtils.getRequest());
 
         if (Objects.isNull(userJwt)) {
             return AjaxResult.error("用户未登录");
@@ -116,7 +118,7 @@ public class AuthenticationController {
 
     @GetMapping("/user/getRouters")
     public AjaxResult getRouters() {
-        Oauth2Util.UserJwt userJwt = new Oauth2Util().getUserJwtFromHeader(ServletUtils.getRequest());
+        Oauth2Util.UserJwt userJwt = oauth2Util.getUserJwtFromHeader(ServletUtils.getRequest());
         Long id = userJwt.getId();
         return systemApi.getMenusTreeByUserId(id);
     }

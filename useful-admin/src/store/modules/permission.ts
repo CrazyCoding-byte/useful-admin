@@ -113,8 +113,11 @@ function addRoutes(routes: Array<RouteRecordRaw>) {
       console.log('为路由生成name:', route.name, '路径:', route.path);
     }
 
-    // 检查是否是默认路由
-    const isDefaultRoute = defaultRouterList.some(defaultRoute => defaultRoute.name === route.name);
+    // 检查是否是默认路由（只跳过登录和404等基础路由）
+    const isDefaultRoute = defaultRouterList.some(defaultRoute =>
+      defaultRoute.name === route.name &&
+      (defaultRoute.name === 'login' || defaultRoute.name === '404Page')
+    );
     if (isDefaultRoute) {
       console.log('跳过默认路由:', route.name);
       return;
