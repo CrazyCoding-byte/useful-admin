@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/system/user")
-public class SysUserController extends BaseController {
+public class SysUserController {
     @Autowired
     private ISysUserService userService;
 
@@ -177,10 +177,10 @@ public class SysUserController extends BaseController {
     @Log(title = "用户管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{userIds}")
     public AjaxResult remove(@PathVariable Long[] userIds) {
-        if (ArrayUtils.contains(userIds, getUserId())) {
-            return error("当前用户不能删除");
+        if (ArrayUtils.contains(userIds, SecurityUtils.getUserId())) {
+            return AjaxResult.error("当前用户不能删除");
         }
-        return toAjax(userService.deleteUserByIds(userIds));
+        return AjaxResult.success(userService.deleteUserByIds(userIds));
     }
 
     /**
@@ -192,8 +192,8 @@ public class SysUserController extends BaseController {
         userService.checkUserAllowed(user);
         userService.checkUserDataScope(user.getUserId());
         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
-        user.setUpdateBy(getUsername());
-        return toAjax(userService.resetPwd(user));
+        user.setUpdateBy(SecurityUtils.getUsername());
+        return AjaxResult.success(userService.resetPwd(user));
     }
 
     /**
@@ -204,8 +204,8 @@ public class SysUserController extends BaseController {
     public AjaxResult changeStatus(@RequestBody SysUser user) {
         userService.checkUserAllowed(user);
         userService.checkUserDataScope(user.getUserId());
-        user.setUpdateBy(getUsername());
-        return toAjax(userService.updateUserStatus(user));
+        user.setUpdateBy(SecurityUtils.getUsername());
+        return AjaxResult.success(userService.updateUserStatus(user));
     }
 
     /**
@@ -230,7 +230,7 @@ public class SysUserController extends BaseController {
         userService.checkUserDataScope(userId);
         roleService.checkRoleDataScope(roleIds);
         userService.insertUserAuth(userId, roleIds);
-        return success();
+        return AjaxResult.success();
     }
 
     @PostMapping("/register")

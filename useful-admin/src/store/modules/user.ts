@@ -19,7 +19,7 @@ export const useUserStore = defineStore('user', {
   },
   actions: {
     async login(userInfo: Record<string, unknown>) {
-      const { account, password } = userInfo as { account: string; password: string };
+    const { account, password } = userInfo as { account: string; password: string };
     try{
       // 实际的 OAuth2 登录逻辑
         const response = await fetch('/auth/user/login', {
@@ -40,6 +40,8 @@ export const useUserStore = defineStore('user', {
           localStorage.setItem(TOKEN_NAME, data.token);
           // 登录成功后获取用户信息
           await this.getUserInfo();
+          // 登录成功，返回成功信息
+          return Promise.resolve(data);
         }else{
           const errmsg=data.msg||'登录失败'
           MessagePlugin.error(errmsg);
@@ -71,13 +73,15 @@ export const useUserStore = defineStore('user', {
             roles: Array.from(data.roles || ['admin']),
           };
           console.log('设置用户信息:', this.userInfo);
-          return;
+          return Promise.resolve(this.userInfo);
         } else {
           const errorData = await response.json().catch(() => ({}));
           console.error('获取用户信息失败:', errorData);
+          return Promise.reject(new Error('获取用户信息失败'));
         }
       } catch (error) {
         console.error('获取用户信息错误:', error);
+        return Promise.reject(error);
       }
 
     },

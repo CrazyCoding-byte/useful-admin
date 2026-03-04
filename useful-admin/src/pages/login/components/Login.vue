@@ -85,9 +85,10 @@ import QrcodeVue from 'qrcode.vue';
 import { MessagePlugin } from 'tdesign-vue-next';
 import type { FormInstanceFunctions, FormRule } from 'tdesign-vue-next';
 import { useCounter } from '@/hooks';
-import { useUserStore } from '@/store';
+import { useUserStore, usePermissionStore } from '@/store';
 
 const userStore = useUserStore();
+const permissionStore = usePermissionStore();
 
 const INITIAL_DATA = {
   phone: '',
@@ -133,13 +134,21 @@ const sendCode = () => {
 const onSubmit = async ({ validateResult }) => {
   if (validateResult === true) {
     try {
+      console.log('开始登录...');
       const loginResult = await userStore.login(formData.value);
+      console.log('登录成功，结果:', loginResult);
+
+      console.log('开始初始化权限路由...');
+      await permissionStore.initRoutes(userStore.roles);
+      console.log('权限路由初始化完成，路由数量:', permissionStore.routers.length);
 
       const redirect = route.query.redirect as string;
       const redirectUrl = redirect ? decodeURIComponent(redirect) : '/dashboard';
+      console.log('准备跳转到:', redirectUrl);
       router.push(redirectUrl);
+      console.log('跳转命令已执行');
     } catch (e) {
-      console.log(e);
+      console.error('登录失败:', e);
     }
   }
 };

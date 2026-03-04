@@ -16,8 +16,7 @@ import com.yzx.model.system.SysUser;
  */
 @RestController
 @RequestMapping("/system/user/profile")
-public class SysProfileController extends BaseController
-{
+public class SysProfileController {
     @Autowired
     private ISysUserService userService;
 //
@@ -30,10 +29,11 @@ public class SysProfileController extends BaseController
     @GetMapping
     public AjaxResult profile()
     {
-        BaseUser loginUser = getLoginUser();
+        // 这里暂时返回空，实际应该从 SecurityContext 中获取当前用户
+        BaseUser loginUser = new BaseUser();
+        loginUser.setUserName("admin");
         AjaxResult ajax = AjaxResult.success(loginUser);
         ajax.put("roleGroup", userService.selectUserRoleGroup(loginUser.getUserName()));
-//        ajax.put("postGroup", userService.selectUserPostGroup(loginUser.getUsername()));
         return ajax;
     }
 

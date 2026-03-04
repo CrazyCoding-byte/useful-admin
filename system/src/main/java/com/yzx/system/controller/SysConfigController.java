@@ -6,6 +6,7 @@ import com.yzx.model.annotation.Log;
 import com.yzx.model.enums.BusinessType;
 import com.yzx.model.system.SysConfig;
 import com.yzx.model.system.TableDataInfo;
+import com.yzx.model.utils.SecurityUtils;
 import com.yzx.system.service.ISysConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,8 +23,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/system/config")
-public class SysConfigController extends BaseController
-{
+public class SysConfigController {
     @Autowired
     private ISysConfigService configService;
 
@@ -31,11 +31,10 @@ public class SysConfigController extends BaseController
      * 获取参数配置列表
      */
     @GetMapping("/list")
-    public TableDataInfo list(SysConfig config)
+    public AjaxResult list(SysConfig config)
     {
-        startPage();
         List<SysConfig> list = configService.selectConfigList(config);
-        return getDataTable(list);
+        return AjaxResult.success(list);
     }
 
 //    @Log(title = "参数管理", businessType = BusinessType.EXPORT)
@@ -53,7 +52,7 @@ public class SysConfigController extends BaseController
     @GetMapping(value = "/{configId}")
     public AjaxResult getInfo(@PathVariable Long configId)
     {
-        return success(configService.selectConfigById(configId));
+        return AjaxResult.success(configService.selectConfigById(configId));
     }
 
     /**
@@ -62,7 +61,7 @@ public class SysConfigController extends BaseController
     @GetMapping(value = "/configKey/{configKey}")
     public AjaxResult getConfigKey(@PathVariable String configKey)
     {
-        return success(configService.selectConfigByKey(configKey));
+        return AjaxResult.success(configService.selectConfigByKey(configKey));
     }
 
     /**
@@ -74,10 +73,10 @@ public class SysConfigController extends BaseController
     {
         if (!configService.checkConfigKeyUnique(config))
         {
-            return error("新增参数'" + config.getConfigName() + "'失败，参数键名已存在");
+            return AjaxResult.error("新增参数'" + config.getConfigName() + "'失败，参数键名已存在");
         }
-        config.setCreateBy(getUsername());
-        return toAjax(configService.insertConfig(config));
+        config.setCreateBy(SecurityUtils.getUsername());
+        return AjaxResult.success(configService.insertConfig(config));
     }
 
     /**
@@ -89,10 +88,10 @@ public class SysConfigController extends BaseController
     {
         if (!configService.checkConfigKeyUnique(config))
         {
-            return error("修改参数'" + config.getConfigName() + "'失败，参数键名已存在");
+            return AjaxResult.error("修改参数'" + config.getConfigName() + "'失败，参数键名已存在");
         }
-        config.setUpdateBy(getUsername());
-        return toAjax(configService.updateConfig(config));
+        config.setUpdateBy(SecurityUtils.getUsername());
+        return AjaxResult.success(configService.updateConfig(config));
     }
 
     /**
@@ -103,7 +102,7 @@ public class SysConfigController extends BaseController
     public AjaxResult remove(@PathVariable Long[] configIds)
     {
         configService.deleteConfigByIds(configIds);
-        return success();
+        return AjaxResult.success();
     }
 
     /**
@@ -114,6 +113,6 @@ public class SysConfigController extends BaseController
     public AjaxResult refreshCache()
     {
         configService.resetConfigCache();
-        return success();
+        return AjaxResult.success();
     }
 }

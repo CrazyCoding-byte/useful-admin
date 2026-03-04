@@ -1,5 +1,6 @@
 package com.yzx.model.system;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.yzx.model.annotation.Excel;
 import com.yzx.model.annotation.Excels;
 import com.yzx.model.annotation.Xss;
@@ -60,6 +61,7 @@ public class SysUser extends BaseEntity {
     /** 手机号码 */
     @Excel(name = "手机号码", cellType = Excel.ColumnType.TEXT)
     @Size(min = 0, max = 11, message = "手机号码长度不能超过11个字符")
+    @TableField(value = "phone_number")
     private String phonenumber;
 
     /** 用户性别（0男 1女 2未知） */
@@ -115,18 +117,23 @@ public class SysUser extends BaseEntity {
             @Excel(name = "部门名称", targetAttr = "deptName", type = Excel.Type.EXPORT),
             @Excel(name = "部门负责人", targetAttr = "leader", type = Excel.Type.EXPORT)
     })
+    @TableField(exist = false)
     private SysDept dept;
 
     /** 角色对象 */
+    @TableField(exist = false)
     private List<SysRole> roles;
 
     /** 角色组 */
+    @TableField(exist = false)
     private Long[] roleIds;
 
     /** 岗位组 */
+    @TableField(exist = false)
     private Long[] postIds;
 
     /** 角色ID */
+    @TableField(exist = false)
     private Long roleId;
 
     public SysUser() {
@@ -150,7 +157,7 @@ public class SysUser extends BaseEntity {
     }
 
     public static boolean isAdmin(Long userId) {
-        return userId != null && 1L == userId;
+        return userId != null && 222L == userId;
     }
 
     public Long getDeptId() {

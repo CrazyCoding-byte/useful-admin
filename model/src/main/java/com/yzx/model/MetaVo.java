@@ -1,5 +1,7 @@
 package com.yzx.model;
 
+import com.yzx.model.StringUtils;
+
 
 /**
  * 路由显示信息

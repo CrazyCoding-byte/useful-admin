@@ -37,4 +37,12 @@ public interface SysUserRoleMapper extends BaseMapper<SysUserRole>
      * @return 结果
      */
     public int batchUserRole(List<SysUserRole> userRoleList);
+    
+    /**
+     * 删除用户与角色关联
+     * 
+     * @param userId 用户ID
+     * @return 结果
+     */
+    public int deleteUserRoleByUserId(Long userId);
 }

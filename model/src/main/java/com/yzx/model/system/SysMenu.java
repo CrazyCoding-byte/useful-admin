@@ -23,6 +23,7 @@ public class SysMenu extends BaseEntity{
     private String menuName;
 
     /** 父菜单名称 */
+    @TableField(exist = false)
     private String parentName;
 
     /** 父菜单ID */
@@ -63,6 +64,10 @@ public class SysMenu extends BaseEntity{
 
     /** 菜单图标 */
     private String icon;
+
+    /** 是否为子菜单 */
+    @TableField(value = "is_submenu")
+    private String isSubmenu;
 
     @TableField(exist = false)
     private List<SysMenu> child;

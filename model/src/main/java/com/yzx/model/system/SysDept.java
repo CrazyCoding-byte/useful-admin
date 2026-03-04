@@ -1,5 +1,6 @@
 package com.yzx.model.system;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
@@ -50,9 +51,11 @@ public class SysDept extends BaseEntity
     private String delFlag;
 
     /** 父部门名称 */
+    @TableField(exist = false)
     private String parentName;
     
     /** 子部门 */
+    @TableField(exist = false)
     private List<SysDept> children = new ArrayList<SysDept>();
 
     public Long getDeptId()

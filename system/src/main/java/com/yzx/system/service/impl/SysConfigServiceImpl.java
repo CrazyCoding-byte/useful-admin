@@ -75,9 +75,7 @@ public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig
         if (StringUtils.isNotBlank(config.getConfigType())) {
             queryWrapper.eq(SysConfig::getConfigType, config.getConfigType());
         }
-        if (StringUtils.isNotBlank(config.getStatus())) {
-            queryWrapper.eq(SysConfig::getStatus, config.getStatus());
-        }
+
         
         return baseMapper.selectList(queryWrapper);
     }

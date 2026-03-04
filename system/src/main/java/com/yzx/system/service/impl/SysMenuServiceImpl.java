@@ -97,7 +97,13 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      */
     @Override
     public List<SysMenuDto> selectMenuTreeByUserId(Long userId) {
-        List<SysMenu> menus = baseMapper.selectMenuTreeByUserId(userId);
+        List<SysMenu> menus;
+        // 如果是超级管理员，返回所有菜单
+        if (userId != null && com.yzx.model.system.SysUser.isAdmin(userId)) {
+            menus = baseMapper.selectList(null);
+        } else {
+            menus = baseMapper.selectMenuTreeByUserId(userId);
+        }
         return buildMenuDtoTree(menus);
     }
 
@@ -283,7 +289,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
                 children.add(buildMenuTree(menus, menu));
             }
         }
-        parentMenu.setChildren(children);
+        parentMenu.setChild(children);
         return parentMenu;
     }
 

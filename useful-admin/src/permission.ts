@@ -162,10 +162,9 @@ router.beforeEach(async (to, from, next) => {
       }
     } catch (error) {
       console.error('初始化路由失败:', error);
-      MessagePlugin.error('权限初始化失败，请重新登录');
-      userStore.logout();
-      permissionStore.restore();
-      next('/login');
+      MessagePlugin.error('权限初始化失败，但已登录成功');
+      // 不清除token，使用默认路由
+      next('/dashboard/base');
     }
   } else {
     // 路由已初始化，直接放行

@@ -7,6 +7,7 @@ import com.yzx.model.system.SysRole;
 import com.yzx.model.system.SysUser;
 import com.yzx.model.system.SysUserRole;
 import com.yzx.model.system.TableDataInfo;
+import com.yzx.model.utils.SecurityUtils;
 import com.yzx.system.service.ISysRoleService;
 import com.yzx.system.service.ISysUserService;
 import com.yzx.system.service.impl.SysPermissionService;
@@ -26,8 +27,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/system/role")
-public class SysRoleController extends BaseController
-{
+public class SysRoleController {
     @Autowired
     private ISysRoleService roleService;
 
@@ -45,11 +45,10 @@ public class SysRoleController extends BaseController
 
     @PreAuthorize("@ss.hasPermi('system:role:list')")
     @GetMapping("/list")
-    public TableDataInfo list(SysRole role)
+    public AjaxResult list(SysRole role)
     {
-        startPage();
         List<SysRole> list = roleService.selectRoleList(role);
-        return getDataTable(list);
+        return AjaxResult.success(list);
     }
 
 //    @Log(title = "角色管理", businessType = BusinessType.EXPORT)
@@ -70,7 +69,7 @@ public class SysRoleController extends BaseController
     public AjaxResult getInfo(@PathVariable Long roleId)
     {
         roleService.checkRoleDataScope(roleId);
-        return success(roleService.selectRoleById(roleId));
+        return AjaxResult.success(roleService.selectRoleById(roleId));
     }
 
     /**
@@ -83,14 +82,14 @@ public class SysRoleController extends BaseController
     {
         if (!roleService.checkRoleNameUnique(role))
         {
-            return error("新增角色'" + role.getRoleName() + "'失败，角色名称已存在");
+            return AjaxResult.error("新增角色'" + role.getRoleName() + "'失败，角色名称已存在");
         }
         else if (!roleService.checkRoleKeyUnique(role))
         {
-            return error("新增角色'" + role.getRoleName() + "'失败，角色权限已存在");
+            return AjaxResult.error("新增角色'" + role.getRoleName() + "'失败，角色权限已存在");
         }
-        role.setCreateBy(getUsername());
-        return toAjax(roleService.insertRole(role));
+        role.setCreateBy(SecurityUtils.getUsername());
+        return AjaxResult.success(roleService.insertRole(role));
 
     }
 
@@ -139,7 +138,7 @@ public class SysRoleController extends BaseController
     {
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(role.getRoleId());
-        return toAjax(roleService.authDataScope(role));
+        return AjaxResult.success(roleService.authDataScope(role));
     }
 
     /**
@@ -152,8 +151,8 @@ public class SysRoleController extends BaseController
     {
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(role.getRoleId());
-        role.setUpdateBy(getUsername());
-        return toAjax(roleService.updateRoleStatus(role));
+        role.setUpdateBy(SecurityUtils.getUsername());
+        return AjaxResult.success(roleService.updateRoleStatus(role));
     }
 
     /**
@@ -164,7 +163,7 @@ public class SysRoleController extends BaseController
     @DeleteMapping("/{roleIds}")
     public AjaxResult remove(@PathVariable Long[] roleIds)
     {
-        return toAjax(roleService.deleteRoleByIds(roleIds));
+        return AjaxResult.success(roleService.deleteRoleByIds(roleIds));
     }
 
     /**
@@ -174,7 +173,7 @@ public class SysRoleController extends BaseController
     @GetMapping("/optionselect")
     public AjaxResult optionselect()
     {
-        return success(roleService.selectRoleAll());
+        return AjaxResult.success(roleService.selectRoleAll());
     }
 
     /**
@@ -182,11 +181,10 @@ public class SysRoleController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('system:role:list')")
     @GetMapping("/authUser/allocatedList")
-    public TableDataInfo allocatedList(SysUser user)
+    public AjaxResult allocatedList(SysUser user)
     {
-        startPage();
         List<SysUser> list = userService.selectAllocatedList(user);
-        return getDataTable(list);
+        return AjaxResult.success(list);
     }
 
     /**
@@ -194,11 +192,10 @@ public class SysRoleController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('system:role:list')")
     @GetMapping("/authUser/unallocatedList")
-    public TableDataInfo unallocatedList(SysUser user)
+    public AjaxResult unallocatedList(SysUser user)
     {
-        startPage();
         List<SysUser> list = userService.selectUnallocatedList(user);
-        return getDataTable(list);
+        return AjaxResult.success(list);
     }
 
     /**
@@ -209,7 +206,7 @@ public class SysRoleController extends BaseController
     @PutMapping("/authUser/cancel")
     public AjaxResult cancelAuthUser(@RequestBody SysUserRole userRole)
     {
-        return toAjax(roleService.deleteAuthUser(userRole));
+        return AjaxResult.success(roleService.deleteAuthUser(userRole));
     }
 
     /**
@@ -220,7 +217,7 @@ public class SysRoleController extends BaseController
     @PutMapping("/authUser/cancelAll")
     public AjaxResult cancelAuthUserAll(Long roleId, Long[] userIds)
     {
-        return toAjax(roleService.deleteAuthUsers(roleId, userIds));
+        return AjaxResult.success(roleService.deleteAuthUsers(roleId, userIds));
     }
 
     /**
@@ -232,7 +229,7 @@ public class SysRoleController extends BaseController
     public AjaxResult selectAuthUserAll(Long roleId, Long[] userIds)
     {
         roleService.checkRoleDataScope(roleId);
-        return toAjax(roleService.insertAuthUsers(roleId, userIds));
+        return AjaxResult.success(roleService.insertAuthUsers(roleId, userIds));
     }
 
 //    /**

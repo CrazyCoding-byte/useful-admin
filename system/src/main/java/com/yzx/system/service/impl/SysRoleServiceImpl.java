@@ -353,7 +353,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      */
     @Override
     public int deleteAuthUsers(Long roleId, Long[] userIds) {
-        return userRoleMapper.deleteUserRole(userIds);
+        return userRoleMapper.deleteUserRoleByUserIds(userIds);
     }
 
     /**
@@ -381,15 +381,11 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      * @param role 角色信息
      */
     private void insertRoleMenu(SysRole role) {
-        List<SysRoleMenu> list = new java.util.ArrayList<>();
         for (Long menuId : role.getMenuIds()) {
             SysRoleMenu roleMenu = new SysRoleMenu();
             roleMenu.setRoleId(role.getRoleId());
             roleMenu.setMenuId(menuId);
-            list.add(roleMenu);
-        }
-        if (!list.isEmpty()) {
-            roleMenuMapper.insertBatch(list);
+            roleMenuMapper.insert(roleMenu);
         }
     }
 
@@ -399,15 +395,11 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      * @param role 角色信息
      */
     private void insertRoleDept(SysRole role) {
-        List<SysRoleDept> list = new java.util.ArrayList<>();
         for (Long deptId : role.getDeptIds()) {
             SysRoleDept roleDept = new SysRoleDept();
             roleDept.setRoleId(role.getRoleId());
             roleDept.setDeptId(deptId);
-            list.add(roleDept);
-        }
-        if (!list.isEmpty()) {
-            roleDeptMapper.insertBatch(list);
+            roleDeptMapper.insert(roleDept);
         }
     }
 }

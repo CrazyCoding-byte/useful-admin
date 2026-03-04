@@ -43,11 +43,33 @@ function convertBackendRoutesToFrontend(backendRoutes: any[]): Array<RouteRecord
     return [];
   }
 
-  return backendRoutes.map((route) => {
+  return backendRoutes
+    .filter(route => {
+      // 只处理有component的路由，或者有children的路由（作为父菜单）
+      return route.component || (route.children && route.children.length > 0);
+    })
+    .map((route) => {
+    // 确保路径以斜杠开头
+    let path = route.path || '';
+    if (path && !path.startsWith('/')) {
+      path = '/' + path;
+    }
+
+    // 处理重定向路径
+    let redirect = route.redirect === 'noRedirect' ?
+      (route.children && route.children.length > 0 ?
+        (path + '/' + route.children[0].path).replace('//', '/') : undefined) :
+      route.redirect;
+
+    // 确保重定向路径以斜杠开头
+    if (redirect && typeof redirect === 'string' && !redirect.startsWith('/')) {
+      redirect = '/' + redirect;
+    }
+
     const frontendRoute: RouteRecordRaw = {
-      path: route.path || '',
+      path: path,
       name: route.name || '',
-      redirect: route.redirect === 'noRedirect' ? (route.children && route.children.length > 0 ? route.path + '/' + route.children[0].path : undefined) : route.redirect,
+      redirect: redirect,
       meta: {
         title: route.meta?.title || '',
         icon: route.meta?.icon || '',
@@ -66,6 +88,7 @@ function convertBackendRoutesToFrontend(backendRoutes: any[]): Array<RouteRecord
 
     // 处理子路由
     if (route.children && route.children.length > 0) {
+      // 递归处理子路由，过滤掉没有component的子路由
       frontendRoute.children = convertBackendRoutesToFrontend(route.children);
     }
 
@@ -192,9 +215,9 @@ export const usePermissionStore = defineStore('permission', {
               accessedRouters = backendRoutes;
               console.log('从后端获取路由成功，使用后端路由');
             } else {
-              // 后端路由获取失败或返回空，使用空路由列表
-              console.warn('从后端获取路由失败或返回空，使用空路由列表');
-              accessedRouters = [];
+              // 后端路由获取失败或返回空，使用默认路由
+              console.warn('从后端获取路由失败或返回空，使用默认路由');
+              accessedRouters = defaultRouterList.filter(route => route.path !== '/login' && route.path !== '/');
             }
           } else {
             // 没有token，使用空路由列表
@@ -202,9 +225,9 @@ export const usePermissionStore = defineStore('permission', {
             accessedRouters = [];
           }
         } catch (error) {
-          // 后端路由获取失败，使用空路由列表
+          // 后端路由获取失败，使用默认路由
           console.error('从后端获取路由失败:', error);
-          accessedRouters = [];
+          accessedRouters = defaultRouterList.filter(route => route.path !== '/login' && route.path !== '/');
         }
         console.log('最终使用的路由:', accessedRouters);
 
