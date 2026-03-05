@@ -40,7 +40,8 @@ public abstract class BaseUserDetails implements UserDetailsService {
     
     @Autowired
     BaseUserMapper baseUserMapper;
-
+    @Autowired
+    SystemApi systemApi;
     @Override
     public UserDetails loadUserByUsername(String s) throws UsernameNotFoundException {
         //取出身份，如果身份为空说明没有认证
@@ -76,12 +77,12 @@ public abstract class BaseUserDetails implements UserDetailsService {
         }
         BaseUser baseUser = baseUserMapper.selectOne(new LambdaQueryWrapper<BaseUser>().eq(BaseUser::getUserId, baseAuth.getUserId()));
         // 注意：这里需要通过其他方式获取SystemApi实例，暂时注释掉相关代码
-        // Set<String> menuPermissionByUserId = systemApi.getMenuPermissionByUserId(baseUser.getUserId());
-        // String userPermissStr = StringUtils.join(menuPermissionByUserId.toArray(), ",");
+         Set<String> menuPermissionByUserId = systemApi.getMenuPermissionByUserId(baseUser.getUserId());
+         String userPermissStr = StringUtils.join(menuPermissionByUserId.toArray(), ",");
         String userPermissStr = "";
         User user = new User(baseAuth.getUserName(), baseAuth.getPassword(), AuthorityUtils.commaSeparatedStringToAuthorityList(userPermissStr));
         BaseUserDetail baseUserDetail = new BaseUserDetail(baseAuth, baseUser, (User) user);
-        // baseUserDetail.setPermissions(menuPermissionByUserId);
+         baseUserDetail.setPermissions(menuPermissionByUserId);
         return baseUserDetail;
     }
 

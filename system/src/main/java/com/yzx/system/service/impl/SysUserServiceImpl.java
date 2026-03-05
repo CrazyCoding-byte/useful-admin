@@ -79,25 +79,25 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
 
         // 构建查询条件
-        if (!StringUtils.isEmpty(user.getUserName())) {
+        if (StringUtils.hasText(user.getUserName())) {
             queryWrapper.like(SysUser::getUserName, user.getUserName());
         }
-        if (!StringUtils.isEmpty(user.getNickName())) {
+        if (StringUtils.hasText(user.getNickName())) {
             queryWrapper.like(SysUser::getNickName, user.getNickName());
         }
-        if (!StringUtils.isEmpty(user.getPhonenumber())) {
+        if (StringUtils.hasText(user.getPhonenumber())) {
             queryWrapper.like(SysUser::getPhonenumber, user.getPhonenumber());
         }
-        if (!StringUtils.isEmpty(user.getEmail())) {
+        if (StringUtils.hasText(user.getEmail())) {
             queryWrapper.like(SysUser::getEmail, user.getEmail());
         }
-        if (!StringUtils.isEmpty(user.getStatus())) {
+        if (StringUtils.hasText(user.getStatus())) {
             queryWrapper.eq(SysUser::getStatus, user.getStatus());
         }
         if (user.getDeptId() != null) {
             queryWrapper.eq(SysUser::getDeptId, user.getDeptId());
         }
-        if (!StringUtils.isEmpty(user.getDelFlag())) {
+        if (StringUtils.hasText(user.getDelFlag())) {
             queryWrapper.eq(SysUser::getDelFlag, user.getDelFlag());
         } else {
             // 默认查询未删除的用户

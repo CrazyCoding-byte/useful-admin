@@ -28,6 +28,8 @@ encrypt:
     secret: xiaozuokeystore
     alias: xzkey
     password: xiaozuo
+AES:
+  key: yangzhixuan94416
 auth:
   tokenValiditySecondsMobile: 31536000 #token存储到redis的过期时间
   tokenValiditySecondsComputer: 172800

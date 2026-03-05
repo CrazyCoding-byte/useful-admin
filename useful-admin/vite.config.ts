@@ -50,6 +50,10 @@ export default ({ mode }: ConfigEnv): UserConfig => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ''),
         },
+        '/system': {
+          target: 'http://127.0.0.1:8120/',
+          changeOrigin: true,
+        },
         '/auth': 'http://127.0.0.1:8001/',
       },
     },

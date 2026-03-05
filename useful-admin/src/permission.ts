@@ -60,9 +60,9 @@ router.beforeEach(async (to, from, next) => {
         console.log('跳转到第一个后端路由:', redirectPath);
         next(redirectPath);
       } else {
-        // 没有后端路由，跳转到默认的仪表盘页面
-        console.log('没有后端路由，跳转到默认仪表盘页面');
-        next('/dashboard/base');
+        // 没有后端路由，跳转到系统管理页面
+        console.log('没有后端路由，跳转到系统管理页面');
+        next('/system');
       }
       return;
     }
@@ -164,7 +164,7 @@ router.beforeEach(async (to, from, next) => {
       console.error('初始化路由失败:', error);
       MessagePlugin.error('权限初始化失败，但已登录成功');
       // 不清除token，使用默认路由
-      next('/dashboard/base');
+      next('/system');
     }
   } else {
     // 路由已初始化，直接放行

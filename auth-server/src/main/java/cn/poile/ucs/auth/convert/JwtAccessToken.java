@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.security.KeyPair;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -49,6 +50,14 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
     @Autowired
     private CustomUserAuthenticationConverter customUserAuthenticationConverter;
 
+    public static void main(String[] args) {
+        try {
+            byte[] decoded = Base64.getDecoder().decode("0tVToE4Kbib+iEerRoPhiw==");
+            log.info("Base64解码成功，长度：{}", decoded.length);
+        } catch (IllegalArgumentException e) {
+            log.error("Base64解码失败，密文格式错误", e);
+        }
+    }
     @PostConstruct
     public void init() {
         // 设置密钥对
