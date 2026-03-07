@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.yzx.model.Result;
 import com.yzx.model.product.SpuInfoEntity;
 
+import javax.validation.constraints.NotNull;
+
 /**
  * @className: SpuInfoService
  * @author: yzx
@@ -12,5 +14,6 @@ import com.yzx.model.product.SpuInfoEntity;
  * @description:
  */
 public interface SpuInfoService extends IService<SpuInfoEntity> {
-    Result up(String spuId);
+
+    boolean upSpu(@NotNull(message = "spuId不能为空") String spuId);
 }

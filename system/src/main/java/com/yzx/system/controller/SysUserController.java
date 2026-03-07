@@ -21,11 +21,14 @@ import com.yzx.system.service.ISysUserService;
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.CollectionUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -51,9 +54,9 @@ public class SysUserController {
     /**
      * 获取用户列表
      */
-    @GetMapping("/list")
+    @PostMapping ("/list/{pageNum}/{pageSize}")
     @RequiresPermission("system:user:list")
-    public AjaxResult list(SysUser user, @Validated @RequestParam(defaultValue = "1") Integer pageNum, @RequestParam(defaultValue = "10") Integer pageSize) {
+    public AjaxResult list(@RequestBody SysUser user,@PathVariable("pageNum") Integer pageNum,@PathVariable("pageSize") Integer pageSize) {
         Page<SysUser> page = new Page<>(pageNum, pageSize);
         Page<SysUser> result = userService.selectUserList(user, page);
         return AjaxResult.success(result);
@@ -177,6 +180,9 @@ public class SysUserController {
     @Log(title = "用户管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{userIds}")
     public AjaxResult remove(@PathVariable Long[] userIds) {
+        if (CollectionUtils.isEmpty(Arrays.asList(userIds))){
+            return AjaxResult.error("请选择要删除的用户");
+        }
         if (ArrayUtils.contains(userIds, SecurityUtils.getUserId())) {
             return AjaxResult.error("当前用户不能删除");
         }
@@ -240,12 +246,45 @@ public class SysUserController {
     }
 
     /**
+     * 新增或修改用户
+     */
+    @PostMapping
+    @RequiresPermission("system:user:add")
+    public AjaxResult save(@Validated @RequestBody SysUser user) {
+        // 检查用户名、手机号码和邮箱的唯一性
+        if (!userService.checkUserNameUnique(user)) {
+            return AjaxResult.error("用户'" + user.getUserName() + "'失败，登录账号已存在");
+        } else if (StringUtils.isNotEmpty(user.getPhonenumber()) && !userService.checkPhoneUnique(user)) {
+            return AjaxResult.error("用户'" + user.getUserName() + "'失败，手机号码已存在");
+        } else if (StringUtils.isNotEmpty(user.getEmail()) && !userService.checkEmailUnique(user)) {
+            return AjaxResult.error("用户'" + user.getUserName() + "'失败，邮箱账号已存在");
+        }
+        
+        if (user.getUserId() == null) {
+            // 新增用户
+            user.setCreateBy(SecurityUtils.getUsername());
+            user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
+            return AjaxResult.success(userService.insertUser(user));
+        } else {
+            // 修改用户
+            userService.checkUserAllowed(user);
+            userService.checkUserDataScope(user.getUserId());
+            user.setUpdateBy(SecurityUtils.getUsername());
+            // 如果密码不为空，才加密并设置密码
+            if (!StringUtils.isEmpty(user.getPassword())) {
+                user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
+            }
+            return AjaxResult.success(userService.updateUser(user));
+        }
+    }
+
+    /**
      * 分销注册
      * @param user
      * @param code
      * @return
      */
-    @PostMapping
+    @PostMapping("/registerByH5")
     public AjaxResult register(@Valid @RequestBody RegisterUserTo user, String code) {
         return AjaxResult.success(userService.registerByH5(user, code));
     }

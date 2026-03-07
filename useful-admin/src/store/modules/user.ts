@@ -9,7 +9,7 @@ const InitUserInfo = {
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    token: localStorage.getItem(TOKEN_NAME) , // 默认token不走权限
+    token: localStorage.getItem(TOKEN_NAME) || '', // 默认token不走权限
     userInfo: { ...InitUserInfo },
   }),
   getters: {

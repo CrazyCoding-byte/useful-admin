@@ -40,8 +40,9 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // 2. 非白名单路由，无token → 跳登录页
-  console.log(token)
-  if (!token) {
+  console.log('当前token:', token);
+  if (!token || token === 'undefined' || token === 'null') {
+    console.log('无token，跳转到登录页');
     next({
       path: '/login',
       query: { redirect: encodeURIComponent(to.fullPath) },

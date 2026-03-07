@@ -83,6 +83,32 @@ export const defaultRouterList: Array<RouteRecordRaw> = [
     ],
   },
   {
+    path: '/product',
+    name: 'product',
+    component: () => import('@/layouts/index.vue'),
+    children: [
+      {
+        path: '',
+        name: 'product-list',
+        component: () => import('@/pages/product/index.vue'),
+        meta: { title: '商品管理' },
+      },
+    ],
+  },
+  {
+    path: '/shop',
+    name: 'shop',
+    component: () => import('@/layouts/index.vue'),
+    children: [
+      {
+        path: 'category',
+        name: 'shop-category',
+        component: () => import('@/pages/shop/category/index.vue'),
+        meta: { title: '商品分类管理' },
+      },
+    ],
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: '404Page',
     component: () => import('@/pages/result/404/index.vue'),

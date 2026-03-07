@@ -1,6 +1,6 @@
 package com.yzx.product.repository;
 
-import com.yzx.product.entity.SkuEs;
+import com.yzx.product.entity.ProductEsDoc;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 
 /**
@@ -10,5 +10,5 @@ import org.springframework.data.elasticsearch.repository.ElasticsearchRepository
  * @Version: 1.0
  * @description:
  */
-public interface SkuRepository extends ElasticsearchRepository<SkuEs,Long> {
+public interface SkuRepository extends ElasticsearchRepository<ProductEsDoc,Long> {
 }

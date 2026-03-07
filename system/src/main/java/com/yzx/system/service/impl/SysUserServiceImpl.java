@@ -79,25 +79,25 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
 
         // 构建查询条件
-        if (StringUtils.hasText(user.getUserName())) {
+        if (!StringUtils.isEmpty(user.getUserName())) {
             queryWrapper.like(SysUser::getUserName, user.getUserName());
         }
-        if (StringUtils.hasText(user.getNickName())) {
+        if (!StringUtils.isEmpty(user.getNickName())) {
             queryWrapper.like(SysUser::getNickName, user.getNickName());
         }
-        if (StringUtils.hasText(user.getPhonenumber())) {
+        if (!StringUtils.isEmpty(user.getPhonenumber())) {
             queryWrapper.like(SysUser::getPhonenumber, user.getPhonenumber());
         }
-        if (StringUtils.hasText(user.getEmail())) {
+        if (!StringUtils.isEmpty(user.getEmail())) {
             queryWrapper.like(SysUser::getEmail, user.getEmail());
         }
-        if (StringUtils.hasText(user.getStatus())) {
+        if (!StringUtils.isEmpty(user.getStatus())) {
             queryWrapper.eq(SysUser::getStatus, user.getStatus());
         }
         if (user.getDeptId() != null) {
             queryWrapper.eq(SysUser::getDeptId, user.getDeptId());
         }
-        if (StringUtils.hasText(user.getDelFlag())) {
+        if (!StringUtils.isEmpty(user.getDelFlag())) {
             queryWrapper.eq(SysUser::getDelFlag, user.getDelFlag());
         } else {
             // 默认查询未删除的用户
@@ -105,7 +105,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
 
         // 执行分页查询
-        return baseMapper.selectPage(page, queryWrapper);
+        // 使用selectCount方法明确指定计数列，避免MyBatis-Plus生成错误的COUNT()查询
+        long total = baseMapper.selectCount(queryWrapper);
+        List<SysUser> records = baseMapper.selectList(queryWrapper
+                .last("LIMIT " + (page.getCurrent() - 1) * page.getSize() + "," + page.getSize()));
+        page.setTotal(total);
+        page.setRecords(records);
+        return page;
     }
 
     /**
@@ -121,13 +127,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
 
         // 构建查询条件
-        if (StringUtils.isEmpty(user.getUserName())) {
+        if (!StringUtils.isEmpty(user.getUserName())) {
             queryWrapper.like(SysUser::getUserName, user.getUserName());
         }
-        if (StringUtils.isEmpty(user.getNickName())) {
+        if (!StringUtils.isEmpty(user.getNickName())) {
             queryWrapper.like(SysUser::getNickName, user.getNickName());
         }
-        if (StringUtils.isEmpty(user.getStatus())) {
+        if (!StringUtils.isEmpty(user.getStatus())) {
             queryWrapper.eq(SysUser::getStatus, user.getStatus());
         }
         if (user.getDeptId() != null) {
@@ -152,13 +158,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
 
         // 构建查询条件
-        if (StringUtils.isEmpty(user.getUserName())) {
+        if (!StringUtils.isEmpty(user.getUserName())) {
             queryWrapper.like(SysUser::getUserName, user.getUserName());
         }
-        if (StringUtils.isEmpty(user.getNickName())) {
+        if (!StringUtils.isEmpty(user.getNickName())) {
             queryWrapper.like(SysUser::getNickName, user.getNickName());
         }
-        if (StringUtils.isEmpty(user.getStatus())) {
+        if (!StringUtils.isEmpty(user.getStatus())) {
             queryWrapper.eq(SysUser::getStatus, user.getStatus());
         }
         if (user.getDeptId() != null) {
@@ -344,14 +350,15 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     public int updateUser(SysUser user) {
         Long userId = user.getUserId();
-        // 删除用户与角色关联
-        userRoleMapper.deleteUserRoleByUserId(userId);
-        // 新增用户与角色管理
+        // 如果提供了角色信息，才更新角色关联
         if (user.getRoleIds() != null) {
+            // 删除用户与角色关联
+            userRoleMapper.deleteUserRoleByUserId(userId);
+            // 新增用户与角色管理
             insertUserRole(user);
         }
         // 修改用户信息
-        return baseMapper.updateById(user) > 0 ? 1 : 0;
+        return baseMapper.update(user,new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserId,user.getUserId())) > 0 ? 1 : 0;
     }
 
     /**
@@ -490,9 +497,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             checkUserDataScope(userId);
         }
         // 删除用户与角色关联
-        userRoleMapper.deleteUserRoleByUserIds(userIds);
+        LambdaQueryWrapper<SysUserRole> sysUserRoleLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        sysUserRoleLambdaQueryWrapper.in(SysUserRole::getUserId, userIds);
+        userRoleMapper.delete(sysUserRoleLambdaQueryWrapper);
         // 批量删除用户
-        return baseMapper.deleteBatchIds(Arrays.asList(userIds)) > 0 ? 1 : 0;
+        return baseMapper.delete(new LambdaQueryWrapper<SysUser>().in(SysUser::getUserId,Arrays.asList(userIds))) > 0 ? 1 : 0;
     }
 
     /**

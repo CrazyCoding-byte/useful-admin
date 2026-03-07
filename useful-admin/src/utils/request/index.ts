@@ -111,7 +111,7 @@ const transform: AxiosTransform = {
   requestInterceptors: (config, options) => {
     // 请求之前处理config
     const token = localStorage.getItem(TOKEN_NAME);
-    if (token && (config as Recordable)?.requestOptions?.withToken !== false) {
+    if (token && token !== 'undefined' && token !== 'null' && (config as Recordable)?.requestOptions?.withToken !== false) {
       // jwt token
       (config as Recordable).headers.Authorization = options.authenticationScheme
         ? `${options.authenticationScheme} ${token}`
@@ -187,7 +187,7 @@ function createAxios(opt?: Partial<CreateAxiosOptions>) {
           withToken: true,
           // 重试
           retry: {
-            count: 3,
+            count: 0,
             delay: 1000,
           },
         },

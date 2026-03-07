@@ -1,9 +1,15 @@
 package com.yzx.product.service.serviceimpl;
 
 import com.yzx.model.Result;
+import com.yzx.model.product.vo.SkuDetailRedisVO;
 import com.yzx.product.entity.SearchParam;
 import com.yzx.product.service.EsSearchService;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * @className: EsSearchServiceImpl
@@ -14,10 +20,20 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class EsSearchServiceImpl  implements EsSearchService {
-
+    @Autowired
+    private RestHighLevelClient restHighLevelClient;
+    @Autowired
+    private RedisTemplate<String,Object> redisTemplate;
     @Override
     public Result search(SearchParam searchParam) {
 
         return null;
+    }
+
+    /**
+     * 批量从Redis获取Sku详情
+     */
+    private List<SkuDetailRedisVO> batchGetSkuFromRedis(List<Long> skuIdList){
+
     }
 }

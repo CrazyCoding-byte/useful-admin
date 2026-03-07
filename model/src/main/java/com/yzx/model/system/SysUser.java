@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.yzx.model.annotation.Excel;
 import com.yzx.model.annotation.Excels;
 import com.yzx.model.annotation.Xss;
+import lombok.Data;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
@@ -75,6 +76,7 @@ public class SysUser extends BaseEntity {
     private String qrCode;
 
     /** 密码 */
+    @TableField(exist = false)
     private String password;
 
     /** 帐号状态（0正常 1停用） */
@@ -388,4 +390,5 @@ public class SysUser extends BaseEntity {
                 .append("roleId", getRoleId())
                 .toString();
     }
+
 }

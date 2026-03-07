@@ -2,13 +2,10 @@ package cn.poile.ucs.auth.service;
 
 import cn.poile.ucs.auth.mapper.OauthClientDetailsMapper;
 import com.alibaba.fastjson.JSON;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.api.R;
 import com.yzx.model.constant.Constants;
 import com.yzx.model.enums.AuthCode;
 import com.yzx.model.exception.CustomException;
 import com.yzx.model.exception.ExceptionCast;
-import com.yzx.model.ucenter.OauthClientDetails;
 import com.yzx.model.ucenter.ext.AuthToken;
 import com.yzx.model.utils.UserAgentUtils;
 import lombok.extern.slf4j.Slf4j;

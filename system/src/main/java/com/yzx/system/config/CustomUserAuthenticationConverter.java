@@ -52,7 +52,7 @@ public class CustomUserAuthenticationConverter implements UserAuthenticationConv
         Set<String> permissions = decryptToPermissions(encryptedPermissions);
 
         // 3. 仅当用户名不为空时，构建完整的BaseUserDetail
-        if (StringUtils.hasText(username)) {
+        if (!StringUtils.isEmpty(username)) {
             try {
                 // 3.1 构建BaseAuth（基础认证信息）
                 BaseAuth baseAuth = new BaseAuth();
@@ -137,9 +137,9 @@ public class CustomUserAuthenticationConverter implements UserAuthenticationConv
      */
     private Collection<GrantedAuthority> decryptToAuthorities(String encryptedAuthorities) {
         List<GrantedAuthority> authorities = new ArrayList<>();
-        if (StringUtils.hasText(encryptedAuthorities)) {
+        if (!StringUtils.isEmpty(encryptedAuthorities)) {
             String authJson = decrypt(encryptedAuthorities);
-            if (StringUtils.hasText(authJson)) {
+            if (!StringUtils.isEmpty(authJson)) {
                 try {
                     // 解析授权服务器加密的authorities JSON数组
                     List<Map> rawAuthList = JSON.parseArray(authJson, Map.class);
@@ -173,9 +173,9 @@ public class CustomUserAuthenticationConverter implements UserAuthenticationConv
      */
     private Set<String> decryptToPermissions(String encryptedPermissions) {
         Set<String> permissions = new HashSet<>();
-        if (StringUtils.hasText(encryptedPermissions)) {
+        if (!StringUtils.isEmpty(encryptedPermissions)) {
             String permJson = decrypt(encryptedPermissions);
-            if (StringUtils.hasText(permJson)) {
+            if (!StringUtils.isEmpty(permJson)&&!StringUtils.isEmpty(permJson)) {
                 try {
                     List<String> permList = JSON.parseArray(permJson, String.class);
                     permissions = new HashSet<>(permList); // List转Set
