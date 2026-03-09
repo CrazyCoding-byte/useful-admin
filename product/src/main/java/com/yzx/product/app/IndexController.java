@@ -1,11 +1,14 @@
 package com.yzx.product.app;
 
+import com.yzx.model.AjaxResult;
 import com.yzx.model.Result;
 import com.yzx.product.entity.SearchParam;
 import com.yzx.product.service.EsSearchService;
 import com.yzx.product.service.ProductCateGoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
 
 /**
  * @className: IndexController
@@ -26,14 +29,19 @@ public class IndexController {
 
     //查询出分类信息
     @GetMapping("/index/category")
-    public Result index() {
+    public AjaxResult index() {
         return productCateGoryService.getCateGory();
     }
 
     //es搜索
     @PostMapping("/search")
-    public Result search(SearchParam searchParam) {
-        return esSearchService.search(searchParam);
+    public AjaxResult search(SearchParam searchParam) {
+        try {
+            return esSearchService.search(searchParam);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return AjaxResult.error("搜索失败");
     }
 
     //根据spuId查询商品信息
@@ -42,7 +50,14 @@ public class IndexController {
 //
 //    }
     @GetMapping("getBanner")
-    public Result getBanner() {
-        return Result.success();
+    public AjaxResult getBanner() {
+        return AjaxResult.success();
+    }
+
+
+    @GetMapping("getProductInfo/{spuId}")
+    public AjaxResult getProductInfo(@PathVariable Long spuId) {
+
+        return AjaxResult.success();
     }
 }

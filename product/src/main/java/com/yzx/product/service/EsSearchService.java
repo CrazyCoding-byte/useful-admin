@@ -1,7 +1,10 @@
 package com.yzx.product.service;
 
+import com.yzx.model.AjaxResult;
 import com.yzx.model.Result;
 import com.yzx.product.entity.SearchParam;
+
+import java.io.IOException;
 
 /**
  * @className: EsSearchService
@@ -11,5 +14,5 @@ import com.yzx.product.entity.SearchParam;
  * @description:
  */
 public interface EsSearchService {
-    Result search(SearchParam searchParam);
+    AjaxResult search(SearchParam searchParam) throws IOException;
 }

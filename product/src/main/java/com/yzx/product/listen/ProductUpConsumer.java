@@ -1,16 +1,21 @@
 package com.yzx.product.listen;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.yzx.model.product.PmsSkuSaleAttrValue;
 import com.yzx.model.product.SkuInfoEntity;
 import com.yzx.product.entity.ProductEsDoc;
+import com.yzx.product.mapper.PmsSkuSaleAttrValueMapper;
 import com.yzx.product.repository.SkuRepository;
 import com.yzx.product.service.SkuInfoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -33,8 +38,11 @@ public class ProductUpConsumer {
         log.info("开始同步 ES spuId:{}", spuId);
 
         // 1. 查该 spu 下所有 sku
-        List<Long> skuIdList = skuInfoMapper.selectSkuIdListBySpuId(spuId);
-
+        List<Long> skuIdList = skuInfoMapper.list(new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSpuId, spuId)).stream().map(item -> item.getSpuId()).collect(Collectors.toList());
+        if (CollectionUtils.isEmpty(skuIdList)) {
+            log.error("spuId:{} 下无 sku", spuId);
+            return;
+        }
         // 2. 逐个同步到 ES
         for (Long skuId : skuIdList) {
             buildAndSaveEsDoc(skuId);
@@ -48,8 +56,11 @@ public class ProductUpConsumer {
 
         // 2. 查询销售属性
         List<PmsSkuSaleAttrValue> saleAttrList =
-            skuSaleAttrMapper.list(skuId);
-
+                skuSaleAttrMapper.selectList(new LambdaQueryWrapper<PmsSkuSaleAttrValue>().eq(PmsSkuSaleAttrValue::getSkuId, skuId));
+        if (CollectionUtils.isEmpty(saleAttrList)) {
+            log.error("skuId:{} 销售属性为空", skuId);
+            return;
+        }
         // 3. 构造 ES 数据
         ProductEsDoc doc = new ProductEsDoc();
         doc.setId(sku.getSkuId());
