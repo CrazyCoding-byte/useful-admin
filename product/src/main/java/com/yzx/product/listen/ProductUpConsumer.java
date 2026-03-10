@@ -1,6 +1,9 @@
 package com.yzx.product.listen;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import com.yzx.common.aop.Idempotent;
 import com.yzx.model.product.PmsSkuSaleAttrValue;
 import com.yzx.model.product.SkuInfoEntity;
 import com.yzx.product.entity.ProductEsDoc;
@@ -8,6 +11,7 @@ import com.yzx.product.mapper.PmsSkuSaleAttrValueMapper;
 import com.yzx.product.repository.SkuRepository;
 import com.yzx.product.service.SkuInfoService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -34,18 +38,32 @@ public class ProductUpConsumer {
      * 监听上架消息 → 把该 SPU 下所有 SKU 同步到 ES
      */
     @RabbitListener(queues = "product.up.queue")
-    public void upSpuSyncEs(Long spuId) {
+    @Idempotent()
+    public void upSpuSyncEs(Long spuId, Message message, Channel channel) throws Exception {
+        long deliverTag=message.getMessageProperties().getDeliveryTag();
         log.info("开始同步 ES spuId:{}", spuId);
 
-        // 1. 查该 spu 下所有 sku
-        List<Long> skuIdList = skuInfoMapper.list(new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSpuId, spuId)).stream().map(item -> item.getSpuId()).collect(Collectors.toList());
-        if (CollectionUtils.isEmpty(skuIdList)) {
-            log.error("spuId:{} 下无 sku", spuId);
-            return;
-        }
-        // 2. 逐个同步到 ES
-        for (Long skuId : skuIdList) {
-            buildAndSaveEsDoc(skuId);
+        try {
+            // 1. 查该 spu 下所有 sku
+            List<Long> skuIdList = skuInfoMapper.list(new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSpuId, spuId)).stream().map(item -> item.getSpuId()).collect(Collectors.toList());
+            if (CollectionUtils.isEmpty(skuIdList)) {
+                log.error("spuId:{} 下无 sku", spuId);
+                return;
+            }
+            // 2. 逐个同步到 ES
+            for (Long skuId : skuIdList) {
+                buildAndSaveEsDoc(skuId);
+            }
+
+            channel.basicAck(deliverTag, false);
+            log.info("spuId:{} 同步ES成功，消息tag:{} 已确认", spuId, deliverTag);
+        }catch (Exception e){
+            log.error("spuId:{} 同步ES失败，消息tag:{} 重新入队", spuId, deliverTag);
+            // 4. 业务失败 → 手动拒绝（根据场景选策略）
+            // 策略1：重试（重新入队）→ basicNack(标签, 批量, 重新入队)
+            // channel.basicNack(deliveryTag, false, true);
+            // 策略2：不重试（直接丢弃/入死信）→ 推荐生产用（避免死循环）
+            channel.basicNack(deliverTag, false, true);
         }
     }
 

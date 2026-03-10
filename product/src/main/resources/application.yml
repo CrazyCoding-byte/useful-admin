@@ -12,3 +12,18 @@ spring:
     username: root
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/product?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=UTC
+  rabbitmq:
+    addresses:
+    publisher-returns: true # 开启返回机制
+    publisher-confirm-type: correlated # 开启确认机制
+    template:
+      mandatory: true  #强制返回未路由的消息（否则直接丢弃）
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 3 # 消费线程数
+        max-concurrency: 10 # 最大消费线程数
+        retry:
+          enabled: true # 开启重试
+          max-attempts: 3 #最大重试次数
+          initial-interval: 1000ms # 初始重试间隔
