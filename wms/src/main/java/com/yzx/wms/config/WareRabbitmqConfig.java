@@ -1,4 +1,4 @@
-package com.yzx.common.config;
+package com.yzx.wms.config;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.Exchange;

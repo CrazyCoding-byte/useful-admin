@@ -1,7 +1,6 @@
 package com.yzx.distribution.listen;
 
 import com.rabbitmq.client.Channel;
-import com.yzx.common.config.RabbitMQConfig;
 import com.yzx.distribution.service.impl.DistributionServiceimp;
 import com.yzx.model.system.UserRegisteredMessage;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +25,7 @@ public class UserRegistrationListener {
     private DistributionServiceimp distributionService;
 
     @RabbitListener(
-            queues = RabbitMQConfig.USER_REGISTERED_QUEUE,
+            queues = UserRabbitMQConfig.USER_REGISTERED_QUEUE,
             ackMode = "MANUAL"
     )
     public void handleUserRegistration(UserRegisteredMessage message, Channel channel, Message mqMessage) {

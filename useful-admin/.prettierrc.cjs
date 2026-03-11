@@ -1,3 +1,4 @@
+// Prettier 配置，用来自动格式化代码，保证代码风格统一
 module.exports = {
   // 一行最多 120 字符..
   printWidth: 120,

@@ -3,7 +3,6 @@ package com.yzx.system.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.yzx.common.config.RabbitMQConfig;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.annotation.DataScope;
 import com.yzx.model.exception.ServiceException;
@@ -622,8 +621,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
 
         try {
-            rabbitTemplate.convertAndSend(RabbitMQConfig.USER_EXCHANGE,
-                    RabbitMQConfig.USER_REGISTERED_ROUTING_KEY,
+            rabbitTemplate.convertAndSend(UserRabbitMQConfig.USER_EXCHANGE,
+                    UserRabbitMQConfig.USER_REGISTERED_ROUTING_KEY,
                     userRegisteredMessage);
             log.info("发送用户注册消息成功：{}", userRegisteredMessage);
         } catch (Exception e) {

@@ -15,6 +15,7 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
 import java.lang.reflect.Method;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -34,7 +35,10 @@ public class IdempotentAspect {
     private final StringRedisTemplate redisTemplate;
     private final ExpressionParser expressionParser = new SpelExpressionParser();
     private final DefaultParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
-
+    @PostConstruct
+    public void init() {
+        System.out.println("====== IdempotentAspect 已加载 ======");
+    }
     @Around("@annotation(idempotent)")
     public Object around(ProceedingJoinPoint joinPoint, Idempotent idempotent) throws Throwable {
         // 1. 获取注解属性

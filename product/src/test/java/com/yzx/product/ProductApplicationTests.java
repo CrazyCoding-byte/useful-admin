@@ -16,6 +16,8 @@ class ProductApplicationTests {
     @Autowired
     private ElasticsearchOperations elasticsearchOperations;
 
+
+
     @Test
     void contextLoads() {
         MultiMatchQueryBuilder multiMatchQueryBuilder = QueryBuilders.multiMatchQuery("华为手机", "name")

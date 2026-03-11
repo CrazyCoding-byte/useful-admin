@@ -38,7 +38,10 @@ public class ProductUpConsumer {
      * 监听上架消息 → 把该 SPU 下所有 SKU 同步到 ES
      */
     @RabbitListener(queues = "product.up.queue")
-    @Idempotent()
+    @Idempotent( key = "'PRODUCT_UP_'+#spuId+'_'+#message.getMessageProperties().getHeader('spring_returned_message_correlation') ?: #message.getMessageProperties().getDeliveryTag()",
+            message = "该SPU上架消息正在处理中，请勿重复消费",
+            expireTime = 600 // 10分钟过期（覆盖业务最大执行时间）)
+    )
     public void upSpuSyncEs(Long spuId, Message message, Channel channel) throws Exception {
         long deliverTag=message.getMessageProperties().getDeliveryTag();
         log.info("开始同步 ES spuId:{}", spuId);
@@ -103,5 +106,6 @@ public class ProductUpConsumer {
 
         // 4. 保存到 ES
         productEsRepository.save(doc);
+        log.info("skuId:{}同步ES文档成功",skuId );
     }
 }

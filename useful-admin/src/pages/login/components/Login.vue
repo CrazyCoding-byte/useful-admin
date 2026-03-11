@@ -143,6 +143,7 @@ const onSubmit = async ({ validateResult }) => {
       console.log('权限路由初始化完成，路由数量:', permissionStore.routers.length);
 
       const redirect = route.query.redirect as string;
+      console.log("redirect:", redirect);
       const redirectUrl = redirect ? decodeURIComponent(redirect) : '/dashboard';
       console.log('准备跳转到:', redirectUrl);
       router.push(redirectUrl);

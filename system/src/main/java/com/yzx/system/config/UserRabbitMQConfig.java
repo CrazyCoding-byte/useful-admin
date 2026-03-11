@@ -1,4 +1,4 @@
-package com.yzx.common.config;
+package com.yzx.system.config;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
@@ -18,7 +18,7 @@ import org.springframework.context.annotation.Configuration;
  * @description:
  */
 @Configuration
-public class RabbitMQConfig {
+public class UserRabbitMQConfig {
 
     // 用户注册相关交换机和队列
     public static final String USER_EXCHANGE = "user.exchange";

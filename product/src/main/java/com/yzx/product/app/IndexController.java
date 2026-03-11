@@ -30,7 +30,7 @@ public class IndexController {
     //查询出分类信息
     @GetMapping("/index/category")
     public AjaxResult index() {
-        return productCateGoryService.getCateGory();
+        return AjaxResult.success(productCateGoryService.getCateGory());
     }
 
     //es搜索
@@ -39,9 +39,8 @@ public class IndexController {
         try {
             return esSearchService.search(searchParam);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+           return AjaxResult.error(e.getMessage());
         }
-        return AjaxResult.error("搜索失败");
     }
 
     //根据spuId查询商品信息

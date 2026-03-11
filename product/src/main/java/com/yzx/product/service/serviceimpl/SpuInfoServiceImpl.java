@@ -86,6 +86,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
         } catch (Exception e) {
             log.error("发送MQ消息失败，spuId:{}", spuId, e);
             // 注意：MQ发送失败不影响上架核心逻辑，后续靠定时任务兜底
+
         }
 
         log.info("SPU上架成功，spuId:{}", spuId);
