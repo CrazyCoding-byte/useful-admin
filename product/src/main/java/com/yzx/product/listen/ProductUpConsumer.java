@@ -1,24 +1,27 @@
 package com.yzx.product.listen;
 
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.yzx.common.aop.Idempotent;
+import com.yzx.common.enums.MessageStatusEnum;
+import com.yzx.common.mqlocalmessage.MqMessage;
+import com.yzx.common.service.IMqMessageService;
 import com.yzx.model.product.PmsSkuSaleAttrValue;
 import com.yzx.model.product.SkuInfoEntity;
 import com.yzx.product.entity.ProductEsDoc;
-import com.yzx.product.mapper.PmsSkuSaleAttrValueMapper;
 import com.yzx.product.repository.SkuRepository;
+import com.yzx.product.service.PmsSkuSaleAttrValueService;
 import com.yzx.product.service.SkuInfoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Component
@@ -32,18 +35,26 @@ public class ProductUpConsumer {
     private SkuRepository productEsRepository; // Spring Data ES
 
     @Autowired
-    private PmsSkuSaleAttrValueMapper skuSaleAttrMapper;
+    private PmsSkuSaleAttrValueService skuSaleAttrMapper;
+    @Autowired
+    private IMqMessageService mqMessageService;
 
-    /**
-     * 监听上架消息 → 把该 SPU 下所有 SKU 同步到 ES
-     */
-    @RabbitListener(queues = "product.up.queue")
     @Idempotent( key = "'PRODUCT_UP_'+#spuId+'_'+#message.getMessageProperties().getHeader('spring_returned_message_correlation') ?: #message.getMessageProperties().getDeliveryTag()",
             message = "该SPU上架消息正在处理中，请勿重复消费",
-            expireTime = 600 // 10分钟过期（覆盖业务最大执行时间）)
+            expireTime = 600 // 10分钟过期（覆盖业务最大执行时间）
     )
     public void upSpuSyncEs(Long spuId, Message message, Channel channel) throws Exception {
+
+        //获取唯一消费id
+        String msgId=message.getMessageProperties().getCorrelationId();
+        MqMessage mqmessage= mqMessageService.lambdaQuery().eq(MqMessage::getMsgId,msgId).one();
         long deliverTag=message.getMessageProperties().getDeliveryTag();
+        //消息已经完成->ack 不执行业务
+        if(mqmessage!=null&& Objects.equals(mqmessage.getStatus(), MessageStatusEnum.SUCCESS.getCode())){
+            log.warn("【重复消费】消息已处理，直接跳过，msgId:{}", msgId);
+            channel.basicAck(deliverTag,false);
+            return;
+        }
         log.info("开始同步 ES spuId:{}", spuId);
 
         try {
@@ -53,11 +64,12 @@ public class ProductUpConsumer {
                 log.error("spuId:{} 下无 sku", spuId);
                 return;
             }
+
             // 2. 逐个同步到 ES
             for (Long skuId : skuIdList) {
                 buildAndSaveEsDoc(skuId);
             }
-
+           mqMessageService.updateStatus(msgId,MessageStatusEnum.SUCCESS);
             channel.basicAck(deliverTag, false);
             log.info("spuId:{} 同步ES成功，消息tag:{} 已确认", spuId, deliverTag);
         }catch (Exception e){
@@ -69,15 +81,13 @@ public class ProductUpConsumer {
             channel.basicNack(deliverTag, false, true);
         }
     }
-
-    // 构造 ES 文档并保存
     private void buildAndSaveEsDoc(Long skuId) {
         // 1. 查询 sku 基本信息
         SkuInfoEntity sku = skuInfoMapper.getById(skuId);
 
         // 2. 查询销售属性
         List<PmsSkuSaleAttrValue> saleAttrList =
-                skuSaleAttrMapper.selectList(new LambdaQueryWrapper<PmsSkuSaleAttrValue>().eq(PmsSkuSaleAttrValue::getSkuId, skuId));
+                skuSaleAttrMapper.list(new LambdaQueryWrapper<PmsSkuSaleAttrValue>().eq(PmsSkuSaleAttrValue::getSkuId, skuId));
         if (CollectionUtils.isEmpty(saleAttrList)) {
             log.error("skuId:{} 销售属性为空", skuId);
             return;

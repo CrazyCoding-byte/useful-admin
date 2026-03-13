@@ -11,6 +11,7 @@ import com.yzx.model.ucenter.BaseAuth;
 import com.yzx.model.utils.BeanValidators;
 import com.yzx.model.utils.SecurityUtils;
 import com.yzx.model.utils.SpringUtils;
+import com.yzx.system.config.UserRabbitMQConfig;
 import com.yzx.system.mapper.SysRoleMapper;
 import com.yzx.system.mapper.SysUserMapper;
 import com.yzx.system.mapper.SysUserRoleMapper;

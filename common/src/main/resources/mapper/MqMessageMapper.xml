@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yzx.common.mapper.MqMessageMapper">
+
+
+    <select id="selectFailMessage" resultType="com.yzx.common.mqlocalmessage.MqMessage">
+        select * from mq_message
+        where status = 2
+          and retry_count &lt; #{maxRetry}
+        order by create_time asc
+    </select>
+</mapper>

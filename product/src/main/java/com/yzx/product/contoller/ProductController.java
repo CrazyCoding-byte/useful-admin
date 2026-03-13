@@ -1,7 +1,6 @@
 package com.yzx.product.contoller;
 
 import com.yzx.model.AjaxResult;
-import com.yzx.model.Result;
 import com.yzx.product.service.SpuInfoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
