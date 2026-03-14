@@ -1,7 +1,7 @@
 package com.yzx.common.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import  com.yzx.common.mqlocalmessage.MqMessage;
+import com.yzx.common.mqlocalmessage.MqMessage;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 

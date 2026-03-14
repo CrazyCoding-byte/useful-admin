@@ -17,15 +17,14 @@ public class TaskExecutorConfig {
 
     @Bean("messageRetryExecutor")
     public Executor messageRetryExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         // 核心线程数：根据服务器CPU核数设置
-        executor.setCorePoolSize(Runtime.getRuntime().availableProcessors());
-        executor.setMaxPoolSize(20);
-        executor.setQueueCapacity(1000);
-        executor.setKeepAliveSeconds(60);
-        executor.setThreadNamePrefix("message-retry-");
-        // 拒绝策略：拒绝新任务（不阻塞主线程）
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(200);
+        executor.setThreadNamePrefix("msg-retry-");
+        // 拒绝策略：由调用者线程执行（即同步执行）
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
         return executor;
     }

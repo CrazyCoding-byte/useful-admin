@@ -7,6 +7,8 @@ import lombok.Getter;
  */
 @Getter
 public enum MessageStatusEnum {
+    INIT(0,"新建"),
+    DEAD(4,"死信(最终失败)"),
     /**
      * 待确认/待执行
      */

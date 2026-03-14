@@ -3,6 +3,9 @@ package com.yzx.product.service.serviceimpl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yzx.apiclient.api.WmsFeignService;
+import com.yzx.common.enums.MessageStatusEnum;
+import com.yzx.common.mqlocalmessage.MqMessage;
+import com.yzx.common.service.impl.MqMessageServiceImpl;
 import com.yzx.model.product.SkuInfoEntity;
 import com.yzx.model.product.SpuInfoEntity;
 import com.yzx.product.service.AttrService;
@@ -15,9 +18,14 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -33,19 +41,14 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
     @Autowired
     private SkuInfoService skuInfoService;
     @Autowired
-    private ProductAttrValueService productAttrValueService;
-    @Autowired
-    private AttrService attrService;
-    @Autowired
-    private WmsFeignService wmsFeignService;
-
-    @Autowired
     private RedisTemplate redisTemplate;
-
     @Autowired
     private RabbitTemplate rabbitTemplate;
+    @Autowired
+    private MqMessageServiceImpl mqMessageService;
 
     @Override
+    @Transactional
     public boolean upSpu(String spuId) {
 
         //1.查询spu信息
@@ -68,6 +71,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
             log.error("SPU上架失败，数据库更新失败，spuId:{}", spuId);
             return false;
         }
+        //清理缓存
         List<Long> skuIdList = skuInfoService.list(new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSpuId, spuId)).stream().map(SkuInfoEntity::getSkuId).collect(Collectors.toList());
         for (Long skuId : skuIdList) {
             String skuKey = "product:sku:" + skuId;
@@ -78,18 +82,43 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
         String spuSkuCacheKey = "product:spu:" + spuId + ":skus";
         redisTemplate.delete(spuSkuCacheKey);
         log.info("删除SPU-SKU列表缓存成功，key:{}", spuSkuCacheKey);
-
-        // 5. 步骤2：发送MQ消息，异步更新ES索引（核心：不阻塞接口）
-        try {
-            rabbitTemplate.convertAndSend("product.up.exchange", "product.up.key", spuId);
-            log.info("发送SPU上架MQ消息成功，spuId:{}", spuId);
-        } catch (Exception e) {
-            log.error("发送MQ消息失败，spuId:{}", spuId, e);
-            // 注意：MQ发送失败不影响上架核心逻辑，后续靠定时任务兜底
-
-        }
-
-        log.info("SPU上架成功，spuId:{}", spuId);
+        //保存本地消息(后续失败重试)
+        MqMessage msg = new MqMessage();
+        String msgId = UUID.randomUUID().toString().replace("-", "");
+        msg.setMsgId(msgId);
+        msg.setAppName("product-service");
+        msg.setExchange("product.up.exchange");
+        msg.setRoutingKey("product.up.key");
+        msg.setContent("{\"spuId\":\"" + spuId + "\"}");
+        msg.setBizType("product.up");
+        msg.setStatus(MessageStatusEnum.INIT.getCode());
+        msg.setRetryCount(0);
+        msg.setCreateTime(LocalDateTime.now());
+        mqMessageService.save(msg);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
+            @Override
+            public void afterCommit() {
+                try {
+                    //尝试同步发送
+                    rabbitTemplate.convertAndSend(msg.getExchange(), msg.getRoutingKey(), msg.getContent(),
+                            m -> {
+                                m.getMessageProperties().setCorrelationId(msgId);
+                                return m;
+                            }
+                    );
+                   log.info("消息立即发送成功,msgId:{}",msgId);
+                   //发送成功,更新状态为 SUCCESS
+                    mqMessageService.lambdaUpdate()
+                            .eq(MqMessage::getMsgId, msgId)
+                            .set(MqMessage::getStatus, MessageStatusEnum.SUCCESS.getCode())
+                            .update();
+                }catch (Exception e) {
+                    //发送消息失败,保留INIT状态,等待定时任务重试
+                    log.error("消息发送失败,msgId:{}",msgId);
+                }
+            }
+        });
+        log.info("SPU上架成功，spuId:{}",spuId);
         return true;
     }
 }
