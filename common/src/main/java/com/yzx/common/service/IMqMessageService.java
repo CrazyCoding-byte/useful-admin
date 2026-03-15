@@ -36,4 +36,6 @@ public interface IMqMessageService extends IService<MqMessage> {
      * 查询失败消息
      */
     List<MqMessage> getFailMessage(int maxRetry);
+
+    void markAsDead(String msgId);
 }

@@ -2,6 +2,7 @@ package com.yzx.product.entity;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
@@ -104,7 +105,11 @@ public class ProductEsDoc {
      * 创建时间（支持时间范围检索）
      * 来源：pms_spu_info.create_time
      */
-    @Field(type = FieldType.Date)
+    @Field(
+            type = FieldType.Date,
+            format = DateFormat.custom,
+            pattern = "yyyy-MM-dd HH:mm:ss"
+    )
     private Date createTime;
 
     // 子 VO：销售属性 ES 字段

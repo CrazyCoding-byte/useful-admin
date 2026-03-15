@@ -62,4 +62,9 @@ public class MqMessageServiceImpl extends ServiceImpl<MqMessageMapper, MqMessage
     public List<MqMessage> getFailMessage(int maxRetry) {
         return baseMapper.selectFailMessage(maxRetry);
     }
+
+    @Override
+    public void markAsDead(String msgId) {
+        updateStatus(msgId, MessageStatusEnum.DEAD);
+    }
 }

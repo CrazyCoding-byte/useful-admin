@@ -77,7 +77,7 @@ public class AjaxResult extends HashMap<String, Object> {
     }
 
     public AjaxResult() {
-        put(CODE_TAG, Type.SUCCESS.value);
+        put(CODE_TAG, Type.SUCCESS.value());
         put(MSG_TAG,"success");
     }
 
@@ -122,11 +122,11 @@ public class AjaxResult extends HashMap<String, Object> {
     //————————————————响应失败—————————————————————
 
     public static AjaxResult error() {
-        return error(Type.ERROR.value,"未知异常，请联系管理员");
+        return error(Type.ERROR.value(),"未知异常，请联系管理员");
     }
 
     public static AjaxResult error(String msg) {
-        return error(Type.ERROR.value,msg);
+        return error(Type.ERROR.value(),msg);
     }
 
     public static AjaxResult error(int code,String msg) {
@@ -145,7 +145,7 @@ public class AjaxResult extends HashMap<String, Object> {
 
     public static AjaxResult warn(String msg) {
         AjaxResult result = new AjaxResult();
-        result.put(CODE_TAG, Type.WARN.value);
+        result.put(CODE_TAG, Type.WARN.value());
         result.put(MSG_TAG,msg);
         return result;
     }
@@ -159,7 +159,7 @@ public class AjaxResult extends HashMap<String, Object> {
 
     public static AjaxResult warn(String msg, Object data) {
         AjaxResult result = new AjaxResult();
-        result.put(CODE_TAG, Type.WARN.value);
+        result.put(CODE_TAG, Type.WARN.value());
         result.put(MSG_TAG,msg);
         result.put(DATA_TAG,data);
         return result;
@@ -198,7 +198,7 @@ public class AjaxResult extends HashMap<String, Object> {
      * @param msg  返回内容
      */
     public AjaxResult(Type type, String msg) {
-        super.put(CODE_TAG, type.value);
+        super.put(CODE_TAG, type.value());
         super.put(MSG_TAG, msg);
     }
 
@@ -210,7 +210,7 @@ public class AjaxResult extends HashMap<String, Object> {
      * @param data 数据对象
      */
     public AjaxResult(Type type, String msg, Object data) {
-        super.put(CODE_TAG, type.value);
+        super.put(CODE_TAG, type.value());
         super.put(MSG_TAG, msg);
         if (StringUtils.isNotNull(data)) {
             super.put(DATA_TAG, data);

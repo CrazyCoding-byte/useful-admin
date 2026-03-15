@@ -4,6 +4,7 @@ import org.apache.http.HttpHost;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,6 +18,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class EsConfig {
 
+    // 从yml读取配置
+    @Value("${spring.elasticsearch.rest.uris}")
+    private String esUris;
+
     public static final RequestOptions COMMON_OPTIONS;
 
     static {
@@ -26,8 +31,13 @@ public class EsConfig {
 
     @Bean
     public RestHighLevelClient esRestClient() {
-        RestHighLevelClient client = new RestHighLevelClient(
-                RestClient.builder(new HttpHost("127.0.0.1", 9200, "http")));
-        return client;
+        // 解析yml中的地址，不硬编码
+        String[] parts = esUris.replace("http://", "").split(":");
+        String host = parts[0];
+        int port = Integer.parseInt(parts[1]);
+
+        return new RestHighLevelClient(
+                RestClient.builder(new org.apache.http.HttpHost(host, port, "http"))
+        );
     }
 }

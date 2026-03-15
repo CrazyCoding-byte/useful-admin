@@ -1,5 +1,6 @@
 package com.yzx.product;
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
@@ -8,12 +9,13 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication()
+@SpringBootApplication
 @EnableDiscoveryClient
 @ComponentScan(basePackages ={ "com.yzx.product","com.yzx.common"})
-@EnableCaching
-@EnableAspectJAutoProxy
+@MapperScan({"com.yzx.product.mapper", "com.yzx.common.mapper"})
+@EnableScheduling
 public class ProductApplication {
 
     public static void main(String[] args) {

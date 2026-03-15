@@ -56,13 +56,11 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
         if (Objects.isNull(spuInfo)) {
             return false;
         }
-
         // 2. 校验是否已上架（避免重复操作）
         if (1 == spuInfo.getPublishStatus()) {
             log.info("SPU已上架，无需重复操作，spuId:{}", spuId);
             return true;
         }
-
         // 3. 核心：更新数据库上架状态（publish_status=1：上架）
         spuInfo.setPublishStatus(1);
         spuInfo.setUpdateTime(new java.util.Date());

@@ -6,14 +6,15 @@ eureka:
 spring:
   redis:
     port: 6379
-  host: 127.0.0.1
+    host: localhost
   datasource:
     password: yangzhixuan
     username: root
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/gulimall?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=UTC
   rabbitmq:
-    addresses:
+    host: 192.168.56.129
+    port: 5672
     publisher-returns: true # 开启返回机制
     publisher-confirm-type: correlated # 开启确认机制
     template:
@@ -27,3 +28,6 @@ spring:
           enabled: true # 开启重试
           max-attempts: 3 #最大重试次数
           initial-interval: 1000ms # 初始重试间隔
+  elasticsearch:
+    rest:
+      uris: http://192.168.56.129:9200

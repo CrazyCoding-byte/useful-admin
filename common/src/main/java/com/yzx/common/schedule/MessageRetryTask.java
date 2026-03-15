@@ -30,9 +30,8 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class MessageRetryTask {
     private final IMqMessageService mqMessageService;
-    private final RabbitTemplate rabbitTemplate;
     private final StringRedisTemplate stringRedisTemplate;
-
+    private final MessageRetryService messageRetryService;
     @Value("${spring.application.name}")
     private String appName;
     //分布式锁key
@@ -44,8 +43,9 @@ public class MessageRetryTask {
     /**
      * 定时任务
      */
-    @Scheduled(cron = "0/01 * * * * ?")
+    @Scheduled(cron = "0/05 * * * * ?")
     public void retryTask() {
+        log.info("定时任务开启");
         String lockKey = "mq:message:retry:lock:" + appName;
         Boolean lock = stringRedisTemplate.opsForValue()
                 .setIfAbsent(lockKey, "running", 30, TimeUnit.SECONDS);
@@ -70,7 +70,7 @@ public class MessageRetryTask {
             }
             log.info("【重试任务】服务[{}]有{}条消息需要重试", appName, failListMessage.size());
             for (MqMessage mqMessage : failListMessage) {
-                messageRetryService.asyncRetryMessage(mqMessage);
+                messageRetryService.asyncRetry(mqMessage);
             }
         } catch (Exception e){
             log.error("【重试任务】服务[{}]重试失败", appName, e);
