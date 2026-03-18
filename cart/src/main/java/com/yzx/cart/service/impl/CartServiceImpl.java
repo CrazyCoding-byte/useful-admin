@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
 import com.yzx.apiclient.api.ProductFeignService;
 import com.yzx.cart.service.CartService;
-import com.yzx.common.config.JwtHelp;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.cart.vo.CartItemVo;
 import com.yzx.model.cart.vo.CartVo;
@@ -20,7 +19,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;

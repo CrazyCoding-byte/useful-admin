@@ -1,8 +1,6 @@
 package com.yzx.order.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.yzx.common.config.JwtHelp;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.order.OrderEntity;
 import com.yzx.model.ucenter.BaseUserDetail;

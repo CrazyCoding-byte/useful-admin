@@ -118,7 +118,7 @@ public class AuthService {
      * @param body 请求体
      * @return AuthToken
      */
-    private AuthToken applyToken(LinkedMultiValueMap<String, String> body) {
+    public AuthToken applyToken(LinkedMultiValueMap<String, String> body) {
         // 移除外层大try-catch，让异常直接向上抛（仅保留必要的异常分类处理）
         // 解析请求参数
         String clientId = body.getFirst("client_id");

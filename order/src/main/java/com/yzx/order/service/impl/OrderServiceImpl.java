@@ -8,7 +8,6 @@ import com.yzx.apiclient.api.CartFeignService;
 import com.yzx.apiclient.api.MemberFeignService;
 import com.yzx.apiclient.api.ProductFeignService;
 import com.yzx.apiclient.api.WmsFeignService;
-import com.yzx.common.config.JwtHelp;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.exception.NoStockException;
 import com.yzx.model.order.*;
