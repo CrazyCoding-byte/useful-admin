@@ -2,7 +2,9 @@ import { defineStore } from 'pinia';
 import { TOKEN_NAME } from '@/config/global';
 import { store, usePermissionStore } from '@/store';
 import { Message, MessagePlugin } from 'tdesign-vue-next';
-
+import { userAuthApi } from '@/api/user/user';
+export const REFRESH_TOKEN_NAME='refreshToken';
+export const CLIENT_ID='yaohw';
 const InitUserInfo = {
   roles: [],
 };
@@ -22,19 +24,7 @@ export const useUserStore = defineStore('user', {
     const { account, password } = userInfo as { account: string; password: string };
     try{
       // 实际的 OAuth2 登录逻辑
-        const response = await fetch('/auth/user/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            clientId: 'yaohw',
-            grantType: 'password',
-            username: account,
-            password: password,
-          }),
-        });
-        const data = await response.json();
+        const data = await userAuthApi.login({ account, password });
         if (data.code === 200) {
           this.token = data.token;
           localStorage.setItem(TOKEN_NAME, data.token);
@@ -56,29 +46,14 @@ export const useUserStore = defineStore('user', {
     async getUserInfo() {
       try {
         // 实际的 OAuth2 获取用户信息逻辑
-        const response = await fetch('/auth/user/getInfo', {
-          method: 'GET',
-          headers: {
-            'Authorization': 'Bearer ' + this.token,
-          },
-        });
-
-        console.log('获取用户信息响应:', response);
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('获取用户信息数据:', data);
-          this.userInfo = {
-            name: data.user?.username || 'yaohw',
-            roles: Array.from(data.roles || ['admin']),
-          };
-          console.log('设置用户信息:', this.userInfo);
-          return Promise.resolve(this.userInfo);
-        } else {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('获取用户信息失败:', errorData);
-          return Promise.reject(new Error('获取用户信息失败'));
-        }
+        const data = await userAuthApi.getUserInfo(this.token);
+        console.log('获取用户信息数据:', data);
+        this.userInfo = {
+          name: data.user?.username || 'yaohw',
+          roles: Array.from(data.roles || ['admin']),
+        };
+        console.log('设置用户信息:', this.userInfo);
+        return Promise.resolve(this.userInfo);
       } catch (error) {
         console.error('获取用户信息错误:', error);
         return Promise.reject(error);
@@ -89,12 +64,7 @@ export const useUserStore = defineStore('user', {
     async logout() {
       try {
         // 可选：调用 OAuth2 登出端点
-        await fetch('/auth/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + this.token,
-          },
-        });
+        await userAuthApi.logout(this.token);
       } catch (error) {
         console.error('登出错误:', error);
       } finally {

@@ -6,6 +6,7 @@ import com.yzx.model.AjaxResult;
 import com.yzx.model.LoginRequest;
 import com.yzx.model.constant.Constants;
 import com.yzx.model.enums.AuthCode;
+import com.yzx.model.exception.CustomException;
 import com.yzx.model.exception.ExceptionCast;
 import com.yzx.model.ucenter.ext.AuthToken;
 import com.yzx.model.utils.Oauth2Util;
@@ -95,7 +96,38 @@ public class AuthenticationController {
         result.put("token", accessToken);
         return result;
     }
-
+    /**
+     * token刷新
+     * @param clientId
+     * @param refresh_token
+     * @return
+     */
+    @PostMapping("refresh")
+    public AjaxResult refreshToken(@RequestParam String clientId,@RequestParam("refreshtoken") String refresh_token){
+        //1.校验刷新令牌
+        if(org.springframework.util.StringUtils.isEmpty(refresh_token)){
+            return AjaxResult.error("令牌不能为空");
+        }
+        try{
+            LinkedMultiValueMap<String, String> param  = new LinkedMultiValueMap<>();
+            param.add("client_id",clientId);
+            param.add("grant_type","refresh_token");
+            param.add("refresh_token",refresh_token);
+            AuthToken authToken=  authService.refreshToken(param);
+            return AjaxResult.success("令牌刷新成功",authToken);
+        }catch (CustomException e){
+            log.error("令牌刷新失败",e);
+            return AjaxResult.error("令牌刷新失败");
+        }catch (Exception e){
+            log.error("令牌刷新失败",e);
+            return AjaxResult.error("令牌刷新失败");
+        }
+    }
+    /**
+     *
+     * @param request
+     * @return
+     */
     @GetMapping("/user/getInfo")
     public AjaxResult getInfo(HttpServletRequest request) {
         String bear = request.getHeader("Authorization");

@@ -2,6 +2,7 @@ package cn.poile.ucs.auth.service;
 
 import cn.poile.ucs.auth.mapper.OauthClientDetailsMapper;
 import com.alibaba.fastjson.JSON;
+import com.yzx.model.AjaxResult;
 import com.yzx.model.constant.Constants;
 import com.yzx.model.enums.AuthCode;
 import com.yzx.model.exception.CustomException;
@@ -26,6 +27,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
 import org.springframework.security.oauth2.common.OAuth2RefreshToken;
+import org.springframework.security.oauth2.common.exceptions.InvalidGrantException;
 import org.springframework.security.oauth2.provider.*;
 import org.springframework.security.oauth2.provider.token.AuthorizationServerTokenServices;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,8 @@ import org.springframework.util.Base64Utils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -112,6 +116,8 @@ public class AuthService {
         }
         return authToken;
     }
+
+
 
     /**
      * 申请令牌
@@ -231,6 +237,51 @@ public class AuthService {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public AuthToken refreshToken(LinkedMultiValueMap<String, String> body) {
+        // 前端传递的 client_id
+        String clientId = body.getFirst("client_id");
+        String refreshToken = body.getFirst("refresh_token");
+        String grantType = body.getFirst("grant_type");
+
+        // 1. 动态从数据库查询客户端信息（核心：无硬编码）
+        ClientDetails clientDetails = clientDetailsService.loadClientByClientId(clientId);
+        if (clientDetails == null) {
+            log.error("客户端不存在：{}", clientId);
+            ExceptionCast.cast(AuthCode.AUTH_LOGIN_ERROR);
+        }
+
+        // 2. 构建 OAuth2 请求
+        TokenRequest tokenRequest = new TokenRequest(Collections.emptyMap(), clientId,
+                clientDetails.getScope(), grantType);
+
+        OAuth2AccessToken accessToken = null;
+        try {
+            // 3. 调用原生刷新方法
+            accessToken = tokenServices.refreshAccessToken(refreshToken, tokenRequest);
+        } catch (InvalidGrantException e) {
+            log.error("刷新令牌已过期/无效：{}", refreshToken);
+            ExceptionCast.cast(AuthCode.AUTH_REFRESH_TOKEN_ERROR);
+        } catch (Exception e) {
+            log.error("刷新令牌失败", e);
+            ExceptionCast.cast(AuthCode.AUTH_REFRESH_TOKEN_ERROR);
+        }
+       if (accessToken != null) {
+            // 5. 存储到redis
+            String content = JSON.toJSONString(accessToken);
+            boolean result = saveToken(accessToken.getValue(), content, accessToken.getExpiresIn());
+            if (!result) {
+                log.error("保存令牌失败：{}", accessToken.getValue());
+                ExceptionCast.cast(AuthCode.AUTH_LOGIN_TOKEN_SAVEFAIL);
+            }
+        }
+        // 4. 封装返回
+        AuthToken authToken = new AuthToken();
+        authToken.setAccessToken(accessToken.getValue());
+        authToken.setRefreshToken(accessToken.getRefreshToken().getValue());
+        authToken.setExpiresIn(Long.valueOf(accessToken.getExpiresIn()));
+        return authToken;
     }
 
     /**

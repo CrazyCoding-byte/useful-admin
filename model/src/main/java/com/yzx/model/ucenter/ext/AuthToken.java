@@ -26,4 +26,8 @@ public class AuthToken {
      * jwt令牌
      */
     String jwtToken;
+    /**
+     * token有效期
+     */
+    Long expiresIn;
 }
