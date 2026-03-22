@@ -4,7 +4,7 @@ import { store, usePermissionStore } from '@/store';
 import { Message, MessagePlugin } from 'tdesign-vue-next';
 import { userAuthApi } from '@/api/user/user';
 export const REFRESH_TOKEN_NAME='refreshToken';
-export const CLIENT_ID='yaohw';
+export const CLIENT_ID_NAME='CLIENT_ID';
 const InitUserInfo = {
   roles: [],
 };
@@ -13,11 +13,16 @@ export const useUserStore = defineStore('user', {
   state: () => ({
     token: localStorage.getItem(TOKEN_NAME) || '', // 默认token不走权限
     userInfo: { ...InitUserInfo },
+    refreshToken:localStorage.getItem(REFRESH_TOKEN_NAME) || '',
+    clientId:localStorage.getItem(CLIENT_ID_NAME) || 'yaohw',
   }),
   getters: {
     roles: (state) => {
       return state.userInfo?.roles;
     },
+    getAccessToken:(state)=>  state.token,
+    getRefreshToken:(state)=>  state.refreshToken,
+    getClientId:(state)=>  state.clientId,
   },
   actions: {
     async login(userInfo: Record<string, unknown>) {
@@ -26,9 +31,7 @@ export const useUserStore = defineStore('user', {
       // 实际的 OAuth2 登录逻辑
         const data = await userAuthApi.login({ account, password });
         if (data.code === 200) {
-          this.token = data.token;
-          localStorage.setItem(TOKEN_NAME, data.token);
-          // 登录成功后获取用户信息
+          this.setToken(data.token,data.refreshToken);
           await this.getUserInfo();
           // 登录成功，返回成功信息
           return Promise.resolve(data);
@@ -42,6 +45,12 @@ export const useUserStore = defineStore('user', {
          MessagePlugin.error(errMsg);
          return Promise.reject(new Error(errMsg));
         }
+    },
+    setToken(token:string,refreshToken:string){
+      this.token=token;
+      this.refreshToken=refreshToken;
+      localStorage.setItem(TOKEN_NAME, token);
+      localStorage.setItem(REFRESH_TOKEN_NAME, refreshToken);
     },
     async getUserInfo() {
       try {
@@ -68,13 +77,20 @@ export const useUserStore = defineStore('user', {
       } catch (error) {
         console.error('登出错误:', error);
       } finally {
-        localStorage.removeItem(TOKEN_NAME);
         this.token = '';
+        this.refreshToken = '';
+        this.clientId='';
         this.userInfo = { ...InitUserInfo };
+        localStorage.removeItem(TOKEN_NAME);
+        localStorage.removeItem(REFRESH_TOKEN_NAME);
+        localStorage.removeItem(CLIENT_ID_NAME);
       }
     },
     async removeToken() {
       this.token = '';
+      this.refreshToken = '';
+      localStorage.removeItem(TOKEN_NAME);
+      localStorage.removeItem(REFRESH_TOKEN_NAME);
     },
   },
 });
