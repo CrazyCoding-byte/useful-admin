@@ -1,6 +1,7 @@
 package com.yzx.product.service.serviceimpl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.alibaba.fastjson.JSON;
 import com.yzx.common.enums.MessageStatusEnum;
@@ -41,6 +42,78 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
 
     @Autowired
     private MqMessageServiceImpl mqMessageService;
+
+    @Override
+    public Page<SpuInfoEntity> queryPage(Integer pageNum, Integer pageSize, Map<String, Object> params) {
+        // 1. 构造分页对象
+        Page<SpuInfoEntity> page = new Page<>(pageNum, pageSize);
+        
+        // 2. 构造查询条件
+        LambdaQueryWrapper<SpuInfoEntity> wrapper = new LambdaQueryWrapper<>();
+        
+        // 3. 动态添加查询条件
+        if (params != null && !params.isEmpty()) {
+            String productName = (String) params.get("productName");
+            String productCode = (String) params.get("productCode");
+            String status = (String) params.get("status");
+            
+            if (StringUtils.hasText(productName)) {
+                wrapper.like(SpuInfoEntity::getSpuName, productName);
+            }
+            if (StringUtils.hasText(productCode)) {
+                // 如果没有 productCode 字段，可以注释掉这行
+                // wrapper.eq(SpuInfoEntity::getProductCode, productCode);
+            }
+            if (StringUtils.hasText(status)) {
+                wrapper.eq(SpuInfoEntity::getPublishStatus, Integer.parseInt(status));
+            }
+        }
+        
+        // 4. 执行分页查询
+        return this.page(page, wrapper);
+    }
+
+    @Override
+    public boolean downSpu(String spuId) {
+        if (StringUtils.isEmpty(spuId)) {
+            log.error("spuId 不能为空");
+            return false;
+        }
+        
+        // 1. 查询 SPU
+        SpuInfoEntity spuInfo = this.getOne(new LambdaQueryWrapper<SpuInfoEntity>().eq(SpuInfoEntity::getId, spuId));
+        if (Objects.isNull(spuInfo)) {
+            log.error("SPU 不存在：{}", spuId);
+            return false;
+        }
+        
+        // 2. 校验状态
+        if (Objects.equals(spuInfo.getPublishStatus(), 0)) {
+            log.info("SPU 已下架：{}", spuId);
+            return true;
+        }
+        
+        // 3. 更新下架状态
+        spuInfo.setPublishStatus(0);
+        spuInfo.setUpdateTime(new Date());
+        boolean updateSuccess = this.updateById(spuInfo);
+        
+        if (!updateSuccess) {
+            log.error("SPU 下架失败：{}", spuId);
+            return false;
+        }
+        
+        // 4. 清理缓存（可选）
+        List<SkuInfoEntity> skuList = skuInfoService.list(new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSpuId, spuId));
+        for (SkuInfoEntity sku : skuList) {
+            String key = "product:sku:" + sku.getSkuId();
+            redisTemplate.delete(key);
+            log.info("删除缓存：{}", key);
+        }
+        
+        log.info("SPU 下架成功，spuId:{}", spuId);
+        return true;
+    }
 
     public static void main(String[] args) {
         String jsonstr="{\"spuId\":\"11\"}";

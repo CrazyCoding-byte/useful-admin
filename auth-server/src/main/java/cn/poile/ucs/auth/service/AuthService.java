@@ -1,5 +1,6 @@
 package cn.poile.ucs.auth.service;
 
+import cn.poile.ucs.auth.auth.Token.MobileCodeAuthenticationToken;
 import cn.poile.ucs.auth.mapper.OauthClientDetailsMapper;
 import com.alibaba.fastjson.JSON;
 import com.yzx.model.AjaxResult;
@@ -118,7 +119,6 @@ public class AuthService {
     }
 
 
-
     /**
      * 申请令牌
      * @param body 请求体
@@ -131,7 +131,6 @@ public class AuthService {
         String grantType = body.getFirst("grant_type");
         String password = body.getFirst("password");
         String username = body.getFirst("username");
-        String refreshToken = body.getFirst("refresh_token");
 
         // 校验核心参数
         if (StringUtils.isEmpty(clientId) || StringUtils.isEmpty(grantType)) {
@@ -152,7 +151,7 @@ public class AuthService {
         Authentication userAuthentication = null;
         OAuth2AccessToken accessToken = null;
 
-        if ("password".equals(grantType)) {
+        if (Constants.LOGIN_TYPE_PASSWORD.equals(grantType)) {
             // 密码模式：校验账号密码（移除嵌套try-catch，异常直接向外抛）
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                     username, password, Collections.emptyList()
@@ -177,17 +176,25 @@ public class AuthService {
             // 账号密码校验通过，生成令牌
             OAuth2Authentication oAuth2Authentication = new OAuth2Authentication(oAuth2Request, userAuthentication);
             accessToken = tokenServices.createAccessToken(oAuth2Authentication);
-        } else if ("refresh_token".equals(grantType)) {
-            // refresh_token模式：原有逻辑保留，异常直接抛
-            if (refreshToken == null) {
-                log.error("刷新令牌模式缺少参数：refresh_token");
-                ExceptionCast.cast(AuthCode.AUTH_REFRESH_TOKEN_NOT_EXIST); // 可新增23004
-            }
+        } else if (Constants.LOGIN_TYPE_SMS.equals(grantType)) {
+            // 短信模式：校验验证码（移除嵌套try-catch，异常直接向外抛）
+            String smsCode = body.getFirst("sms_code");
+            String mobile = body.getFirst("mobile");
+            MobileCodeAuthenticationToken mobileCodeAuthenticationToken = new MobileCodeAuthenticationToken(smsCode, mobile, Collections.emptyList());
             try {
-                accessToken = tokenServices.refreshAccessToken(refreshToken, tokenRequest);
-            } catch (Exception e) {
-                log.error("刷新令牌失败：token={}", refreshToken, e);
-                ExceptionCast.cast(AuthCode.AUTH_REFRESH_TOKEN_ERROR); // 可新增23005
+                // 调用认证管理器校验用户（触发UserDetailsService逻辑）
+                userAuthentication = authenticationManager.authenticate(mobileCodeAuthenticationToken);
+            } catch (UsernameNotFoundException e) {
+                // 捕获“账号不存在”→ 直接抛自定义异常（无外层catch拦截，会到login方法）
+                log.error("手机号未注册：{}", mobile, e);
+                ExceptionCast.cast(AuthCode.Auth_MOBILE_NOT_REGISTER); // 23001
+            } catch (BadCredentialsException e) {
+                log.error("短信验证码错误:手机号={}",mobile,e);
+                ExceptionCast.cast(AuthCode.AUTH_VERIFYCODE_ERROR);
+            }catch(Exception e){
+                // 其他认证失败（用户锁定、验证码过期等）
+                log.error("短信登录认证失败：手机号={}", mobile, e);
+                ExceptionCast.cast(AuthCode.AUTH_LOGIN_ERROR);
             }
         } else {
             log.error("不支持的授权模式：{}", grantType);
@@ -199,6 +206,7 @@ public class AuthService {
         authToken1.setAccessToken(accessToken.getValue());
         authToken1.setRefreshToken(accessToken.getRefreshToken().getValue());
         authToken1.setJwtToken(UUID.randomUUID().toString());
+        authToken1.setExpiresIn((long) accessToken.getExpiresIn());
         log.info("内部生成令牌成功：{}", authToken1);
         return authToken1;
     }
@@ -267,7 +275,7 @@ public class AuthService {
             log.error("刷新令牌失败", e);
             ExceptionCast.cast(AuthCode.AUTH_REFRESH_TOKEN_ERROR);
         }
-       if (accessToken != null) {
+        if (accessToken != null) {
             // 5. 存储到redis
             String content = JSON.toJSONString(accessToken);
             boolean result = saveToken(accessToken.getValue(), content, accessToken.getExpiresIn());

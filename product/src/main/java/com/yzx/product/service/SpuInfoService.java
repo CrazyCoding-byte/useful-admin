@@ -1,10 +1,11 @@
 package com.yzx.product.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.yzx.model.Result;
 import com.yzx.model.product.SpuInfoEntity;
 
 import javax.validation.constraints.NotNull;
+import java.util.Map;
 
 /**
  * @className: SpuInfoService
@@ -15,5 +16,21 @@ import javax.validation.constraints.NotNull;
  */
 public interface SpuInfoService extends IService<SpuInfoEntity> {
 
-    boolean upSpu(@NotNull(message = "spuId不能为空") String spuId);
+    boolean upSpu(@NotNull(message = "spuId 不能为空") String spuId);
+
+    /**
+     * 下架商品
+     * @param spuId 商品 ID
+     * @return 操作结果
+     */
+    boolean downSpu(String spuId);
+
+    /**
+     * 分页查询商品列表
+     * @param pageNum 页码
+     * @param pageSize 每页数量
+     * @param params 查询参数（productName, productCode, status）
+     * @return 分页结果
+     */
+    Page<SpuInfoEntity> queryPage(Integer pageNum, Integer pageSize, Map<String, Object> params);
 }

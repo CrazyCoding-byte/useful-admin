@@ -29,6 +29,17 @@ spring:
             - Path=/auth/**
           filters:
             - StripPrefix=0  # 转发时保留/auth前缀
+        - id: scan_route
+          uri: no://op
+          predicates:
+            - Path=/gateway/scan/**
 
 AES:
   key: yangzhixuan944166810@qq.com1150614966@qq.com13735713859
+management:
+  endpoint:
+    gateway:
+      enabled:
+gateway:
+  scan:
+    expire: 300

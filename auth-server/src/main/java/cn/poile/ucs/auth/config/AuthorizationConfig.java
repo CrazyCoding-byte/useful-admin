@@ -1,6 +1,7 @@
 package cn.poile.ucs.auth.config;
 
 import cn.poile.ucs.auth.auth.granter.MobileCodeTokenGranter;
+import cn.poile.ucs.auth.auth.granter.ScanCodeTokenGranter;
 import cn.poile.ucs.auth.convert.JwtAccessToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -120,6 +121,7 @@ public class AuthorizationConfig extends AuthorizationServerConfigurerAdapter {
             tokenGranters.add(new ResourceOwnerPasswordTokenGranter(authenticationManager, tokenServices, clientDetailsService, requestFactory));
         }
         tokenGranters.add(new MobileCodeTokenGranter(authenticationManager, tokenServices, clientDetailsService, requestFactory));
+        tokenGranters.add(new ScanCodeTokenGranter(authenticationManager, tokenServices, clientDetailsService, requestFactory));
         return tokenGranters;
     }
 

@@ -124,7 +124,7 @@ public class Constants {
     public static final String SMS_CODE = "sms_code";
 
     public static final String SYSTEM_VERSION = "system_version";
-
+    public static final String LOGIN_TYPE_SCAN = "scan_code"; // 扫码登录grant_type
     /**
      * redis用户token信息key值
      */

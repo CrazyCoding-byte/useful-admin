@@ -149,14 +149,6 @@ public class AuthenticationController {
     }
 
 
-    @PostMapping("refresh")
-    public AuthToken refresh(@RequestParam String refreshToken) {
-        LinkedMultiValueMap<String, String> param = new LinkedMultiValueMap<>();
-        param.add("client_id", "web");
-        param.add("grant_type", "refresh_token");
-        param.add("refresh_token", refreshToken);
-        return authService.applyToken(param);
-    }
     @GetMapping("/user/getRouters")
     public AjaxResult getRouters() {
         Oauth2Util.UserJwt userJwt = oauth2Util.getUserJwtFromHeader(ServletUtils.getRequest());

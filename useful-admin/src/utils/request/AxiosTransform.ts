@@ -10,18 +10,24 @@ let requests: ((token: string) => void)[] = [];
 
 // ====================== 你原有的类型定义【完全不动，严格保留】 ======================
 export interface CreateAxiosOptions extends AxiosRequestConfig {
-  authenticationScheme?: string;
-  transform?: AxiosTransform;
-  requestOptions?: RequestOptions;
+  authenticationScheme?: string; //认证方案
+  transform?: AxiosTransform;  //数据处理钩子集合
+  requestOptions?: RequestOptions; //接口配置项
 }
 
 export abstract class AxiosTransform {
+  //请求前处理
   beforeRequestHook?: (config: AxiosRequestConfig, options: RequestOptions) => AxiosRequestConfig;
+  //响应数据处理
   transformRequestHook?: (res: AxiosResponse<Result>, options: RequestOptions) => any;
   requestCatchHook?: (e: Error | AxiosError, options: RequestOptions) => Promise<any>;
+  //请求拦截器
   requestInterceptors?: (config: AxiosRequestConfig, options: CreateAxiosOptions) => AxiosRequestConfig;
+  //响应拦截器
   responseInterceptors?: (res: AxiosResponse) => AxiosResponse;
+  //请求错误拦截器
   requestInterceptorsCatch?: (error: AxiosError) => void;
+  //响应错误拦截器
   responseInterceptorsCatch?: (error: AxiosError) => void;
 }
 
@@ -147,6 +153,7 @@ const transform: AxiosTransform = {
     if (!isTokenExpired) return;
 
     const refreshToken = userStore.getRefreshToken;
+    //如果没有刷新Token，直接登出（严格遵循 void 返回值，不破坏类型）
     if (!refreshToken) {
       userStore.logout();
       return;

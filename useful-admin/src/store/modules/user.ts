@@ -31,6 +31,7 @@ export const useUserStore = defineStore('user', {
       // 实际的 OAuth2 登录逻辑
         const data = await userAuthApi.login({ account, password });
         if (data.code === 200) {
+          console.log("获取登录的信息",data)
           this.setToken(data.token,data.refreshToken);
           await this.getUserInfo();
           // 登录成功，返回成功信息

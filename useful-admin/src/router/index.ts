@@ -106,6 +106,12 @@ export const defaultRouterList: Array<RouteRecordRaw> = [
         component: () => import('@/pages/shop/category/index.vue'),
         meta: { title: '商品分类管理' },
       },
+      {
+        path: 'goods',
+        name: 'shop-goods',
+        component: () => import('@/pages/shop/goods/index.vue'),
+        meta: { title: '商品分类管理' },
+      },
     ],
   },
   {
