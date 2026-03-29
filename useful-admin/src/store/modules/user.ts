@@ -32,7 +32,8 @@ export const useUserStore = defineStore('user', {
         const data = await userAuthApi.login({ account, password });
         if (data.code === 200) {
           console.log("获取登录的信息",data)
-          this.setToken(data.token,data.refreshToken);
+          this.setToken(data.token.accessToken,data.token.refreshToken);
+          localStorage.setItem(CLIENT_ID_NAME, this.clientId);
           await this.getUserInfo();
           // 登录成功，返回成功信息
           return Promise.resolve(data);
@@ -96,6 +97,12 @@ export const useUserStore = defineStore('user', {
   },
 });
 
+// 缓存userStore实例
+let userStoreInstance = null;
+
 export function getUserStore() {
-  return useUserStore(store);
+  if (!userStoreInstance) {
+    userStoreInstance = useUserStore(store);
+  }
+  return userStoreInstance;
 }

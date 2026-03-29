@@ -7,8 +7,7 @@ package cn.poile.ucs.auth.constant;
  * @Version: 1.0
  * @description:
  */
-public class RedisConstant {
+public class RedisKeyConstant {
     public static final String SCAN_SCENE = "scan:scene";
     public static final long EXPIRE = 300;
-
 }

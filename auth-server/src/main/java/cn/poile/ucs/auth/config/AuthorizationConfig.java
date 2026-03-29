@@ -4,6 +4,7 @@ import cn.poile.ucs.auth.auth.granter.MobileCodeTokenGranter;
 import cn.poile.ucs.auth.auth.granter.ScanCodeTokenGranter;
 import cn.poile.ucs.auth.convert.JwtAccessToken;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,6 +25,7 @@ import org.springframework.security.oauth2.provider.implicit.ImplicitTokenGrante
 import org.springframework.security.oauth2.provider.password.ResourceOwnerPasswordTokenGranter;
 import org.springframework.security.oauth2.provider.refresh.RefreshTokenGranter;
 import org.springframework.security.oauth2.provider.token.AuthorizationServerTokenServices;
+import org.springframework.security.oauth2.provider.token.DefaultTokenServices;
 import org.springframework.security.oauth2.provider.token.TokenStore;
 import org.springframework.security.oauth2.provider.token.store.JwtTokenStore;
 
@@ -52,6 +54,31 @@ public class AuthorizationConfig extends AuthorizationServerConfigurerAdapter {
     @Autowired
     private JwtAccessToken jwtAccessToken; // 使用自定义的JwtAccessToken
 
+    @Autowired
+    @Qualifier("ClientDetailsService")
+    private ClientDetailsService clientDetailsService;
+
+
+
+    @Bean
+    public AuthorizationServerTokenServices tokenServices(TokenStore tokenStore) {
+        DefaultTokenServices services = new DefaultTokenServices();
+        // 1. 核心依赖注入（必须全！）
+        services.setTokenStore(tokenStore);
+        services.setClientDetailsService(clientDetailsService); // 客户端信息
+        services.setAuthenticationManager(authenticationManager); // 认证管理器
+        services.setTokenEnhancer(jwtAccessToken); // 关键：把 Token 转成 JWT 格式
+
+        // 2. 刷新 Token 配置
+        services.setSupportRefreshToken(true);
+        services.setReuseRefreshToken(true);
+
+        // 3. 过期时间（测试用 10 秒）
+        services.setAccessTokenValiditySeconds(10);
+        services.setRefreshTokenValiditySeconds(604800); // 7 天
+
+        return services;
+    }
 
     /**
      * 配置 Token Store
@@ -84,7 +111,7 @@ public class AuthorizationConfig extends AuthorizationServerConfigurerAdapter {
         AuthorizationCodeServices authorizationCodeServices = endpoints.getAuthorizationCodeServices();
         List<TokenGranter> tokenGranters = getTokenGranters(
                 authorizationCodeServices,
-                endpoints.getTokenServices(),
+                tokenServices(tokenStore()),
                 endpoints.getClientDetailsService(),
                 endpoints.getOAuth2RequestFactory());
         tokenGranters.add(endpoints.getTokenGranter());
@@ -93,12 +120,14 @@ public class AuthorizationConfig extends AuthorizationServerConfigurerAdapter {
                 // 使用自定义的JwtAccessToken转换器
                 .accessTokenConverter(jwtAccessToken)
                 .tokenStore(tokenStore())
+                .tokenServices(tokenServices(tokenStore()))
                 .tokenGranter(new CompositeTokenGranter(tokenGranters));
     }
 
     @Override
     public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
         security
+
                 .allowFormAuthenticationForClients()
                 .tokenKeyAccess("permitAll()")
                 .checkTokenAccess("isAuthenticated()");

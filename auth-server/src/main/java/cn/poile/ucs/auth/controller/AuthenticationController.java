@@ -87,31 +87,29 @@ public class AuthenticationController {
         body.add("grant_type", loginRequest.getGrantType());
         //申请令牌
         AuthToken authToken = authService.login(body, request);
-        //用户身份令牌
-        String accessToken = authToken.getAccessToken();
-        //取出用户身份令牌,将令牌存储到cookie
         AjaxResult result = new AjaxResult();
         result.put("code", 200);
         result.put("message", "操作成功");
-        result.put("token", accessToken);
+        result.put("token", authToken);
         return result;
     }
     /**
      * token刷新
-     * @param clientId
+     * @param client_id
      * @param refresh_token
+     * @param grant_type
      * @return
      */
     @PostMapping("refresh")
-    public AjaxResult refreshToken(@RequestParam String clientId,@RequestParam("refreshtoken") String refresh_token){
+    public AjaxResult refreshToken(@RequestParam String client_id,@RequestParam String refresh_token,@RequestParam String grant_type){
         //1.校验刷新令牌
         if(org.springframework.util.StringUtils.isEmpty(refresh_token)){
             return AjaxResult.error("令牌不能为空");
         }
         try{
             LinkedMultiValueMap<String, String> param  = new LinkedMultiValueMap<>();
-            param.add("client_id",clientId);
-            param.add("grant_type","refresh_token");
+            param.add("client_id",client_id);
+            param.add("grant_type",grant_type);
             param.add("refresh_token",refresh_token);
             AuthToken authToken=  authService.refreshToken(param);
             return AjaxResult.success("令牌刷新成功",authToken);
@@ -132,7 +130,7 @@ public class AuthenticationController {
     public AjaxResult getInfo(HttpServletRequest request) {
         String bear = request.getHeader("Authorization");
         System.out.println(bear);
-        Oauth2Util.UserJwt userJwt = oauth2Util.getUserJwtFromHeader(ServletUtils.getRequest());
+        Oauth2Util.UserJwt userJwt = oauth2Util.getUserJwtFromHeader(request);
 
         if (Objects.isNull(userJwt)) {
             return AjaxResult.error("用户未登录");
@@ -150,8 +148,8 @@ public class AuthenticationController {
 
 
     @GetMapping("/user/getRouters")
-    public AjaxResult getRouters() {
-        Oauth2Util.UserJwt userJwt = oauth2Util.getUserJwtFromHeader(ServletUtils.getRequest());
+    public AjaxResult getRouters(HttpServletRequest request) {
+        Oauth2Util.UserJwt userJwt = oauth2Util.getUserJwtFromHeader(request);
         Long id = userJwt.getId();
         return systemApi.getMenusTreeByUserId(id);
     }

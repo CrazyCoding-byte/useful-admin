@@ -176,6 +176,7 @@ public class AuthService {
             // 账号密码校验通过，生成令牌
             OAuth2Authentication oAuth2Authentication = new OAuth2Authentication(oAuth2Request, userAuthentication);
             accessToken = tokenServices.createAccessToken(oAuth2Authentication);
+
         } else if (Constants.LOGIN_TYPE_SMS.equals(grantType)) {
             // 短信模式：校验验证码（移除嵌套try-catch，异常直接向外抛）
             String smsCode = body.getFirst("sms_code");

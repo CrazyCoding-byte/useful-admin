@@ -32,8 +32,8 @@ public class Oauth2Util {
         }
 
         // 调用指定的AESEncryptUtil解密ID字段
-        String encryptedId = (String) jwtClaims.get("id");
-        String idStr = decryptWithAesUtil(encryptedId);
+         String encryptedId = (String) jwtClaims.get("u_id");
+         String idStr = decryptWithAesUtil(encryptedId);
 
         // 核心逻辑保留：类型转换+数字校验
         Integer id = null;

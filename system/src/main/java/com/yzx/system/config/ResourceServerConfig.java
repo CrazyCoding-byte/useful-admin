@@ -33,7 +33,8 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
     // 注入修正后的自定义转换器
     @Autowired
     private CustomUserAuthenticationConverter customUserAuthenticationConverter;
-
+    @Autowired
+    private CustomAuthExceptionEntryPoint customAuthExceptionEntryPoint;
     // 1. 初始化JwtAccessTokenConverter（关联解密转换器）
     @Bean
     public JwtAccessTokenConverter jwtAccessTokenConverter() {
@@ -75,6 +76,7 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
     @Override
     public void configure(ResourceServerSecurityConfigurer resources) {
         resources
+                .authenticationEntryPoint(customAuthExceptionEntryPoint)
                 .resourceId(RESOURCE_ID)
                 .stateless(true)
                 .tokenServices(tokenServices());

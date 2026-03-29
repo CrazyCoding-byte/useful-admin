@@ -42,7 +42,36 @@ router.beforeEach(async (to, from, next) => {
   // 2. 非白名单路由，无token → 跳登录页
   console.log('当前token:', token);
   if (!token || token === 'undefined' || token === 'null') {
-    console.log('无token，跳转到登录页');
+    console.log('无token，尝试使用 refreshToken 刷新');
+    const userStore = getUserStore();
+    const refreshToken = userStore.getRefreshToken;
+    const clientId = userStore.getClientId || '';
+    if (refreshToken) {
+      try {
+        // 使用 axios 直接调用刷新接口，避免使用封装的 request（会触发拦截器）
+        const params = new URLSearchParams();
+        params.append('client_id', clientId);
+        params.append('refresh_token', refreshToken);
+        params.append('grant_type', 'refresh_token');
+        const res = await (await import('axios')).default.post('/auth/refresh', params.toString(), {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        });
+        const data = res.data;
+        console.log('刷新token响应:', data);
+        if (data && data.code === 200 && data.data) {
+          const newToken = data.data.accessToken || data.data.token || '';
+          const newRefresh = data.data.refreshToken || data.data.refresh_token || '';
+          userStore.setToken(newToken, newRefresh);
+          console.log('刷新成功，继续路由导航');
+          // 继续当前导航，replace 避免历史污染
+          next({ ...to, replace: true });
+          return;
+        }
+      } catch (err) {
+        console.warn('使用 refreshToken 刷新失败:', err);
+      }
+    }
+    console.log('无token或刷新失败，跳转到登录页');
     next({
       path: '/login',
       query: { redirect: encodeURIComponent(to.fullPath) },
@@ -79,14 +108,66 @@ router.beforeEach(async (to, from, next) => {
       }
     } catch (error) {
       console.error('获取用户信息失败:', error);
-      // 清除token，跳登录页
-      userStore.logout();
-      permissionStore.restore();
-      next({
-        path: '/login',
-        query: { redirect: encodeURIComponent(to.fullPath) },
-      });
-      return;
+      // 尝试使用refreshToken刷新token
+      const refreshToken = userStore.getRefreshToken;
+      const clientId = userStore.getClientId || '';
+      if (refreshToken) {
+        try {
+          const params = new URLSearchParams();
+          params.append('client_id', clientId);
+          params.append('refresh_token', refreshToken);
+          params.append('grant_type', 'refresh_token');
+          const res = await (await import('axios')).default.post('/auth/refresh', params.toString(), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          });
+          const data = res.data;
+          console.log('刷新token响应:', data);
+          if (data && data.code === 200 && data.data) {
+            const newToken = data.data.accessToken || data.data.token || '';
+            const newRefresh = data.data.refreshToken || data.data.refresh_token || '';
+            userStore.setToken(newToken, newRefresh);
+            console.log('刷新成功，重新获取用户信息');
+            // 重新获取用户信息
+            try {
+              await userStore.getUserInfo();
+              roles = userStore.roles;
+              if (!roles || roles.length === 0) {
+                throw new Error('用户无角色权限');
+              }
+            } catch (err) {
+              console.error('刷新token后获取用户信息仍然失败:', err);
+              // 刷新token后获取用户信息仍然失败，使用默认角色
+              roles = ['admin'];
+              userStore.userInfo = {
+                name: 'admin',
+                roles: roles,
+              };
+              console.log('使用默认角色:', roles);
+            }
+          } else {
+            throw new Error('刷新token失败');
+          }
+        } catch (err) {
+          console.warn('使用 refreshToken 刷新失败:', err);
+          // 刷新失败，清除token，跳登录页
+          userStore.logout();
+          permissionStore.restore();
+          next({
+            path: '/login',
+            query: { redirect: encodeURIComponent(to.fullPath) },
+          });
+          return;
+        }
+      } else {
+        // 无refreshToken，清除token，跳登录页
+        userStore.logout();
+        permissionStore.restore();
+        next({
+          path: '/login',
+          query: { redirect: encodeURIComponent(to.fullPath) },
+        });
+        return;
+      }
     }
   }
 

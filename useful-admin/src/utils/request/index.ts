@@ -1,6 +1,8 @@
 // axios配置  可自行根据项目进行更改，只需更改该文件即可，其他文件可以不动
 import isString from 'lodash/isString';
 import merge from 'lodash/merge';
+import axios from 'axios';
+import { getUserStore } from '@/store/modules/user';
 import type { AxiosTransform, CreateAxiosOptions } from './AxiosTransform';
 import { VAxios } from './Axios';
 import proxy from '@/config/proxy';
@@ -11,6 +13,10 @@ const env = import.meta.env.MODE || 'development';
 
 // 如果是mock模式 或 没启用直连代理 就不配置host 会走本地Mock拦截 或 Vite 代理
 const host = env === 'mock' || !proxy.isRequestProxy ? '' : proxy[env].host;
+
+// 全局无感刷新状态
+let isRefreshing = false;
+let requests: ((token: string) => void)[] = [];
 
 // 数据处理，方便区分多种处理方式
 const transform: AxiosTransform = {
@@ -110,7 +116,8 @@ const transform: AxiosTransform = {
   // 请求拦截器处理
   requestInterceptors: (config, options) => {
     // 请求之前处理config
-    const token = localStorage.getItem(TOKEN_NAME);
+    const userStore = getUserStore();
+    const token = userStore.getAccessToken;
     if (token && token !== 'undefined' && token !== 'null' && (config as Recordable)?.requestOptions?.withToken !== false) {
       // jwt token
       (config as Recordable).headers.Authorization = options.authenticationScheme
@@ -125,24 +132,91 @@ const transform: AxiosTransform = {
     return res;
   },
 
-  // 响应错误处理
+  // 响应错误处理（含401刷新逻辑）
   responseInterceptorsCatch: (error: any) => {
-    const { config } = error;
-    if (!config || !config.requestOptions.retry) return Promise.reject(error);
+    const { config, response } = error;
+    // 如果没有配置或没有响应，退回原错误处理（包含原有重试逻辑）
+    if (!config || !response) return Promise.reject(error);
 
-    config.retryCount = config.retryCount || 0;
+    // 检测是否是token失效（后端可能返回 401 或 body.code === 401）
+    const isTokenInvalid = response.status === 401 || (response.data && (response.data.error === 'invalid_token' || response.data.code === 401));
+    if (!isTokenInvalid) {
+      // 保持原来的重试逻辑（如果有配置重试）
+      if (!config.requestOptions || !config.requestOptions.retry) return Promise.reject(error);
 
-    if (config.retryCount >= config.requestOptions.retry.count) return Promise.reject(error);
+      config.retryCount = config.retryCount || 0;
+      if (config.retryCount >= config.requestOptions.retry.count) return Promise.reject(error);
+      config.retryCount += 1;
+      const backoff = new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(config);
+        }, config.requestOptions.retry.delay || 1);
+      });
+      config.headers = { ...config.headers, 'Content-Type': 'application/json;charset=UTF-8' };
+      return backoff.then((cfg) => request.request(cfg));
+    }
 
-    config.retryCount += 1;
+    // 从 user store 获取 refresh token 与 clientId
+    const userStore = getUserStore();
+    const refreshToken = userStore.getRefreshToken;
+    const clientId = userStore.getClientId || '';
+    if (!refreshToken) {
+      // 无刷新令牌，直接清理并登出（调用 store 的 removeToken）
+      userStore.removeToken();
+      return Promise.reject(error);
+    }
 
-    const backoff = new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(config);
-      }, config.requestOptions.retry.delay || 1);
-    });
-    config.headers = { ...config.headers, 'Content-Type': 'application/json;charset=UTF-8' };
-    return backoff.then((config) => request.request(config));
+    // 刷新逻辑：防止并发刷新，排队等待
+    const handleRefresh = async () => {
+      try {
+        isRefreshing = true;
+        const params = new URLSearchParams();
+        params.append('client_id', clientId);
+        params.append('refresh_token', refreshToken);
+        params.append('grant_type', 'refresh_token');
+
+        const res = await axios.post('/auth/refresh', params.toString(), {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        });
+
+        const data = res.data;
+        if (!data || data.code !== 200) throw new Error('刷新失败');
+
+        // 后端返回的 token 结构放在 data.data
+        const newTokenData = data.data;
+        const newAccess = newTokenData.accessToken || newTokenData.token || '';
+        const newRefresh = newTokenData.refreshToken || newTokenData.refresh_token || '';
+
+        if (newAccess || newRefresh) userStore.setToken(newAccess, newRefresh);
+
+        // 逐个重试队列中的请求
+        requests.forEach((cb) => cb(newAccess));
+        requests = [];
+
+        // 重试当前请求
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${newAccess}`;
+        return axios(config);
+      } catch (err) {
+        // 刷新失败，清理并退回错误（调用方可触发跳转登录）
+        userStore.removeToken();
+        return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
+      }
+    };
+
+    if (isRefreshing) {
+      return new Promise((resolve) => {
+        requests.push((token: string) => {
+          config.headers = config.headers || {};
+          config.headers.Authorization = `Bearer ${token}`;
+          resolve(axios(config));
+        });
+      });
+    } else {
+      return handleRefresh();
+    }
   },
 };
 
@@ -170,7 +244,7 @@ function createAxios(opt?: Partial<CreateAxiosOptions>) {
           // 接口前缀
           // 例如: https://www.baidu.com/api
           // urlPrefix: '/api'
-          urlPrefix: '/api',
+          urlPrefix: '',
           // 是否返回原生响应头 比如：需要获取响应头时使用该属性
           isReturnNativeResponse: false,
           // 需要对返回数据进行处理

@@ -4,47 +4,45 @@ import { useUserStore } from '@/store/modules/user';
 import type { RequestOptions, Result } from '@/types/axios';
 import axios from 'axios';
 
-// 全局无感刷新状态（严格按你的规范，不新增类型）
+// 全局无感刷新状态
 let isRefreshing = false;
 let requests: ((token: string) => void)[] = [];
 
-// ====================== 你原有的类型定义【完全不动，严格保留】 ======================
+// ====================== 类型定义【完全不动】 ======================
 export interface CreateAxiosOptions extends AxiosRequestConfig {
-  authenticationScheme?: string; //认证方案
-  transform?: AxiosTransform;  //数据处理钩子集合
-  requestOptions?: RequestOptions; //接口配置项
+  authenticationScheme?: string;
+  transform?: AxiosTransform;
+  requestOptions?: RequestOptions;
 }
 
 export abstract class AxiosTransform {
-  //请求前处理
   beforeRequestHook?: (config: AxiosRequestConfig, options: RequestOptions) => AxiosRequestConfig;
-  //响应数据处理
   transformRequestHook?: (res: AxiosResponse<Result>, options: RequestOptions) => any;
   requestCatchHook?: (e: Error | AxiosError, options: RequestOptions) => Promise<any>;
-  //请求拦截器
   requestInterceptors?: (config: AxiosRequestConfig, options: CreateAxiosOptions) => AxiosRequestConfig;
-  //响应拦截器
   responseInterceptors?: (res: AxiosResponse) => AxiosResponse;
-  //请求错误拦截器
   requestInterceptorsCatch?: (error: AxiosError) => void;
-  //响应错误拦截器
-  responseInterceptorsCatch?: (error: AxiosError) => void;
+  responseInterceptorsCatch?: (error: AxiosError) => Promise<any> | void;
 }
 
-// ====================== 以下是严格匹配类型的实现代码 ======================
+// ====================== 依赖导入【完全不动】 ======================
 import isString from 'lodash/isString';
 import merge from 'lodash/merge';
 import proxy from '@/config/proxy';
 import { joinTimestamp, formatRequestDate, setObjToUrlParams } from './utils';
 import { TOKEN_NAME } from '@/config/global';
 import { VAxios } from './Axios';
+import { isToken } from 'typescript';
+
+// 修复：定义缺失的 Recordable 类型
+type Recordable<T = any> = Record<string, T>;
 
 const env = import.meta.env.MODE || 'development';
 const host = env === 'mock' || !proxy.isRequestProxy ? '' : proxy[env].host;
 
-// 核心转换实现（严格继承 AxiosTransform 类型）
+// 核心转换实现
 const transform: AxiosTransform = {
-  // 请求前处理（原有逻辑，完全不变）
+  // ====================== 原有逻辑【完全不动】 ======================
   beforeRequestHook: (config, options) => {
     const { apiUrl, isJoinPrefix, urlPrefix, joinParamsToUrl, formatDate, joinTime = true } = options;
 
@@ -92,7 +90,6 @@ const transform: AxiosTransform = {
     return config;
   },
 
-  // 响应数据处理（原有逻辑，完全不变）
   transformRequestHook: (res, options) => {
     const { isTransformResponse, isReturnNativeResponse } = options;
     const method = res.config.method?.toLowerCase();
@@ -118,7 +115,6 @@ const transform: AxiosTransform = {
     throw new Error(`请求接口错误, 错误码: ${code || '未知'}`);
   },
 
-  // ====================== 请求拦截器：从UserStore拿token（严格匹配类型） ======================
   requestInterceptors: (config, options) => {
     const userStore = useUserStore();
     const token = userStore.getAccessToken;
@@ -131,35 +127,40 @@ const transform: AxiosTransform = {
     return config;
   },
 
-  // 响应拦截器（原有逻辑，完全不变）
   responseInterceptors: (res) => {
     return res;
   },
 
-  // 请求拦截器错误（原有逻辑，完全不变）
   requestInterceptorsCatch: (error) => {
     console.error('请求拦截器错误:', error);
   },
 
-  // ====================== 响应错误拦截器：【严格匹配你的类型定义】无感刷新核心 ======================
+  // ====================== ✅ 核心修复：无感刷新拦截器 ======================
   responseInterceptorsCatch: (error: AxiosError) => {
     const { config, response } = error;
     const userStore = useUserStore();
-
-    if (!config || !response) return;
-
-    // 1. 捕获Token过期（401）
-    const isTokenExpired = response.status === 401 || (response.data as Result)?.code === 401;
-    if (!isTokenExpired) return;
-
-    const refreshToken = userStore.getRefreshToken;
-    //如果没有刷新Token，直接登出（严格遵循 void 返回值，不破坏类型）
-    if (!refreshToken) {
-      userStore.logout();
-      return;
+     console.log("当前用户的信息111111",userStore)
+    // 无配置/无响应，直接抛出
+    if (!config || !response) {
+      return Promise.reject(error);
     }
 
-    // 2. 处理刷新逻辑（严格遵循 void 返回值，不破坏类型）
+    // 判断Token过期/无效（兼容你的后端格式）
+    const isTokenInvalid = response.status === 401 ||
+      (response.data && (response.data.error === 'invalid_token' || response.data.code === 401));
+  console.log("当前响应的状态",isTokenInvalid);
+    if (!isTokenInvalid) {
+      return Promise.reject(error);
+    }
+
+    // 无刷新Token，直接登出
+    const refreshToken = userStore.getRefreshToken;
+    if (!refreshToken) {
+      userStore.logout();
+      return Promise.reject(error);
+    }
+
+    // 刷新逻辑
     const handleRefresh = async () => {
       try {
         isRefreshing = true;
@@ -168,19 +169,18 @@ const transform: AxiosTransform = {
           clientId: userStore.getClientId,
           refreshToken,
         });
-
         const data = res.data;
         if (data.code !== 200) throw new Error('刷新失败');
 
-        // 3. 保存新Token到UserStore
+        // 保存新Token
         const newToken = data.data;
         userStore.setToken(newToken.accessToken, newToken.refreshToken);
 
-        // 4. 重试所有缓存请求
+        // 重试所有排队请求
         requests.forEach((cb) => cb(newToken.accessToken));
         requests = [];
 
-        // 5. 重试当前请求
+        // 重试当前请求
         config.headers!.Authorization = `Bearer ${newToken.accessToken}`;
         return axios(config);
       } catch (err) {
@@ -192,19 +192,22 @@ const transform: AxiosTransform = {
       }
     };
 
-    // 6. 缓存请求，防止重复刷新
+    // ✅ 修复：队列包装 Promise + 移除错误的 resolve
     if (isRefreshing) {
-      requests.push((newToken: string) => {
-        config.headers!.Authorization = `Bearer ${newToken}`;
-        axios(config);
+      return new Promise((resolve) => {
+        requests.push((token: string) => {
+          config.headers!.Authorization = `Bearer ${token}`;
+          resolve(axios(config));
+        });
       });
     } else {
-      handleRefresh();
+      // ✅ 修复：返回刷新Promise，让axios等待
+      return handleRefresh();
     }
   },
 };
 
-// 创建Axios实例（原有逻辑，完全不变）
+// 创建Axios实例【完全不动】
 function createAxios(opt?: Partial<CreateAxiosOptions>) {
   return new VAxios(
     merge(
