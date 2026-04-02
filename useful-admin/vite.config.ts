@@ -55,6 +55,11 @@ export default ({ mode }: ConfigEnv): UserConfig => {
           changeOrigin: true,
         },
         '/auth': 'http://127.0.0.1:8001/',
+
+        '/product':{
+          target: 'http://127.0.0.1:8880/',
+          changeOrigin: true,
+        }
       },
     },
   };

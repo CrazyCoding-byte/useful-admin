@@ -1,8 +1,11 @@
 package com.yzx.model.product;
 
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -21,9 +24,10 @@ public class SpuInfoEntity {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 商品id
+     * 商品 id
      */
-    @TableId
+    @TableId(type = IdType.ASSIGN_ID)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
     /**
      * 商品名称

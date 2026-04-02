@@ -124,7 +124,7 @@ export const defaultRouterList: Array<RouteRecordRaw> = [
 // 存放动态路由（初始为空，由后端获取）
 export const asyncRouterList: Array<RouteRecordRaw> = [];
 
-export const allRoutes = [...defaultRouterList, ...asyncRouterList];
+export const allRoutes = [...defaultRouterList, ...routeModuleList, ...asyncRouterList];
 
 export const getRoutesExpanded = () => {
   const expandedRoutes = [];

@@ -53,19 +53,14 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
         
         // 3. 动态添加查询条件
         if (params != null && !params.isEmpty()) {
-            String productName = (String) params.get("productName");
-            String productCode = (String) params.get("productCode");
-            String status = (String) params.get("status");
+            String spuName = (String) params.get("spuName");
+            Integer publishStatus = (Integer) params.get("publishStatus");
             
-            if (StringUtils.hasText(productName)) {
-                wrapper.like(SpuInfoEntity::getSpuName, productName);
+            if (StringUtils.hasText(spuName)) {
+                wrapper.like(SpuInfoEntity::getSpuName, spuName);
             }
-            if (StringUtils.hasText(productCode)) {
-                // 如果没有 productCode 字段，可以注释掉这行
-                // wrapper.eq(SpuInfoEntity::getProductCode, productCode);
-            }
-            if (StringUtils.hasText(status)) {
-                wrapper.eq(SpuInfoEntity::getPublishStatus, Integer.parseInt(status));
+            if (publishStatus != null) {
+                wrapper.eq(SpuInfoEntity::getPublishStatus, publishStatus);
             }
         }
         

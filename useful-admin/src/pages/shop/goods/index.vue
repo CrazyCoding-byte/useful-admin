@@ -270,7 +270,7 @@ const confirmVisible = ref(false);
 const dialogTitle = computed(() => (isEdit.value ? '编辑商品' : '新建商品'));
 const isEdit = ref(false);
 const deleteIdx = ref(-1);
-const selectedRowKeys = ref<number[]>([]);
+const selectedRowKeys = ref<string[]>([]);
 
 // 表单数据
 const INITIAL_PRODUCT_DATA = {
@@ -296,9 +296,13 @@ const FORM_RULES = {
 
 // 确认删除提示
 const confirmBody = computed(() => {
-  if (deleteIdx.value > -1) {
-    const {productName} = data.value[deleteIdx.value];
-    return `删除后，${productName}的所有商品信息将被清空，且无法恢复`;
+  console.log("当前要删除 deleteidx", deleteIdx.value)
+  if (deleteIdx.value) {
+    const product = data.value.find(item => item.productId === deleteIdx.value);
+    if (product) {
+      const {productName} = product;
+      return `删除后，${productName}的所有商品信息将被清空，且无法恢复`;
+    }
   }
   if (selectedRowKeys.value.length > 0) {
     return `将删除 ${selectedRowKeys.value.length} 个商品，且无法恢复`;
@@ -316,11 +320,27 @@ const fetchData = async () => {
       ...formData.value,
     };
     const res = await productApi.getProductList(params);
-    if (res && res.data) {
-      data.value = res.data.list || [];
+    if (res && res.list) {
+      // 转换字段名，将接口返回的字段名映射到前端期望的字段名
+      data.value = res.list.map((item: any) => ({
+        productId: item.id,  // 已经是字符串类型
+        productName: item.spuName,
+        productCode: item.productCode || item.spuName,  // 优先使用 productCode，没有则用 spuName
+        price: item.price || 0,  // 假设有 price 字段
+        stock: item.stock || 0,  // 假设有 stock 字段
+        status: item.publishStatus?.toString() || '0',
+        createTime: item.createTime,
+        updateTime: item.updateTime,
+        description: item.spuDescription,
+        catalogId: item.catalogId,
+        brandId: item.brandId,
+        brandName: item.brandName,
+        weight: item.weight,
+        publishStatus: item.publishStatus,
+      }));
       pagination.value = {
         ...pagination.value,
-        total: res.data.total || 0,
+        total: res.total || 0,
       };
     }
   } catch (e) {
@@ -367,7 +387,7 @@ const rehandleChange = (changeParams, triggerAndData) => {
 };
 
 // 选择变化
-const onSelectChange = (value: number[]) => {
+const onSelectChange = (value: string[]) => {
   selectedRowKeys.value = value;
 };
 
@@ -380,14 +400,27 @@ const handleAdd = () => {
 
 // 编辑商品
 const handleEdit = ({row}) => {
+  console.log('编辑的原始 row 数据:', row);
   isEdit.value = true;
-  productFormData.value = {...row};
+  productFormData.value = {
+    productId: row.productId,
+    productName: row.productName,
+    productCode: row.productCode,
+    price: row.price,
+    stock: row.stock,
+    description: row.description,
+    status: row.status,
+    catalogId: row.catalogId,
+    brandId: row.brandId,
+    brandName: row.brandName,
+    weight: row.weight,
+  };
+  console.log('编辑表单数据:', productFormData.value);
   dialogVisible.value = true;
 };
-
-// 删除商品
 const handleClickDelete = ({row}) => {
-  deleteIdx.value = row.rowIndex;
+  console.log("当前选中删除的数据",row.productId);
+  deleteIdx.value = row.productId;
   confirmVisible.value = true;
 };
 
@@ -401,19 +434,37 @@ const handleDialogConfirm = async () => {
   try {
     await productForm.value?.validate();
 
+    // 将前端字段映射到后端字段
+    const backendData = {
+      id: productFormData.value.productId ? Number(productFormData.value.productId) : null,
+      spuName: productFormData.value.productName,
+      spuDescription: productFormData.value.description,
+      catalogId: productFormData.value.catalogId ? Number(productFormData.value.catalogId) : null,
+      brandId: productFormData.value.brandId ? Number(productFormData.value.brandId) : null,
+      brandName: productFormData.value.brandName || '',
+      weight: productFormData.value.weight ? Number(productFormData.value.weight) : null,
+      publishStatus: parseInt(productFormData.value.status) || 0,
+    };
+
+    console.log('提交到后端的数据:', backendData);
+
     if (isEdit.value) {
-      await productApi.saveProduct(productFormData.value);
+      await productApi.saveProduct(backendData);
       MessagePlugin.success('修改成功');
     } else {
-      await productApi.saveProduct(productFormData.value);
+      await productApi.saveProduct(backendData);
       MessagePlugin.success('新建成功');
     }
 
     dialogVisible.value = false;
-    resetForm();
+    // 注意：先关闭对话框，再重置表单，避免重置影响提交
+    setTimeout(() => {
+      resetForm();
+    }, 200);
     fetchData();
   } catch (error) {
     console.error(error);
+    MessagePlugin.error('操作失败：' + (error as any).message || '未知错误');
   }
 };
 
@@ -425,10 +476,9 @@ const onConfirmDelete = async () => {
       await productApi.deleteProduct(selectedRowKeys.value);
       MessagePlugin.success('批量删除成功');
       selectedRowKeys.value = [];
-    } else {
+    } else if (deleteIdx.value) {
       // 单个删除
-      data.value.splice(deleteIdx.value, 1);
-      pagination.value.total = data.value.length;
+      await productApi.deleteProduct([deleteIdx.value]);
       MessagePlugin.success('删除成功');
     }
 

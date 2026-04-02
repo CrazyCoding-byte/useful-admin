@@ -10,9 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @className: ProductController
@@ -44,13 +42,13 @@ public class ProductController {
             @PathVariable Integer pageSize,
             @RequestBody(required = false) Map<String, Object> params) {
         log.info("查询商品列表，pageNum={}, pageSize={}, params={}", pageNum, pageSize, params);
-        
+
         Page<SpuInfoEntity> page = spuInfoService.queryPage(pageNum, pageSize, params);
-        
+
         Map<String, Object> result = new HashMap<>();
         result.put("list", page.getRecords());
         result.put("total", page.getTotal());
-        
+
         return AjaxResult.success(result);
     }
 
@@ -60,9 +58,10 @@ public class ProductController {
      * @return 商品信息
      */
     @GetMapping("/{id}")
-    public AjaxResult info(@PathVariable Long id) {
+    public AjaxResult info(@PathVariable String id) {
         log.info("查询商品信息，id={}", id);
-        SpuInfoEntity spu = spuInfoService.getById(id);
+        SpuInfoEntity spu = spuInfoService.getById(Long.valueOf(id
+        ));
         if (spu == null) {
             return AjaxResult.error("商品不存在");
         }
@@ -76,9 +75,9 @@ public class ProductController {
      */
     @PostMapping
     public AjaxResult save(@Valid @RequestBody SpuInfoEntity spuInfoEntity) {
-        log.info("保存商品信息，id={}, name={}", 
+        log.info("保存商品信息，id={}, name={}",
                 spuInfoEntity.getId(), spuInfoEntity.getSpuName());
-        
+        if (Objects.isNull(spuInfoEntity)) return AjaxResult.error("传的数据不能未未空");
         boolean success;
         if (spuInfoEntity.getId() == null) {
             // 新增
@@ -89,7 +88,7 @@ public class ProductController {
             spuInfoEntity.setUpdateTime(new java.util.Date());
             success = spuInfoService.updateById(spuInfoEntity);
         }
-        
+
         if (success) {
             return AjaxResult.success("操作成功");
         } else {
@@ -103,12 +102,11 @@ public class ProductController {
      * @return 操作结果
      */
     @DeleteMapping("/{ids}")
-    public AjaxResult delete(@PathVariable String ids) {
+    public AjaxResult delete(@PathVariable List<String> ids) {
         log.info("删除商品，ids={}", ids);
-        
+
         try {
-            String[] idArray = ids.split(",");
-            for (String id : idArray) {
+            for (String id : ids) {
                 spuInfoService.removeById(Long.parseLong(id.trim()));
             }
             return AjaxResult.success("删除成功");
@@ -147,7 +145,7 @@ public class ProductController {
     public AjaxResult downPd(@PathVariable("spuId") @NotNull(message = "spuId 不能为空") String spuId) {
         log.info("开始执行 SPU 下架操作，spuId:{}", spuId);
         boolean success = spuInfoService.downSpu(spuId);
-        
+
         if (success) {
             return AjaxResult.success("SPU 下架成功");
         } else {
@@ -156,7 +154,7 @@ public class ProductController {
     }
 
     @GetMapping("Test")
-    public AjaxResult ajaxResult(){
+    public AjaxResult ajaxResult() {
         return AjaxResult.success();
     }
 }
