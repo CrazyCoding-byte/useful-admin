@@ -1,7 +1,7 @@
-import axios, { AxiosRequestConfig, AxiosInstance, AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosRequestConfig, AxiosInstance, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { stringify } from 'qs';
-import isFunction from 'lodash/isFunction';
-import cloneDeep from 'lodash/cloneDeep';
+import isFunction = require('lodash/isFunction');
+import cloneDeep = require('lodash/cloneDeep');
 import { CreateAxiosOptions } from './AxiosTransform';
 import { AxiosCanceler } from './AxiosCancel';
 import { AxiosRequestConfigRetry, RequestOptions, Result } from '@/types/axios';
@@ -63,15 +63,15 @@ export class VAxios {
     const axiosCanceler = new AxiosCanceler();
 
     // 请求配置处理
-    this.instance.interceptors.request.use((config: AxiosRequestConfig) => {
-      const {
-        headers: { ignoreRepeatRequest },
-      } = config;
+    this.instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+      const headers = (config.headers as any) || {};
+      const ignoreRepeatRequest = headers.ignoreRepeatRequest;
       const ignoreRepeat = ignoreRepeatRequest ?? this.options.requestOptions?.ignoreRepeatRequest;
-      if (!ignoreRepeat) axiosCanceler.addPending(config);
+      if (!ignoreRepeat) axiosCanceler.addPending(config as AxiosRequestConfig);
 
       if (requestInterceptors && isFunction(requestInterceptors)) {
-        config = requestInterceptors(config, this.options);
+        // requestInterceptors expects AxiosRequestConfig-like object
+        config = requestInterceptors(config as unknown as AxiosRequestConfig, this.options) as InternalAxiosRequestConfig;
       }
       return config;
     }, undefined);

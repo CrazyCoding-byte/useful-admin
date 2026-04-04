@@ -98,6 +98,7 @@
         <template #op="slotProps">
           <a class="t-button-link" @click="handleEdit(slotProps)">编辑</a>
           <a class="t-button-link" @click="handleClickDelete(slotProps)">删除</a>
+          <a class="t-button-link" @click="handleSkuManage(slotProps)">规格管理</a>
         </template>
       </t-table>
     </div>
@@ -176,12 +177,15 @@ export default {
 
 <script setup lang="ts">
 import {ref, computed, onMounted} from 'vue';
+import {useRouter} from 'vue-router';
 import {MessagePlugin, PrimaryTableCol, TableRowData, PageInfo, FormInstanceFunctions} from 'tdesign-vue-next';
 import {AddIcon, DeleteIcon} from 'tdesign-icons-vue-next';
 import {productApi} from '@/api/product';
 import {useSettingStore} from '@/store';
 import {prefix} from '@/config/global';
 import type {Product} from '@/api/model/productModel';
+
+const router = useRouter();
 
 const store = useSettingStore();
 
@@ -417,6 +421,15 @@ const handleEdit = ({row}) => {
   };
   console.log('编辑表单数据:', productFormData.value);
   dialogVisible.value = true;
+};
+
+// 规格管理
+const handleSkuManage = ({row}) => {
+  console.log('跳转到SKU管理页面:', row);
+  router.push({
+    path: `/shop/goods/sku/${row.productId}`,
+    query: { spuName: row.productName }
+  });
 };
 const handleClickDelete = ({row}) => {
   console.log("当前选中删除的数据",row.productId);

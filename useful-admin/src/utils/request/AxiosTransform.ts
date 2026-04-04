@@ -26,22 +26,14 @@ export abstract class AxiosTransform {
 }
 
 // ====================== 依赖导入【完全不动】 ======================
-import isString from 'lodash/isString';
-import merge from 'lodash/merge';
-import proxy from '@/config/proxy';
+import isString = require('lodash/isString');
 import { joinTimestamp, formatRequestDate, setObjToUrlParams } from './utils';
-import { TOKEN_NAME } from '@/config/global';
-import { VAxios } from './Axios';
-import { isToken } from 'typescript';
 
 // 修复：定义缺失的 Recordable 类型
 type Recordable<T = any> = Record<string, T>;
 
-const env = import.meta.env.MODE || 'development';
-const host = env === 'mock' || !proxy.isRequestProxy ? '' : proxy[env].host;
-
 // 核心转换实现
-const transform: AxiosTransform = {
+export const transform: AxiosTransform = {
   // ====================== 原有逻辑【完全不动】 ======================
   beforeRequestHook: (config, options) => {
     const { apiUrl, isJoinPrefix, urlPrefix, joinParamsToUrl, formatDate, joinTime = true } = options;
@@ -128,6 +120,7 @@ const transform: AxiosTransform = {
   },
 
   responseInterceptors: (res) => {
+    console.log('响应拦截器触发，响应数据:', res);
     return res;
   },
 
@@ -135,20 +128,21 @@ const transform: AxiosTransform = {
     console.error('请求拦截器错误:', error);
   },
 
-  // ====================== ✅ 核心修复：无感刷新拦截器 ======================
   responseInterceptorsCatch: (error: AxiosError) => {
-    const { config, response } = error;
+    const { config, response } = error as AxiosError & { response?: any };
     const userStore = useUserStore();
-     console.log("当前用户的信息111111",userStore)
+    console.log('当前用户的信息111111', userStore);
     // 无配置/无响应，直接抛出
     if (!config || !response) {
       return Promise.reject(error);
     }
 
+    // 为了避免 response.data 被推断为 unknown，显式断言为 any
+    const respData: any = response.data;
+
     // 判断Token过期/无效（兼容你的后端格式）
-    const isTokenInvalid = response.status === 401 ||
-      (response.data && (response.data.error === 'invalid_token' || response.data.code === 401));
-  console.log("当前响应的状态",isTokenInvalid);
+    const isTokenInvalid = response.status === 401 || (respData && (respData.error === 'invalid_token' || respData.code === 401));
+    console.log('当前响应的状态', isTokenInvalid);
     if (!isTokenInvalid) {
       return Promise.reject(error);
     }
@@ -192,7 +186,6 @@ const transform: AxiosTransform = {
       }
     };
 
-    // ✅ 修复：队列包装 Promise + 移除错误的 resolve
     if (isRefreshing) {
       return new Promise((resolve) => {
         requests.push((token: string) => {
@@ -201,39 +194,10 @@ const transform: AxiosTransform = {
         });
       });
     } else {
-      // ✅ 修复：返回刷新Promise，让axios等待
       return handleRefresh();
     }
   },
 };
 
-// 创建Axios实例【完全不动】
-function createAxios(opt?: Partial<CreateAxiosOptions>) {
-  return new VAxios(
-    merge(
-      <CreateAxiosOptions>{
-        authenticationScheme: 'Bearer',
-        timeout: 10 * 1000,
-        withCredentials: true,
-        headers: { 'Content-Type': 'application/json;charset=UTF-8' },
-        transform,
-        requestOptions: {
-          apiUrl: host,
-          isJoinPrefix: false,
-          urlPrefix: '/api',
-          isReturnNativeResponse: false,
-          isTransformResponse: true,
-          joinParamsToUrl: false,
-          formatDate: true,
-          joinTime: true,
-          ignoreRepeatRequest: true,
-          withToken: true,
-          retry: { count: 0, delay: 1000 },
-        },
-      },
-      opt || {},
-    ),
-  );
-}
-
-export const request = createAxios();
+// NOTE: Request instance is created in `index.ts` to avoid duplicate instances.
+// This file exports types and the transform implementation only.
