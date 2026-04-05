@@ -1,16 +1,275 @@
 // axios配置  可自行根据项目进行更改，只需更改该文件即可，其他文件可以不动
-import merge = require('lodash/merge');
-import { transform } from './AxiosTransform';
-import type { CreateAxiosOptions } from './AxiosTransform';
+import type { AxiosInstance } from 'axios';
+import isString from 'lodash/isString';
+import merge from 'lodash/merge';
+
+import axios from 'axios';
+import { ContentTypeEnum } from '@/constants';
+import { getUserStore } from '@/store/modules/user';
+import { getPermissionStore } from '@/store/modules/permission';
+import router from '@/router';
+
 import { VAxios } from './Axios';
-import proxy from '@/config/proxy';
+import type { AxiosTransform, CreateAxiosOptions } from './AxiosTransform';
+import { formatRequestDate, joinTimestamp, setObjToUrlParams } from './utils';
 
 const env = import.meta.env.MODE || 'development';
 
 // 如果是mock模式 或 没启用直连代理 就不配置host 会走本地Mock拦截 或 Vite 代理
-const host = env === 'mock' || !proxy.isRequestProxy ? '' : proxy[env].host;
+const host = env === 'mock' || import.meta.env.VITE_IS_REQUEST_PROXY !== 'true' ? '' : import.meta.env.VITE_API_URL;
 
-// 数据处理由 `AxiosTransform.ts` 中的 `transform` 提供
+// 数据处理，方便区分多种处理方式
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+function subscribeTokenRefresh(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function onRrefreshed(token: string) {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+}
+
+const transform: AxiosTransform = {
+  // 处理请求数据。如果数据不是预期格式，可直接抛出错误
+  transformRequestHook: (res, options) => {
+    const { isTransformResponse, isReturnNativeResponse } = options;
+
+    // 如果204无内容直接返回
+    const method = res.config.method?.toLowerCase();
+    if (res.status === 204 && ['put', 'patch', 'delete'].includes(method)) {
+      return res;
+    }
+
+    // 是否返回原生响应头 比如：需要获取响应头时使用该属性
+    if (isReturnNativeResponse) {
+      return res;
+    }
+    // 不进行任何处理，直接返回
+    // 用于页面代码可能需要直接获取code，data，message这些信息时开启
+    if (!isTransformResponse) {
+      return res.data;
+    }
+
+    // 错误的时候返回
+    const { data } = res;
+    if (!data) {
+      throw new Error('请求接口错误');
+    }
+
+    //  这里 code为 后台统一的字段，需要在 types.ts内修改为项目自己的接口返回格式
+    const { code } = data;
+
+    // 这里逻辑可以根据项目进行修改
+    // 支持后端使用 0 或 200 表示成功
+    const hasSuccess = data && (code === 0 || code === 200);
+    if (hasSuccess) {
+      // 如果后端返回 { code, data: {...} } 则优先返回 data
+      // 如果后端直接返回 { code, token, ... }（没有 data 字段），则返回整个 data 对象以兼容旧逻辑
+      return data.data !== undefined ? data.data : data;
+    }
+
+    throw new Error(`请求接口错误, 错误码: ${code}`);
+  },
+
+  // 请求前处理配置
+  beforeRequestHook: (config, options) => {
+    const { apiUrl, isJoinPrefix, urlPrefix, joinParamsToUrl, formatDate, joinTime = true } = options;
+
+    // 添加接口前缀
+    if (isJoinPrefix && urlPrefix && isString(urlPrefix)) {
+      config.url = `${urlPrefix}${config.url}`;
+    }
+
+    // 将baseUrl拼接
+    if (apiUrl && isString(apiUrl)) {
+      config.url = `${apiUrl}${config.url}`;
+    }
+    const params = config.params || {};
+    const data = config.data || false;
+
+    if (formatDate && data && !isString(data)) {
+      formatRequestDate(data);
+    }
+    if (config.method?.toUpperCase() === 'GET') {
+      if (!isString(params)) {
+        // 给 get 请求加上时间戳参数，避免从缓存中拿数据。
+        config.params = Object.assign(params || {}, joinTimestamp(joinTime, false));
+      } else {
+        // 兼容restful风格
+        config.url = `${config.url + params}${joinTimestamp(joinTime, true)}`;
+        config.params = undefined;
+      }
+    } else if (!isString(params)) {
+      if (formatDate) {
+        formatRequestDate(params);
+      }
+      if (
+        Reflect.has(config, 'data') &&
+        config.data &&
+        (Object.keys(config.data).length > 0 || data instanceof FormData)
+      ) {
+        config.data = data;
+        config.params = params;
+      } else {
+        // 非GET请求如果没有提供data，则将params视为data
+        config.data = params;
+        config.params = undefined;
+      }
+      if (joinParamsToUrl) {
+        config.url = setObjToUrlParams(config.url as string, { ...config.params, ...config.data });
+      }
+    } else {
+      // 兼容restful风格
+      config.url += params;
+      config.params = undefined;
+    }
+    return config;
+  },
+
+  // 请求拦截器处理
+  requestInterceptors: (config, options) => {
+    // 请求之前处理config
+      const userStore = getUserStore();
+      const { token } = userStore;
+    if (token && (config as Recordable)?.requestOptions?.withToken !== false) {
+      // 如果调用时显式传了 Authorization，则不要覆盖（例如某些接口手动设置了 Bearer）
+      const headers = (config as Recordable).headers || {};
+      if (!headers.Authorization) {
+        const scheme = options.authenticationScheme || 'Bearer';
+        (config as Recordable).headers.Authorization = `${scheme} ${token}`;
+      }
+    }
+    return config;
+  },
+
+  // 响应拦截器处理
+  responseInterceptors: (res) => {
+    return res;
+  },
+
+  // 响应错误处理
+  responseInterceptorsCatch: (error: any, instance: AxiosInstance) => {
+    const { config, response } = error;
+
+    // If response indicates unauthorized, try refresh token flow
+    const status = response?.status || response?.data?.code;
+    if (status === 401) {
+      const userStore = getUserStore();
+      const refreshToken = userStore.getRefreshToken;
+
+      if (!refreshToken) {
+        // no refresh token, go to login
+        userStore.removeToken();
+        router.replace({ path: '/login' });
+        return Promise.reject(error);
+      }
+
+      if (!config) return Promise.reject(error);
+
+      // 避免对 /auth/refresh 接口进行重试，防止无限循环
+      if (config.url?.includes('/auth/refresh')) {
+        userStore.removeToken();
+        router.replace({ path: '/login' });
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        // push request to queue
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((token: string) => {
+            // set header and retry
+            config.headers = config.headers || {};
+            // ensure Authorization has scheme (Bearer)
+            config.headers.Authorization = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+            resolve(instance.request(config));
+          });
+        });
+      }
+
+      isRefreshing = true;
+
+      // perform refresh with raw axios to avoid interceptors
+      const params = new URLSearchParams();
+      const clientId = userStore.getClientId || '';
+      params.append('client_id', clientId);
+      // 后端期望的参数名为 refresh_token，并且需要 grant_type=refresh_token
+      params.append('refresh_token', refreshToken);
+      params.append('grant_type', 'refresh_token');
+
+      // 使用 axios 直接请求，避免拦截器
+      return axios
+        .post(`${host}/auth/refresh`, params.toString(), {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          // 设置超时时间为5秒
+          timeout: 5000
+        })
+        .then(async (res) => {
+          const data = res.data;
+          if (data && data.code === 200 && data.data) {
+            const newToken = data.data.accessToken || data.data.token || '';
+            const newRefresh = data.data.refreshToken || data.data.refresh_token || '';
+            userStore.setToken(newToken, newRefresh);
+
+            // 🔥 关键修复：重新获取用户信息并初始化路由
+            try {
+              await userStore.getUserInfo();
+              const permissionStore = getPermissionStore();
+              const roles = userStore.roles;
+              if (roles && roles.length > 0) {
+                await permissionStore.initRoutes(roles);
+              }
+            } catch (userInfoError) {
+              console.error('刷新token后获取用户信息失败:', userInfoError);
+            }
+
+            onRrefreshed(newToken);
+            // retry original request
+            config.headers = config.headers || {};
+            config.headers.Authorization = newToken.startsWith('Bearer ') ? newToken : `Bearer ${newToken}`;
+            return instance.request(config);
+          }
+          // refresh failed
+          userStore.removeToken();
+          // 跳转到登录页，使用 replace 避免历史污染
+          router.replace({ path: '/login' });
+          return Promise.reject(error);
+        })
+        .catch((err) => {
+          userStore.removeToken();
+          // 跳转到登录页，使用 replace 避免历史污染
+          router.replace({ path: '/login' });
+          return Promise.reject(err);
+        })
+        .finally(() => {
+          isRefreshing = false;
+        });
+    }
+
+    // retry logic for transient errors
+    if (!config || !config.requestOptions?.retry) return Promise.reject(error);
+
+    // 避免对 /auth/refresh 接口进行重试，防止无限循环
+    if (config.url?.includes('/auth/refresh')) {
+      return Promise.reject(error);
+    }
+
+    config.retryCount = config.retryCount || 0;
+
+    if (config.retryCount >= config.requestOptions.retry.count) return Promise.reject(error);
+
+    config.retryCount += 1;
+
+    const backoff = new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(config);
+      }, config.requestOptions.retry.delay || 1);
+    });
+    config.headers = { ...config.headers, 'Content-Type': ContentTypeEnum.Json };
+    return backoff.then((cfg) => instance.request(cfg));
+  },
+};
 
 function createAxios(opt?: Partial<CreateAxiosOptions>) {
   return new VAxios(
@@ -18,13 +277,13 @@ function createAxios(opt?: Partial<CreateAxiosOptions>) {
       <CreateAxiosOptions>{
         // https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication#authentication_schemes
         // 例如: authenticationScheme: 'Bearer'
-        authenticationScheme: 'Bearer',
+        authenticationScheme: '',
         // 超时
         timeout: 10 * 1000,
         // 携带Cookie
         withCredentials: true,
         // 头信息
-        headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+        headers: { 'Content-Type': ContentTypeEnum.Json },
         // 数据处理方式
         transform,
         // 配置项，下面的选项都可以在独立的接口请求中覆盖
@@ -32,11 +291,11 @@ function createAxios(opt?: Partial<CreateAxiosOptions>) {
           // 接口地址
           apiUrl: host,
           // 是否自动添加接口前缀
-          isJoinPrefix: false,
+          isJoinPrefix: true,
           // 接口前缀
           // 例如: https://www.baidu.com/api
           // urlPrefix: '/api'
-          urlPrefix: '',
+          urlPrefix: import.meta.env.VITE_API_URL_PREFIX,
           // 是否返回原生响应头 比如：需要获取响应头时使用该属性
           isReturnNativeResponse: false,
           // 需要对返回数据进行处理
@@ -47,13 +306,15 @@ function createAxios(opt?: Partial<CreateAxiosOptions>) {
           formatDate: true,
           // 是否加入时间戳
           joinTime: true,
-          // 忽略重复请求
-          ignoreRepeatRequest: true,
+          // 是否忽略请求取消令牌
+          // 如果启用，则重复请求时不进行处理
+          // 如果禁用，则重复请求时会取消当前请求
+          ignoreCancelToken: true,
           // 是否携带token
           withToken: true,
           // 重试
           retry: {
-            count: 0,
+            count: 3,
             delay: 1000,
           },
         },

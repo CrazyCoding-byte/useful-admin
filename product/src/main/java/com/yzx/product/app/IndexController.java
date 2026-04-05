@@ -56,7 +56,6 @@ public class IndexController {
 
     @GetMapping("getProductInfo/{spuId}")
     public AjaxResult getProductInfo(@PathVariable Long spuId) {
-
         return AjaxResult.success();
     }
 }

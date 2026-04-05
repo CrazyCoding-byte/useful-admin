@@ -58,12 +58,10 @@ export const useUserStore = defineStore('user', {
       try {
         // 实际的 OAuth2 获取用户信息逻辑
         const data = await userAuthApi.getUserInfo(this.token);
-        console.log('获取用户信息数据:', data);
         this.userInfo = {
           name: data.user?.username || 'yaohw',
           roles: Array.from(data.roles || ['admin']),
         };
-        console.log('设置用户信息:', this.userInfo);
         return Promise.resolve(this.userInfo);
       } catch (error) {
         console.error('获取用户信息错误:', error);
@@ -75,7 +73,9 @@ export const useUserStore = defineStore('user', {
     async logout() {
       try {
         // 可选：调用 OAuth2 登出端点
-        await userAuthApi.logout(this.token);
+        if (this.token) {
+          await userAuthApi.logout(this.token);
+        }
       } catch (error) {
         console.error('登出错误:', error);
       } finally {
