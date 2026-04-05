@@ -254,7 +254,7 @@ export class VAxios {
 
     const opt: RequestOptions = { ...requestOptions, ...options };
 
-    const { beforeRequestHook, requestCatchHook, transformRequestHook } = transform || {};
+    const { beforeRequestHook, requestCatchHook, transformRequestHook, responseInterceptorsCatch } = transform || {};
     if (beforeRequestHook && isFunction(beforeRequestHook)) {
       conf = beforeRequestHook(conf, opt);
     }
@@ -273,6 +273,11 @@ export class VAxios {
               const ret = transformRequestHook(res, opt);
               resolve(ret);
             } catch (err) {
+              const error = err as any;
+              if (error?.response && responseInterceptorsCatch && isFunction(responseInterceptorsCatch)) {
+                reject(responseInterceptorsCatch(error, this.instance));
+                return;
+              }
               reject(err || new Error('请求错误!'));
             }
             return;
@@ -280,12 +285,15 @@ export class VAxios {
           resolve(res as unknown as Promise<T>);
         })
         .catch((e: Error | AxiosError) => {
+          if (responseInterceptorsCatch && isFunction(responseInterceptorsCatch) && (e as any)?.response) {
+            reject(responseInterceptorsCatch(e, this.instance));
+            return;
+          }
           if (requestCatchHook && isFunction(requestCatchHook)) {
             reject(requestCatchHook(e, opt));
             return;
           }
           if (axios.isAxiosError(e)) {
-            // 在这里重写Axios的错误信息
           }
           reject(e);
         });

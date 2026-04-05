@@ -15,6 +15,13 @@ import { formatRequestDate, joinTimestamp, setObjToUrlParams } from './utils';
 
 const env = import.meta.env.MODE || 'development';
 
+function createAuthError(res: any, message: string) {
+  const err: any = new Error(message);
+  err.config = res.config;
+  err.response = { status: res.data?.code || 401, data: res.data };
+  return err;
+}
+
 // 如果是mock模式 或 没启用直连代理 就不配置host 会走本地Mock拦截 或 Vite 代理
 const host = env === 'mock' || import.meta.env.VITE_IS_REQUEST_PROXY !== 'true' ? '' : import.meta.env.VITE_API_URL;
 
@@ -70,7 +77,7 @@ const transform: AxiosTransform = {
       return data.data !== undefined ? data.data : data;
     }
 
-    throw new Error(`请求接口错误, 错误码: ${code}`);
+    throw createAuthError(res, `请求接口错误, 错误码: ${code}`);
   },
 
   // 请求前处理配置
@@ -212,9 +219,12 @@ const transform: AxiosTransform = {
             const newRefresh = data.data.refreshToken || data.data.refresh_token || '';
             userStore.setToken(newToken, newRefresh);
 
-            // 🔥 关键修复：重新获取用户信息并初始化路由
+            // 🔥 关键修复：刷新token后，重新获取用户信息和路由
             try {
+              // 重新获取用户信息
               await userStore.getUserInfo();
+
+              // 重新初始化路由
               const permissionStore = getPermissionStore();
               const roles = userStore.roles;
               if (roles && roles.length > 0) {
