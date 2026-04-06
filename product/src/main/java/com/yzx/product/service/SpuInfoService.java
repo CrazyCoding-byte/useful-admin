@@ -2,9 +2,12 @@ package com.yzx.product.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.yzx.model.AjaxResult;
 import com.yzx.model.product.SpuInfoEntity;
+import com.yzx.model.product.vo.SkuVo;
 
 import javax.validation.constraints.NotNull;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -33,4 +36,9 @@ public interface SpuInfoService extends IService<SpuInfoEntity> {
      * @return 分页结果
      */
     Page<SpuInfoEntity> queryPage(Integer pageNum, Integer pageSize, Map<String, Object> params);
+
+
+    AjaxResult removeSkuIds(List<Long> skuId);
+
+    AjaxResult saveOrUpdateSkuInfo(SkuVo skuVo);
 }

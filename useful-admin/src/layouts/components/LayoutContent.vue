@@ -57,7 +57,6 @@
       </t-tab-panel>
     </t-tabs>
     <t-content :class="`${prefix}-content-layout`">
-      <l-breadcrumb v-if="settingStore.showBreadcrumb" />
       <l-content />
     </t-content>
     <t-footer v-if="settingStore.showFooter" :class="`${prefix}-footer-layout`">

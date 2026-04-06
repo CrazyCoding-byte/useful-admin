@@ -1,17 +1,25 @@
 <template>
-  <t-breadcrumb :max-item-width="'150'" class="tdesign-breadcrumb">
-    <t-breadcrumbItem v-for="item in crumbs" :key="item.to" :to="item.to">
-      {{ item.title }}
-    </t-breadcrumbItem>
-  </t-breadcrumb>
+  <div class="breadcrumb-wrapper">
+    <t-breadcrumb :max-item-width="'150'" class="tdesign-breadcrumb">
+      <t-breadcrumbItem v-for="item in crumbs" :key="item.to" :to="item.to">
+        {{ item.title }}
+      </t-breadcrumbItem>
+    </t-breadcrumb>
+    <div style="font-size: 12px; color: #999; margin-left: 10px;">
+      路径: {{ route.path }}
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 
+const route = useRoute();
+
 const crumbs = computed(() => {
-  const route = useRoute();
+  console.log('[Breadcrumb] route:', route);
+  console.log('[Breadcrumb] route.matched:', route.matched);
 
   const pathArray = route.path.split('/');
   pathArray.shift();
@@ -29,11 +37,17 @@ const crumbs = computed(() => {
     });
     return breadcrumbArray;
   }, []);
+  
+  console.log('[Breadcrumb] breadcrumbs:', breadcrumbs);
   return breadcrumbs;
 });
 </script>
 <style scoped>
+.breadcrumb-wrapper {
+  display: flex;
+  align-items: center;
+}
 .tdesign-breadcrumb {
-  margin-bottom: 24px;
+  margin-bottom: 0;
 }
 </style>

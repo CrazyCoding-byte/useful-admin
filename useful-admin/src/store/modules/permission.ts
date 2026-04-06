@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { RouteRecordRaw } from 'vue-router';
-import router, { defaultRouterList } from '@/router';
+import router, { defaultRouterList, allRoutes } from '@/router';
 import { store, getUserStore } from '@/store';
 import Layout from '@/layouts/index.vue';
 import { request } from '@/utils/request';
@@ -102,6 +102,7 @@ function addRoutes(routes: Array<RouteRecordRaw>) {
     return;
   }
 
+  // 先添加所有父路由（没有parent的）
   routes.forEach((route) => {
     if (!route || !route.path) {
       return;
@@ -120,14 +121,32 @@ function addRoutes(routes: Array<RouteRecordRaw>) {
     }
 
     try {
+      if (!route.meta?.parent) {
+        router.addRoute(route);
+        console.log('[addRoutes] 成功(父路由):', route.name, route.path);
+      }
+    } catch (error) {
+      console.warn('[addRoutes] 失败(父路由):', error);
+    }
+  });
+
+  // 再添加所有子路由（有parent的）
+  routes.forEach((route) => {
+    if (!route || !route.path) {
+      return;
+    }
+
+    if (!route.name) {
+      route.name = route.path.replace(/\//g, '_').replace(/^_/, '');
+    }
+
+    try {
       if (route.meta?.parent) {
         router.addRoute(route.meta.parent as string, route);
-      } else {
-        router.addRoute(route);
+        console.log('[addRoutes] 成功(子路由):', route.name, route.path, '→', route.meta.parent);
       }
-      console.log('[addRoutes] 成功:', route.name, route.path);
     } catch (error) {
-      console.warn('[addRoutes] 失败:', error);
+      console.warn('[addRoutes] 失败(子路由):', error);
     }
   });
 }
@@ -164,14 +183,14 @@ export const usePermissionStore = defineStore('permission', {
               accessedRouters = backendRoutes;
             } else {
               console.warn('[initRoutes] 使用默认路由');
-              accessedRouters = defaultRouterList.filter(route =>
+              accessedRouters = allRoutes.filter(route =>
                 route.path !== '/login' && route.path !== '/'
               );
             }
           }
         } catch (error) {
           console.error('[initRoutes] 获取路由失败:', error);
-          accessedRouters = defaultRouterList.filter(route =>
+          accessedRouters = allRoutes.filter(route =>
             route.path !== '/login' && route.path !== '/'
           );
         }

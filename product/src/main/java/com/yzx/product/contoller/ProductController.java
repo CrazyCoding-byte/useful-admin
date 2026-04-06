@@ -3,6 +3,7 @@ package com.yzx.product.contoller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.product.SpuInfoEntity;
+import com.yzx.model.product.vo.SkuVo;
 import com.yzx.product.service.SpuInfoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -135,6 +136,27 @@ public class ProductController {
             return AjaxResult.error("SPU 上架失败，请检查 SPU 是否存在或已上架");
         }
     }
+
+    /**
+     * sku商品添加
+     */
+    @PostMapping("/save/sku")
+    public AjaxResult saveOrUpdateSku(@RequestBody SkuVo skuVo) {
+        AjaxResult result = spuInfoService.saveOrUpdateSkuInfo(skuVo);
+        return result;
+    }
+
+    /**
+     *
+     * 删除sku
+     */
+
+    @DeleteMapping("/delete/sku/{skuId}")
+    public AjaxResult deleteSku(@RequestBody List<Long> skuId) {
+        AjaxResult result = spuInfoService.removeSkuIds(skuId);
+        return result;
+    }
+
 
     /**
      * 下架商品

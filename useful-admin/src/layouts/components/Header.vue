@@ -60,6 +60,10 @@
         </div>
       </template>
     </t-head-menu>
+    <!-- 面包屑 -->
+    <div class="breadcrumb-container" style="padding: 0 24px; border-bottom: 1px solid var(--td-border-level-1-color); background-color: var(--td-bg-color-container); height: 40px; display: flex; align-items: center;">
+      <l-breadcrumb />
+    </div>
   </div>
 </template>
 
@@ -76,6 +80,7 @@ import type { MenuRoute } from '@/types/interface';
 import Notice from './Notice.vue';
 import Search from './Search.vue';
 import MenuContent from './MenuContent.vue';
+import LBreadcrumb from './Breadcrumb.vue';
 
 const userStore = useUserStore();
 
@@ -253,6 +258,15 @@ const navToHelper = () => {
   &:hover {
     cursor: pointer;
   }
+}
+
+.breadcrumb-container {
+  padding: 0 24px;
+  border-bottom: 1px solid var(--td-border-level-1-color);
+  background-color: var(--td-bg-color-container);
+  height: 40px;
+  display: flex;
+  align-items: center;
 }
 
 .header-user-account {
