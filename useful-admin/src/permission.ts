@@ -7,7 +7,8 @@ import router from '@/router';
 
 NProgress.configure({ showSpinner: false });
 
-let routesInitializedInThisSession = false;
+// 路由初始化标志
+let routesInitialized = false;
 
 router.beforeEach(async (to, from, next) => {
   NProgress.start();
@@ -17,34 +18,40 @@ router.beforeEach(async (to, from, next) => {
   const { whiteListRouters } = permissionStore;
   const { token } = userStore;
 
+  console.log('[路由守卫] 导航到:', to.path, 'token:', !!token, 'routesInitialized:', routesInitialized);
+
   if (whiteListRouters.includes(to.path)) {
+    console.log('[路由守卫] 白名单路由，直接放行');
     next();
     return;
   }
 
   if (!token || token === 'undefined' || token === 'null') {
+    console.log('[路由守卫] 无 token，跳转登录');
     next({ path: '/login', query: { redirect: encodeURIComponent(to.fullPath) } });
     return;
   }
 
-  if (!routesInitializedInThisSession) {
-    routesInitializedInThisSession = true;
+  // 只在路由未初始化时获取路由
+  if (!routesInitialized) {
     try {
       console.log('[路由守卫] 开始获取路由...');
       const routes = await permissionStore.initRoutes(userStore.roles || ['admin']);
       console.log('[路由守卫] 获取路由完成，数量:', routes?.length);
-      next({ ...to, replace: true });
-      return;
+      routesInitialized = true;
+      // Use fullPath to re-enter navigation after dynamic routes were added.
+      // Spreading `to` may include reactive proxies which can break matching.
+      next({ path: to.fullPath, replace: true });
     } catch (error) {
       console.error('[路由守卫] 获取路由失败:', error);
-      routesInitializedInThisSession = false;
       MessagePlugin.error('权限加载失败');
-      next('/system');
-      return;
+      next('/login');
     }
+  } else {
+    // 路由已初始化，直接放行
+    console.log('[路由守卫] 路由已初始化，直接放行');
+    next();
   }
-
-  next();
 });
 
 router.afterEach(() => {

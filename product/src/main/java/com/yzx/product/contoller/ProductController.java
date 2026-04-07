@@ -138,6 +138,20 @@ public class ProductController {
     }
 
     /**
+     *
+     */
+    @PostMapping("/upSku/{skuId}")
+    public AjaxResult upSku(@PathVariable("skuId") @NotNull(message = "skuId 不能为空") String skuId) {
+        log.info("开始执行 SKU 上架操作，skuId:{}", skuId);
+        boolean success = spuInfoService.upSku(skuId);
+
+        if (success) {
+            return AjaxResult.success("SKU 上架成功");
+        } else {
+            return AjaxResult.error("SKU 上架失败");
+        }
+    }
+    /**
      * sku商品添加
      */
     @PostMapping("/save/sku")

@@ -77,19 +77,19 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
         if (Objects.isNull(skuVo)) {
             return AjaxResult.error("参数不能为空");
         }
-        
+
         boolean isUpdate = Objects.nonNull(skuVo.getSkuId());
         if (isUpdate) {
             log.info("更新SKU信息，skuId={}", skuVo.getSkuId());
         } else {
             log.info("新增SKU信息，spuId={}", skuVo.getSpuId());
         }
-        
+
         try {
             // 1. 处理 SKU 基本信息
             SkuInfoEntity skuInfoEntity = new SkuInfoEntity();
             BeanUtils.copyProperties(skuVo, skuInfoEntity);
-            
+
             if (isUpdate) {
                 // 更新操作
                 boolean updateSuccess = skuInfoService.updateById(skuInfoEntity);
@@ -105,9 +105,9 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
                 // 回填生成的 SKU ID
                 skuVo.setSkuId(skuInfoEntity.getSkuId());
             }
-            
+
             Long skuId = skuVo.getSkuId();
-            
+
             // 2. 处理 SKU 图片列表
             if (!CollectionUtils.isEmpty(skuVo.getImages())) {
                 List<PmsSkuImages> imagesList = skuVo.getImages().stream()
@@ -118,7 +118,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
                             return image;
                         })
                         .collect(Collectors.toList());
-                
+
                 // 批量保存或更新图片（先删后增）
                 boolean imagesSuccess = pmsSkuImagesService.saveOrUpdateBySkuId(skuId, imagesList);
                 if (!imagesSuccess) {
@@ -130,7 +130,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
                 pmsSkuImagesService.removeBySkuId(skuId);
                 log.info("清空SKU图片，skuId={}", skuId);
             }
-            
+
             // 3. 处理 SKU 销售属性值列表
             if (!CollectionUtils.isEmpty(skuVo.getSaleAttrValues())) {
                 List<PmsSkuSaleAttrValue> attrValueList = skuVo.getSaleAttrValues().stream()
@@ -141,7 +141,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
                             return attrValue;
                         })
                         .collect(Collectors.toList());
-                
+
                 // 批量保存或更新销售属性值（先删后增）
                 boolean attrSuccess = pmsSkuSaleAttrValueService.saveOrUpdateBySkuId(skuId, attrValueList);
                 if (!attrSuccess) {
@@ -153,22 +153,29 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
                 pmsSkuSaleAttrValueService.removeBySkuId(skuId);
                 log.info("清空SKU销售属性值，skuId={}", skuId);
             }
-            
+
             // 4. 清理缓存（如果已上架）
             if (isUpdate) {
                 String key = "product:sku:" + skuId;
                 redisTemplate.delete(key);
                 log.info("清理SKU缓存，key={}", key);
             }
-            
+
             String message = isUpdate ? "更新成功" : "新增成功";
             log.info("SKU信息{}，skuId={}", message, skuId);
             return AjaxResult.success(message);
-            
+
         } catch (Exception e) {
             log.error("保存或更新SKU信息失败", e);
             throw new RuntimeException("保存或更新SKU信息失败：" + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public boolean upSku(String skuId) {
+        //todo 上架sku
+
+        return false;
     }
 
     @Override

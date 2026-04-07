@@ -41,4 +41,6 @@ public interface SpuInfoService extends IService<SpuInfoEntity> {
     AjaxResult removeSkuIds(List<Long> skuId);
 
     AjaxResult saveOrUpdateSkuInfo(SkuVo skuVo);
+
+    boolean upSku(@NotNull(message = "skuId 不能为空") String skuId);
 }

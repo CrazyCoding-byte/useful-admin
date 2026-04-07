@@ -77,7 +77,16 @@ function convertBackendRoutesToFrontend(backendRoutes: any[]): Array<RouteRecord
       if (route.component === 'Layout') {
         frontendRoute.component = Layout;
       } else if (route.component) {
-        frontendRoute.component = () => import(`@/pages/${route.component}.vue`);
+        // 处理 component 路径，确保格式正确
+        let componentPath = route.component;
+        // 移除开头的斜杠
+        if (componentPath.startsWith('/')) {
+          componentPath = componentPath.substring(1);
+        }
+        // 确保路径不带 .vue 扩展名
+        componentPath = componentPath.replace(/\.vue$/, '');
+        console.log('[convertBackendRoutesToFrontend] component 路径:', componentPath);
+        frontendRoute.component = () => import(`@/pages/${componentPath}.vue`);
       }
 
       if (route.children && route.children.length > 0) {
