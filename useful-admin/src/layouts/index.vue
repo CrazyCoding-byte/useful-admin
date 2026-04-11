@@ -1,8 +1,10 @@
 <template>
   <div>
-    <template v-if="setting.layout.value === 'side'">
+    <template v-if="setting.layout?.value === 'side'">
       <t-layout key="side" :class="mainLayoutCls">
-        <t-aside><layout-side-nav /></t-aside>
+        <t-aside :width="settingStore.isSidebarCompact ? '64px' : '232px'">
+          <layout-side-nav />
+        </t-aside>
         <t-layout>
           <t-header><layout-header /></t-header>
           <t-content><layout-content /></t-content>

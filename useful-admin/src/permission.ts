@@ -39,8 +39,9 @@ router.beforeEach(async (to, from, next) => {
       const routes = await permissionStore.initRoutes(userStore.roles || ['admin']);
       console.log('[路由守卫] 获取路由完成，数量:', routes?.length);
       routesInitialized = true;
-      // Use fullPath to re-enter navigation after dynamic routes were added.
-      // Spreading `to` may include reactive proxies which can break matching.
+
+      // 🔥 修复：直接使用 replace 重新导航，确保路由完全生效
+      console.log('[路由守卫] 路由获取完成，重新导航到:', to.fullPath);
       next({ path: to.fullPath, replace: true });
     } catch (error) {
       console.error('[路由守卫] 获取路由失败:', error);

@@ -46,6 +46,28 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
     private final PmsSkuImagesServiceImpl pmsSkuImagesService;
     private final PmsSkuSaleAttrValueServiceImpl pmsSkuSaleAttrValueService;
 
+    public static String longestCommonPrefix(String[] strs) {
+        if (strs.length == 0) return "";
+        //先取出第一个字符
+        String s = strs[0];
+        //每个进行判断
+        for (String str : strs) {
+            //如果不是以这个开头的
+            while (!str.startsWith(s)) {
+                if (s.length() == 0) return "";
+                //就切割后面的 直到是相等的
+                s = s.substring(0, s.length() - 1);
+            }
+        }
+        return s;
+    }
+
+    public static void main(String[] args) {
+        String[] strs = {"flow", "flower", "flight"};
+        String s = longestCommonPrefix(strs);
+        System.out.println(s);
+    }
+
     @Override
     public Page<SpuInfoEntity> queryPage(Integer pageNum, Integer pageSize, Map<String, Object> params) {
         // 1. 构造分页对象
@@ -174,6 +196,20 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
     @Override
     public boolean upSku(String skuId) {
         //todo 上架sku
+        SkuInfoEntity skuInfoEntity = skuInfoService.getOne(new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSkuId, skuId));
+        if (Objects.isNull(skuInfoEntity)) return false;
+        //校验是否已经发布的状态
+        if (Objects.equals(skuInfoEntity.getPublishStatus(), 1)) {
+            log.info("skuId={} 已经发布", skuId);
+            return true;
+        }
+        //发布
+        skuInfoEntity.setPublishStatus(1);
+        boolean update = skuInfoService.updateById(skuInfoEntity);
+        if(!update){
+            log.error("skuId={} 发布失败", skuId);
+            return false;
+        }
 
         return false;
     }

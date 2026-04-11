@@ -59,7 +59,7 @@ const getMenuList = (list: MenuRoute[], basePath?: string): ListItemType[] => {
     return (a.meta?.orderNo || 0) - (b.meta?.orderNo || 0);
   });
   return list
-   .map((item) => {
+    .map((item) => {
       let path = item.path;
       if (basePath && !item.path.includes(basePath)) {
         // 确保路径拼接时不会出现双斜杠
