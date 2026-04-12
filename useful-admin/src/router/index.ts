@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router';
 import uniq from 'lodash/uniq';
+import Layout from '@/layouts/index.vue';
 
 // 自动导入modules文件夹下所有ts文件
 const modules = import.meta.globEager('./modules/**/*.ts');
@@ -25,6 +26,21 @@ export const defaultRouterList: Array<RouteRecordRaw> = [
   {
     path: '/',
     redirect: '/login',
+  },
+  // 🔥 添加 SKU 规格管理页面路由（因为后端可能没有返回这个路由）
+  // 使用 Layout 布局，作为 shop/goods 的子路由
+  {
+    path: '/shop',
+    component: Layout,
+    meta: { title: '商品管理', hidden: true },
+    children: [
+      {
+        path: 'goods/sku/:productId',
+        name: 'SkuManagement',
+        component: () => import('@/pages/shop/goods/sku/index.vue'),
+        meta: { title: 'SKU规格管理', hidden: true },
+      },
+    ],
   },
   {
     path: '/:pathMatch(.*)*',

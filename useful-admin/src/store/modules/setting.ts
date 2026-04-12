@@ -9,6 +9,8 @@ const state = {
   showSettingPanel: false,
   colorList: COLOR_TOKEN,
   chartColors: LIGHT_CHART_COLORS,
+  // 🔥 强制开启多标签页功能（覆盖持久化的旧值）
+  isUseTabsRouter: true,
 };
 
 export type TState = typeof state;
@@ -68,9 +70,10 @@ export const useSettingStore = defineStore('setting', {
       }
     },
   },
-  persist: {
-    paths: [...keys(STYLE_CONFIG), 'colorList', 'chartColors'],
-  },
+  // 🔥 暂时禁用持久化，强制使用新的默认值
+  // persist: {
+  //   paths: [...keys(STYLE_CONFIG), 'colorList', 'chartColors'],
+  // },
 });
 
 export function getSettingStore() {

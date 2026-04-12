@@ -1,5 +1,9 @@
 <template>
   <t-layout :class="`${prefix}-layout`">
+    <!-- 🔥 调试：显示标签页状态 -->
+    <div v-if="settingStore.isUseTabsRouter" style="background: yellow; padding: 5px;">
+      isUseTabsRouter: {{ settingStore.isUseTabsRouter }}, tabRouters数量: {{ tabRouters.length }}
+    </div>
     <t-tabs
       v-if="settingStore.isUseTabsRouter"
       theme="card"

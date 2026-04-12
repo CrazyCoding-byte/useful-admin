@@ -32,9 +32,6 @@ public class ProductController {
      * 获取商品列表（分页）
      * @param pageNum 页码
      * @param pageSize 每页数量
-     * @param productName 商品名称（可选）
-     * @param productCode 商品编码（可选）
-     * @param status 商品状态（可选）
      * @return 分页数据
      */
     @PostMapping("/list/{pageNum}/{pageSize}")
@@ -52,6 +49,17 @@ public class ProductController {
 
         return AjaxResult.success(result);
     }
+
+    /**
+     * 根据spuId 查询出绑定的sku信息
+     *
+     */
+    @PostMapping("getSkuInfoBySpuId/{spuId}")
+    public AjaxResult getSkuInfoBySpuId(@PathVariable Long spuId) {
+        List<SkuVo> skuVos = spuInfoService.getSkuInfoBySpuId(spuId);
+        return AjaxResult.success(skuVos);
+    }
+
 
     /**
      * 根据 ID 获取商品信息
@@ -138,7 +146,7 @@ public class ProductController {
     }
 
     /**
-     *
+     * sku商品上架
      */
     @PostMapping("/upSku/{skuId}")
     public AjaxResult upSku(@PathVariable("skuId") @NotNull(message = "skuId 不能为空") String skuId) {
@@ -151,6 +159,15 @@ public class ProductController {
             return AjaxResult.error("SKU 上架失败");
         }
     }
+
+    @PostMapping("/downSku/{skuId}")
+    public AjaxResult downSku(@PathVariable("skuId") @NotNull(message = "skuId 不能为空") String skuId) {
+        log.info("开始执行 SKU 下架操作，skuId:{}", skuId);
+        boolean success = spuInfoService.downSku(skuId);
+        return AjaxResult.success(success);
+    }
+
+
     /**
      * sku商品添加
      */

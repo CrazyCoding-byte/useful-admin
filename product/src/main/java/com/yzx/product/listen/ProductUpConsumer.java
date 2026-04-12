@@ -68,7 +68,6 @@ public class ProductUpConsumer {
             // 3. 解析SPU_ID
             // 解析JSON（兼容所有格式）
             JSONObject json = JSON.parseObject(bodyStr);
-            // 🔥 安全获取Long类型，永不报错
             spuId = json.getLong("spuId");
             log.info("开始处理SPU上架同步ES，spuId:{}，msgId:{}", spuId, msgId);
 
@@ -130,7 +129,6 @@ public class ProductUpConsumer {
                     attrVoList.add(vo);
                 }
             }
-            // 🔥 核心：保存ES + 打印结果
             doc.setSaleAttrs(attrVoList);
             log.info("🔴 准备保存到ES：{}", JSON.toJSONString(doc));
             productEsRepository.save(doc);

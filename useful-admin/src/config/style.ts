@@ -8,7 +8,7 @@ export default {
   isFooterAside: false,
   isSidebarFixed: true,
   isHeaderFixed: true,
-  isUseTabsRouter: false,
+  isUseTabsRouter: true,  // 🔥 开启多标签页功能
   showHeader: true,
   backgroundTheme: 'blueGrey',
   brandTheme: 'default',

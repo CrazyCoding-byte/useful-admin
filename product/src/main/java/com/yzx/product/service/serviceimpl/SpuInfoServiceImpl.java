@@ -1,6 +1,7 @@
 package com.yzx.product.service.serviceimpl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.alibaba.fastjson.JSON;
@@ -20,7 +21,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,10 +29,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @Slf4j
@@ -194,6 +194,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
     }
 
     @Override
+    @Transactional
     public boolean upSku(String skuId) {
         //todo 上架sku
         SkuInfoEntity skuInfoEntity = skuInfoService.getOne(new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSkuId, skuId));
@@ -206,12 +207,86 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
         //发布
         skuInfoEntity.setPublishStatus(1);
         boolean update = skuInfoService.updateById(skuInfoEntity);
-        if(!update){
+        if (!update) {
             log.error("skuId={} 发布失败", skuId);
             return false;
         }
+        String skuKey = "product:sku:" + skuId;
+        redisTemplate.delete(skuKey);
+        log.info("SKU上架成功，删除缓存：{}", skuKey);
 
-        return false;
+        log.info("SKU独立上架成功，skuId:{}", skuId);
+        return true;
+    }
+
+    @Override
+    public List<SkuVo> getSkuInfoBySpuId(Long spuId) {
+        List<SkuInfoEntity> skuInfoEntities = skuInfoService.list(new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSpuId, spuId));
+        if (!CollectionUtils.isEmpty(skuInfoEntities)) {
+            List<Long> skuIds = skuInfoEntities.stream().map(item -> item.getSkuId()).collect(Collectors.toList());
+            List<SkuVo> skuVoList = new ArrayList<>();
+            //获取sku属性
+            List<PmsSkuSaleAttrValue> pmsSkuSaleAttrValues = pmsSkuSaleAttrValueService.listBySkuIds(skuIds);
+            //获取sku图片
+            List<PmsSkuImages> pmsSkuImages = pmsSkuImagesService.listBySkuIds(skuIds);
+            skuInfoEntities.forEach(item -> {
+                SkuVo skuVo = new SkuVo();
+                BeanUtils.copyProperties(item, skuVo);
+                List<PmsSkuSaleAttrValue> filterSkuSaleAttrValue = pmsSkuSaleAttrValues.stream().filter(item1 -> item1.getSkuId().equals(item.getSkuId())).collect(Collectors.toList());
+                List<PmsSkuImages> filterSkuImage = pmsSkuImages.stream().filter(item2 -> item2.equals(item.getSkuId())).collect(Collectors.toList());
+                if (!CollectionUtils.isEmpty(filterSkuSaleAttrValue)) {
+                    List<SkuVo.SkuSaleAttrValueVo> skuSaleAttrValueVos = new ArrayList<>();
+                    filterSkuSaleAttrValue.forEach(item1 -> {
+                        SkuVo.SkuSaleAttrValueVo skuSaleAttrValueVo = new SkuVo.SkuSaleAttrValueVo();
+                        BeanUtils.copyProperties(item1, skuSaleAttrValueVo);
+                        skuSaleAttrValueVos.add(skuSaleAttrValueVo);
+                    });
+                    skuVo.setSaleAttrValues(skuSaleAttrValueVos);
+                }
+                if (!CollectionUtils.isEmpty(filterSkuImage)) {
+                    List<SkuVo.SkuImageVo> skuImageVos = new ArrayList<>();
+                    filterSkuImage.forEach(item2 -> {
+                        SkuVo.SkuImageVo skuImageVo = new SkuVo.SkuImageVo();
+                        BeanUtils.copyProperties(item2, skuImageVo);
+                        skuImageVos.add(skuImageVo);
+                    });
+                    skuVo.setImages(skuImageVos);
+                }
+                skuVoList.add(skuVo);
+            });
+            return skuVoList;
+        }
+        return Collections.emptyList();
+    }
+
+    @Transactional
+    @Override
+    public boolean downSku(String skuId) {
+        if (StringUtils.isEmpty(skuId)) {
+            log.error("skuId 不能为空");
+            return false;
+        }
+        SkuInfoEntity skuInfoEntity = skuInfoService.getOne(new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSkuId, skuId));
+        if (Objects.isNull(skuInfoEntity)) {
+            log.error("skuId={} 不存在", skuId);
+            return false;
+        }
+        if (Objects.equals(skuInfoEntity.getPublishStatus(), 0)) {
+            log.error("skuId={} 已经下架", skuId);
+            return true;
+        }
+        skuInfoEntity.setPublishStatus(0);
+        boolean update = skuInfoService.updateById(skuInfoEntity);
+        if (!update) {
+            log.error("skuId={} 下架失败", skuId);
+            return false;
+        }
+
+        //删除缓存
+        String skuKey = "product:sku:" + skuId;
+        redisTemplate.delete(skuKey);
+        log.info("SKU下架成功，删除缓存：{}", skuKey);
+        return true;
     }
 
     @Override
@@ -302,6 +377,12 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
             return false;
         }
 
+        LambdaUpdateWrapper<SkuInfoEntity> skuInfoEntityLambdaQueryWrapper = new LambdaUpdateWrapper<>();
+        skuInfoEntityLambdaQueryWrapper.eq(SkuInfoEntity::getSpuId, spuId)
+                .set(SkuInfoEntity::getPublishStatus, 1);
+        skuInfoService.update(skuInfoEntityLambdaQueryWrapper);
+        log.info("spu上架,同步批量上架该spu下所有sku,spuId:{}", spuId);
+
         // 4. 清理缓存
         List<SkuInfoEntity> skuList = skuInfoService.list(new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSpuId, spuId));
         for (SkuInfoEntity sku : skuList) {
@@ -330,12 +411,11 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
         msg.setCreateTime(LocalDateTime.now());
         mqMessageService.save(msg);
 
-        // 6. 事务提交后发送【纯JSON字符串】，绝对不编Base64
+        // 6. 事务提交后发送
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
             @Override
             public void afterCommit() {
                 try {
-                    // 🔥 核心修复：直接发送JSON字符串，不经过任何序列化
                     rabbitTemplate.convertAndSend(
                             "product.up.exchange",
                             "product.up",

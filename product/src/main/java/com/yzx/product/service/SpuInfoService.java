@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.product.SpuInfoEntity;
 import com.yzx.model.product.vo.SkuVo;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.validation.constraints.NotNull;
 import java.util.List;
@@ -38,9 +39,14 @@ public interface SpuInfoService extends IService<SpuInfoEntity> {
     Page<SpuInfoEntity> queryPage(Integer pageNum, Integer pageSize, Map<String, Object> params);
 
 
+    @Transactional
+    boolean downSku(String skuId);
+
     AjaxResult removeSkuIds(List<Long> skuId);
 
     AjaxResult saveOrUpdateSkuInfo(SkuVo skuVo);
 
     boolean upSku(@NotNull(message = "skuId 不能为空") String skuId);
+
+    List<SkuVo> getSkuInfoBySpuId(Long spuId);
 }

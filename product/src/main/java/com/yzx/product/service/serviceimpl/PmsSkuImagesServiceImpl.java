@@ -8,7 +8,9 @@ import com.yzx.product.service.PmsSkuImagesService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -31,24 +33,33 @@ public class PmsSkuImagesServiceImpl extends ServiceImpl<PmsSkuImagesMapper, Pms
         return this.list(wrapper);
     }
 
+    public List<PmsSkuImages> listBySkuIds(List<Long> skuIds) {
+        log.info("查询SKU图片列表，skuIds={}", skuIds);
+        if (!CollectionUtils.isEmpty(skuIds)) {
+            List<PmsSkuImages> pmsSkuImages = this.listByIds(skuIds);
+            return pmsSkuImages;
+        }
+        return Collections.emptyList();
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean saveOrUpdateBySkuId(Long skuId, List<PmsSkuImages> images) {
         log.info("保存或更新SKU图片，skuId={}, 图片数量={}", skuId, images != null ? images.size() : 0);
-        
+
         // 先删除原有的图片
         this.removeBySkuId(skuId);
-        
+
         // 如果新图片列表为空，直接返回
         if (images == null || images.isEmpty()) {
             return true;
         }
-        
+
         // 设置skuId并批量保存
         for (PmsSkuImages image : images) {
             image.setSkuId(skuId);
         }
-        
+
         return this.saveBatch(images);
     }
 
