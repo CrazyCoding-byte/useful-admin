@@ -1,6 +1,7 @@
 package com.yzx.product.contoller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.yzx.common.utils.PageResult;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.product.SpuInfoEntity;
 import com.yzx.model.product.vo.SkuVo;
@@ -54,9 +55,9 @@ public class ProductController {
      * 根据spuId 查询出绑定的sku信息
      *
      */
-    @PostMapping("getSkuInfoBySpuId/{spuId}")
-    public AjaxResult getSkuInfoBySpuId(@PathVariable Long spuId) {
-        List<SkuVo> skuVos = spuInfoService.getSkuInfoBySpuId(spuId);
+    @PostMapping("getSkuInfoBySpuId/{spuId}/{pageNum}/{pageSize}")
+    public AjaxResult getSkuInfoBySpuId(@PathVariable Long spuId, @PathVariable Integer pageNum, @PathVariable Integer pageSize) {
+        PageResult<SkuVo> skuVos = spuInfoService.getSkuInfoBySpuIdPage(spuId, pageNum, pageSize);
         return AjaxResult.success(skuVos);
     }
 

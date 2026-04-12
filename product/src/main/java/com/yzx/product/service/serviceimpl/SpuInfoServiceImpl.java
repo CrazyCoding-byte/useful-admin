@@ -8,6 +8,7 @@ import com.alibaba.fastjson.JSON;
 import com.yzx.common.enums.MessageStatusEnum;
 import com.yzx.common.mqlocalmessage.MqMessage;
 import com.yzx.common.service.impl.MqMessageServiceImpl;
+import com.yzx.common.utils.PageResult;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.product.PmsSkuImages;
 import com.yzx.model.product.PmsSkuSaleAttrValue;
@@ -220,43 +221,67 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
     }
 
     @Override
-    public List<SkuVo> getSkuInfoBySpuId(Long spuId) {
-        List<SkuInfoEntity> skuInfoEntities = skuInfoService.list(new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSpuId, spuId));
-        if (!CollectionUtils.isEmpty(skuInfoEntities)) {
-            List<Long> skuIds = skuInfoEntities.stream().map(item -> item.getSkuId()).collect(Collectors.toList());
-            List<SkuVo> skuVoList = new ArrayList<>();
-            //获取sku属性
-            List<PmsSkuSaleAttrValue> pmsSkuSaleAttrValues = pmsSkuSaleAttrValueService.listBySkuIds(skuIds);
-            //获取sku图片
-            List<PmsSkuImages> pmsSkuImages = pmsSkuImagesService.listBySkuIds(skuIds);
-            skuInfoEntities.forEach(item -> {
-                SkuVo skuVo = new SkuVo();
-                BeanUtils.copyProperties(item, skuVo);
-                List<PmsSkuSaleAttrValue> filterSkuSaleAttrValue = pmsSkuSaleAttrValues.stream().filter(item1 -> item1.getSkuId().equals(item.getSkuId())).collect(Collectors.toList());
-                List<PmsSkuImages> filterSkuImage = pmsSkuImages.stream().filter(item2 -> item2.equals(item.getSkuId())).collect(Collectors.toList());
-                if (!CollectionUtils.isEmpty(filterSkuSaleAttrValue)) {
-                    List<SkuVo.SkuSaleAttrValueVo> skuSaleAttrValueVos = new ArrayList<>();
-                    filterSkuSaleAttrValue.forEach(item1 -> {
-                        SkuVo.SkuSaleAttrValueVo skuSaleAttrValueVo = new SkuVo.SkuSaleAttrValueVo();
-                        BeanUtils.copyProperties(item1, skuSaleAttrValueVo);
-                        skuSaleAttrValueVos.add(skuSaleAttrValueVo);
-                    });
-                    skuVo.setSaleAttrValues(skuSaleAttrValueVos);
-                }
-                if (!CollectionUtils.isEmpty(filterSkuImage)) {
-                    List<SkuVo.SkuImageVo> skuImageVos = new ArrayList<>();
-                    filterSkuImage.forEach(item2 -> {
-                        SkuVo.SkuImageVo skuImageVo = new SkuVo.SkuImageVo();
-                        BeanUtils.copyProperties(item2, skuImageVo);
-                        skuImageVos.add(skuImageVo);
-                    });
-                    skuVo.setImages(skuImageVos);
-                }
-                skuVoList.add(skuVo);
-            });
-            return skuVoList;
+    public PageResult<SkuVo> getSkuInfoBySpuIdPage(Long spuId, Integer pageNum, Integer pageSize) {
+        // 1. 创建分页对象
+        Page<SkuInfoEntity> page = new Page<>(pageNum, pageSize);
+
+        // 2. 查询 SKU 列表（分页）
+        skuInfoService.page(page, new LambdaQueryWrapper<SkuInfoEntity>()
+                .eq(SkuInfoEntity::getSpuId, spuId)
+                );
+
+        // 3. 如果没有数据，返回空分页结果
+        if (CollectionUtils.isEmpty(page.getRecords())) {
+            return new PageResult<>(0L, (long) pageSize, (long) pageNum, Collections.emptyList());
         }
-        return Collections.emptyList();
+
+        // 4. 获取 SKU ID 列表
+        List<Long> skuIds = page.getRecords().stream()
+                .map(SkuInfoEntity::getSkuId)
+                .collect(Collectors.toList());
+
+        // 5. 批量查询属性和图片
+        List<PmsSkuSaleAttrValue> pmsSkuSaleAttrValues = pmsSkuSaleAttrValueService.listBySkuIds(skuIds);
+        List<PmsSkuImages> pmsSkuImages = pmsSkuImagesService.listBySkuIds(skuIds);
+
+        // 6. 组装数据
+        List<SkuVo> skuVoList = page.getRecords().stream().map(item -> {
+            SkuVo skuVo = new SkuVo();
+            BeanUtils.copyProperties(item, skuVo);
+
+            // 设置属性
+            List<PmsSkuSaleAttrValue> filterSkuSaleAttrValue = pmsSkuSaleAttrValues.stream()
+                    .filter(attr -> attr.getSkuId().equals(item.getSkuId()))
+                    .collect(Collectors.toList());
+            if (!CollectionUtils.isEmpty(filterSkuSaleAttrValue)) {
+                List<SkuVo.SkuSaleAttrValueVo> skuSaleAttrValueVos = filterSkuSaleAttrValue.stream()
+                        .map(attr -> {
+                            SkuVo.SkuSaleAttrValueVo vo = new SkuVo.SkuSaleAttrValueVo();
+                            BeanUtils.copyProperties(attr, vo);
+                            return vo;
+                        }).collect(Collectors.toList());
+                skuVo.setSaleAttrValues(skuSaleAttrValueVos);
+            }
+
+            // 设置图片
+            List<PmsSkuImages> filterSkuImage = pmsSkuImages.stream()
+                    .filter(img -> img.getSkuId().equals(item.getSkuId()))
+                    .collect(Collectors.toList());
+            if (!CollectionUtils.isEmpty(filterSkuImage)) {
+                List<SkuVo.SkuImageVo> skuImageVos = filterSkuImage.stream()
+                        .map(img -> {
+                            SkuVo.SkuImageVo vo = new SkuVo.SkuImageVo();
+                            BeanUtils.copyProperties(img, vo);
+                            return vo;
+                        }).collect(Collectors.toList());
+                skuVo.setImages(skuImageVos);
+            }
+
+            return skuVo;
+        }).collect(Collectors.toList());
+
+        // 7. 返回分页结果
+        return new PageResult<>(page.getTotal(), page.getSize(), page.getCurrent(), skuVoList);
     }
 
     @Transactional

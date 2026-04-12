@@ -257,7 +257,8 @@ import { request } from '@/utils/request';
 
 const route = useRoute();
 const router = useRouter();
-
+const productId=route.params.productId;
+const spuName=route.params.spuName;
 // 状态选项
 const STATUS_OPTIONS = [
   { label: '上架', value: '1' },
