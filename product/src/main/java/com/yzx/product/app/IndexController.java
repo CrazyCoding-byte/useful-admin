@@ -1,7 +1,6 @@
 package com.yzx.product.app;
 
 import com.yzx.model.AjaxResult;
-import com.yzx.model.Result;
 import com.yzx.product.entity.SearchParam;
 import com.yzx.product.service.EsSearchService;
 import com.yzx.product.service.ProductCateGoryService;

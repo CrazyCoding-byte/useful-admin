@@ -15,6 +15,8 @@ import com.yzx.model.order.enums.OrderStatusEnum;
 import com.yzx.model.order.to.OrderCreateTo;
 import com.yzx.model.order.to.OrderTo;
 import com.yzx.model.ucenter.BaseUser;
+import com.yzx.model.ucenter.BaseUserDetail;
+import com.yzx.model.utils.SecurityUtils;
 import com.yzx.order.mapper.OrderMapper;
 import com.yzx.order.service.OrderItemService;
 import com.yzx.order.service.OrderService;
@@ -52,8 +54,7 @@ import static com.yzx.model.order.constant.OrderConstant.USER_ORDER_TOKEN_PREFIX
 public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderEntity> implements OrderService {
 
     private ThreadLocal<OrderSubmitVo> confirmVoThreadLocal = new ThreadLocal<>();
-    @Autowired
-    private JwtHelp jwtHelp;
+
     @Autowired
     private MemberFeignService memberFeignService;
     @Autowired
@@ -77,7 +78,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderEntity> impl
         //查询用户信息 查询收货地址信息 查询购物车信息 查询优惠券信息 查询积分信息
         //构建OrderConfirmVo
         OrderConfirmVo confirmVo = new OrderConfirmVo();
-        BaseUser baseUser = jwtHelp.getCurrentUser().getBaseUser();
+        BaseUserDetail loginUser = SecurityUtils.getLoginUser();
+        BaseUser baseUser = loginUser.getBaseUser();
         if (Objects.isNull(baseUser)) return null;
         RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
         CompletableFuture<Void> addressFuture = CompletableFuture.runAsync(() -> {
@@ -128,7 +130,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderEntity> impl
         confirmVoThreadLocal.set(vo);
         SubmitOrderResponseVo responseVo = new SubmitOrderResponseVo();
         //去创建、下订单、验令牌、验价格、锁定库存...
-        BaseUser baseUser = jwtHelp.getCurrentUser().getBaseUser();
+        BaseUserDetail loginUser = SecurityUtils.getLoginUser();
+        BaseUser baseUser = loginUser.getBaseUser();
         responseVo.setCode(0);
         //1、验证令牌是否合法【令牌的对比和删除必须保证原子性】
         String script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
@@ -337,7 +340,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, OrderEntity> impl
 
     //构建订单信息
     private OrderEntity builderOrder(String orderSn) {
-        BaseUser baseUser = jwtHelp.getCurrentUser().getBaseUser();
+        BaseUserDetail loginUser = SecurityUtils.getLoginUser();
+        BaseUser baseUser = loginUser.getBaseUser();
         if (Objects.isNull(baseUser)) return null;
         OrderEntity orderEntity = new OrderEntity();
         orderEntity.setMemberId(baseUser.getUserId());

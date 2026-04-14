@@ -55,15 +55,15 @@ public class MessageRetryTask {
         }
         try {
             //2.分页查询失败消息
-            Page<MqMessage> page = new Page<>(1, PAGE_SIZE);
-             mqMessageService.lambdaQuery()
+            Page<MqMessage> page = new Page<>(1, PAGE_SIZE, false);
+            Page<MqMessage> resultPage = mqMessageService.lambdaQuery()
                     .eq(MqMessage::getAppName, appName)
                     .eq(MqMessage::getStatus, MessageStatusEnum.FAIL.getCode())
                     .lt(MqMessage::getRetryCount, MAX_RETRY)
                     .orderByAsc(MqMessage::getLastRetryTime)
                     .orderByAsc(MqMessage::getCreateTime)
                     .page(page);
-            List<MqMessage> failListMessage = page.getRecords();
+            List<MqMessage> failListMessage = resultPage.getRecords();
             if (CollectionUtils.isEmpty(failListMessage)) {
                 log.debug("服务[{}]没有需要重试的消息", appName);
                 return;

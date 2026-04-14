@@ -10,6 +10,7 @@ import com.yzx.model.cart.vo.CartVo;
 import com.yzx.model.cart.vo.SkuInfoVo;
 import com.yzx.model.ucenter.BaseUser;
 import com.yzx.model.ucenter.BaseUserDetail;
+import com.yzx.model.utils.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,8 +38,6 @@ import static com.yzx.model.cart.CartConst.CART_PREFIX;
 @Service
 @Slf4j
 public class CartServiceImpl implements CartService {
-    @Autowired
-    private JwtHelp jwtHelp;
     @Autowired
     private RedisTemplate redisTemplate;
     @Autowired
@@ -132,7 +131,7 @@ public class CartServiceImpl implements CartService {
     @Override
     public CartVo getCart() {
         CartVo cartVo = new CartVo();
-        BaseUserDetail currentUser = jwtHelp.getCurrentUser();
+        BaseUserDetail currentUser = SecurityUtils.getLoginUser();
         BaseUser userInfoTo = currentUser.getBaseUser();
         if (userInfoTo.getUserId() != null) {
             //1、登录
@@ -148,7 +147,7 @@ public class CartServiceImpl implements CartService {
     public List<CartItemVo> getUserCartItems() {
         List<CartItemVo> cartItemVoList = new ArrayList<>();
         //获取当前用户登录的信息
-        BaseUser baseUser = jwtHelp.getCurrentUser().getBaseUser();
+        BaseUser baseUser = SecurityUtils.getLoginUser().getBaseUser();
         //如果用户未登录直接返回null
         if (baseUser.getUserId() == null) {
             return null;
@@ -208,7 +207,7 @@ public class CartServiceImpl implements CartService {
      */
     private BoundHashOperations<String, Object, Object> getCartOps() {
         //先得到当前用户信息
-        BaseUserDetail currentUser = jwtHelp.getCurrentUser();
+        BaseUserDetail currentUser = SecurityUtils.getLoginUser();
 
         String cartKey = "";
         if (currentUser.getBaseUser().getUserId() != null) {
