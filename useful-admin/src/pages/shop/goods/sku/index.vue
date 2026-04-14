@@ -256,7 +256,6 @@ import { MessagePlugin, TTableCol, TableRowData, PageInfo } from 'tdesign-vue-ne
 import { request } from '@/utils/request';
 
 const route = useRoute();
-const router = useRouter();
 const productId=route.params.productId;
 const spuName=route.params.spuName;
 // 状态选项
@@ -386,12 +385,8 @@ const deleteIds = ref<string[]>([]);
 const fetchSkuList = async () => {
   loading.value = true;
   try {
-    const res = await request.get({
-      url: `/product/sku/list/${pagination.value.current}/${pagination.value.pageSize}`,
-      params: {
-        specCombination: formData.value.specCombination,
-        status: formData.value.status,
-      },
+    const res = await request.post({
+      url: `/product/getSkuInfoBySpuId/${productId}/${pagination.value.current}/${pagination.value.pageSize}`,
     });
     if (res && res.list) {
       data.value = res.list;

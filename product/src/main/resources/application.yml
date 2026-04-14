@@ -3,6 +3,12 @@ eureka:
     serviceUrl:
       #配置服务中心(可配置多个,用逗号隔开)
       defaultZone: http://admin:admin@localhost:9000/eureka/
+
+# 🔥 禁用 PageHelper 的自动配置，避免与 MyBatis-Plus 分页插件冲突
+pagehelper:
+  auto-dialect: false
+  enabled: false
+
 spring:
   redis:
     port: 6379
