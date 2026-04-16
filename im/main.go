@@ -1,11 +1,15 @@
 package main
 
 import (
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"local/im/src/config"
 	"local/im/src/repository"
 	"log"
 
 	"github.com/minio/minio-go/v7"
+	_ "github.com/minio/minio-go/v7/pkg/credentials" // 凭证包
 )
 
 type User struct {
@@ -71,14 +75,14 @@ func main() {
 		log.Fatalf("初始化MinIO失败: %v", err)
 	}
 	minioCore, err := repository.NewMinioCore(cfg.MinIO.Endpoint, &minio.Options{
-		Creds: ,
-		Secure: false,
+		Creds:  credentials.NewStaticV4(cfg.MinIO.AccessKeyID, cfg.MinIO.SecretAccessKey, ""),
+		Secure: false, //关闭https
 	})
 	if err != nil {
 		log.Fatal("初始化MinioCore失败:%v", err)
 	}
 	//7.初始化分片上传器
-	repository.NewMinioCoreChunkUploader(
+	chunkUploader := repository.NewMinioCoreChunkUploader(
 		minioCore,
 		minioClient,
 		redisClient,
@@ -86,4 +90,24 @@ func main() {
 		cfg.MinIO,
 		cfg.Retry,
 	)
+
+	//8.初始化普通文件存储服务
+	fileService, err := repository.NewFileStorageService(
+		minioClient,
+		db,
+		cfg.MinIO.BucketName,
+		cfg.FileConfig.BaseUrl,
+		int(cfg.FileConfig.MaxFileSize),
+		int(cfg.FileConfig.MaxChunkSize),
+	)
+	if err != nil {
+		log.Fatal("初始化文件存储服务失败:%v", err)
+	}
+
+	//9.创建Gin路由
+	r := gin.Default()
+
+	//11启动服务
+	fmt.Println("服务器启动在: 8080")
+	r.Run(":8080")
 }
