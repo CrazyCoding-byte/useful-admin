@@ -27,8 +27,7 @@ export const defaultRouterList: Array<RouteRecordRaw> = [
     path: '/',
     redirect: '/login',
   },
-  // 🔥 添加 SKU 规格管理页面路由（因为后端可能没有返回这个路由）
-  // 使用 Layout 布局，作为 shop/goods 的子路由
+
   {
     path: '/shop',
     component: Layout,

@@ -9,10 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/bsm/redislock"
-	"github.com/minio/minio-go/v7"
-	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 	"io"
 	"local/im/src/config"
 	"local/im/src/model"
@@ -24,6 +20,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/bsm/redislock"
+	"github.com/minio/minio-go/v7"
+	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 )
 
 /**

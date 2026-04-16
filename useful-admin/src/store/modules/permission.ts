@@ -5,7 +5,7 @@ import { store, getUserStore } from '@/store';
 import Layout from '@/layouts/index.vue';
 import { request } from '@/utils/request';
 
-// 🔥 预加载所有页面组件，避免动态导入问题
+
 // permission.ts 位于 src/store/modules/，所以到 src/pages/ 的路径是 ../../pages/
 const pageModules = import.meta.glob('../../pages/**/*.vue');
 
@@ -14,10 +14,8 @@ const pageModules = import.meta.glob('../../pages/**/*.vue');
  */
 async function fetchRoutesFromBackend(token: string): Promise<Array<RouteRecordRaw>> {
   try {
-    console.log('[fetchRoutesFromBackend] 开始获取路由');
 
     const result = await request.get({ url: '/auth/user/getRouters' });
-    console.log('[fetchRoutesFromBackend] 后端返回完整数据:', result);
 
     // 检查后端返回的数据结构
     let routesData;
@@ -26,26 +24,20 @@ async function fetchRoutesFromBackend(token: string): Promise<Array<RouteRecordR
     } else if (result && Array.isArray(result)) {
       routesData = result;
     } else {
-      console.warn('[fetchRoutesFromBackend] 无法识别后端返回的数据结构');
       return [];
     }
-    
-    // 🔥 打印后端返回的原始路由结构（前3个）
-    console.log('[fetchRoutesFromBackend] 后端路由原始数据（前3个）:');
+
     routesData.slice(0, 3).forEach((route, index) => {
-      console.log(`  [${index}] path: ${route.path}, component: ${route.component}, children:`, route.children?.length || 0);
       if (route.children) {
         route.children.forEach((child, cidx) => {
-          console.log(`    [${cidx}] child path: ${child.path}, component: ${child.component}`);
         });
       }
     });
-    
+
     return convertBackendRoutesToFrontend(routesData);
 
     return [];
   } catch (error) {
-    console.error('[fetchRoutesFromBackend] 失败:', error);
     return [];
   }
 }
@@ -66,7 +58,7 @@ function convertBackendRoutesToFrontend(backendRoutes: any[], isChild: boolean =
     })
     .map((route) => {
       let path = route.path || '';
-      
+
       // 父路由（顶级路由）需要前导斜杠
       // 子路由使用相对路径，不要前导斜杠
       if (!isChild) {
@@ -104,7 +96,6 @@ function convertBackendRoutesToFrontend(backendRoutes: any[], isChild: boolean =
         },
       };
 
-      // 🔥 修复：如果路由有 children 且 component 为 undefined 或 'Layout'，则使用 Layout
       if (route.component === 'Layout' || (!route.component && route.children && route.children.length > 0)) {
         frontendRoute.component = Layout;
       } else if (route.component) {
@@ -116,18 +107,12 @@ function convertBackendRoutesToFrontend(backendRoutes: any[], isChild: boolean =
         }
         // 确保路径不带 .vue 扩展名
         componentPath = componentPath.replace(/\.vue$/, '');
-        
-        console.log('[convertBackendRoutesToFrontend] component 路径:', componentPath);
-        
-        // 🔥 使用预加载的模块，而不是动态 import
-        // 路径格式: ../../pages/system/user/index.vue
+
+
         const modulePath = `../../pages/${componentPath}.vue`;
         if (pageModules[modulePath]) {
           frontendRoute.component = pageModules[modulePath];
-          console.log('[convertBackendRoutesToFrontend] 找到组件:', modulePath);
         } else {
-          console.error('[convertBackendRoutesToFrontend] 未找到组件:', modulePath);
-          console.error('[convertBackendRoutesToFrontend] 可用路径:', Object.keys(pageModules).slice(0, 10));
           // 如果找不到组件，使用 404 页面作为 fallback
           frontendRoute.component = () => import('../../pages/result/404/index.vue');
         }
@@ -174,11 +159,9 @@ function addRoutes(routes: Array<RouteRecordRaw>) {
       if (parentName) {
         // 添加子路由到指定父路由
         router.addRoute(parentName, route);
-        console.log('[addRoutes] 成功(子路由):', route.name, route.path, '→ 父路由:', parentName);
       } else {
         // 添加顶级路由
         router.addRoute(route);
-        console.log('[addRoutes] 成功(父路由):', route.name, route.path);
       }
 
       // 递归处理子路由
@@ -188,7 +171,6 @@ function addRoutes(routes: Array<RouteRecordRaw>) {
         });
       }
     } catch (error) {
-      console.warn('[addRoutes] 失败:', route.name, error);
     }
   };
 
@@ -203,14 +185,11 @@ export const usePermissionStore = defineStore('permission', {
     dynamicRoutes: [],
   }),
   persist: {
-    // 🔥 禁用路由数据的持久化，因为 Vue Router 实例在刷新时会重置
-    // 如果持久化了路由数据，会导致 Store 有数据但 Router 没有的问题
     paths: ['whiteListRouters'], // 只持久化白名单路由
   },
   actions: {
     async initRoutes(roles: Array<unknown>) {
       try {
-        console.log('[initRoutes] 开始，角色:', roles);
 
         let accessedRouters: Array<RouteRecordRaw> = [];
 
@@ -219,37 +198,30 @@ export const usePermissionStore = defineStore('permission', {
           const token = userStoreInstance.token;
 
           if (token) {
-            console.log('[initRoutes] 从后端获取路由...');
             const backendRoutes = await fetchRoutesFromBackend(token);
 
-            console.log('[initRoutes] 后端返回数量:', backendRoutes.length);
 
             if (backendRoutes && backendRoutes.length > 0) {
               accessedRouters = backendRoutes;
             } else {
-              console.warn('[initRoutes] 使用默认路由');
               accessedRouters = allRoutes.filter(route =>
                 route.path !== '/login' && route.path !== '/'
               );
             }
           }
         } catch (error) {
-          console.error('[initRoutes] 获取路由失败:', error);
           accessedRouters = allRoutes.filter(route =>
             route.path !== '/login' && route.path !== '/'
           );
         }
 
         addRoutes(accessedRouters);
-        console.log('[initRoutes] 添加完成');
 
         this.routers = accessedRouters;
         this.dynamicRoutes = accessedRouters;
 
-        console.log('[initRoutes] 完成');
         return accessedRouters;
       } catch (error) {
-        console.error('[initRoutes] 失败:', error);
         return [];
       }
     },
