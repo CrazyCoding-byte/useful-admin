@@ -106,7 +106,23 @@ func main() {
 
 	//9.创建Gin路由
 	r := gin.Default()
-
+	fileGroup := r.Group("/api/file")
+	{
+		fileGroup.POST("/upload", func(c *gin.Context) {
+			file, header, err := c.Request.FormFile("file")
+			if err != nil {
+				c.JSON(500, gin.H{"code": 400, "msg": "获取文件失败", "err": err.Error()})
+				return
+			}
+			defer file.Close()
+			//计算文件hash
+			fileHash, err := repository.CalculateFileHash(file)
+			if err != nil {
+				c.JSON(500, gin.H{"code": 400, "msg": "获取文件失败", "err": err.Error()})
+				return
+			}
+		})
+	}
 	//11启动服务
 	fmt.Println("服务器启动在: 8080")
 	r.Run(":8080")
