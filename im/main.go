@@ -117,6 +117,9 @@ func main() {
 
 		//下载文件接口
 		fileGroup.GET("/download", fileHandler.DownloadFile)
+
+		//预览文件接口
+		fileGroup.GET("/preview", fileHandler.PreviewFile)
 	}
 	fmt.Println("✓ 路由创建成功")
 

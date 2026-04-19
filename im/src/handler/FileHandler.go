@@ -227,3 +227,34 @@ func (h *FileHandler) DownloadFile(c *gin.Context) {
 		return
 	}
 }
+
+func (h *FileHandler) PreviewFile(c *gin.Context) {
+	filePath := c.Query("filePath")
+	if filePath == "" {
+		c.JSON(400, gin.H{"code": 400, "msg": "缺少参数 filePath"})
+		return
+	}
+	ctx := context.Background()
+	object, err := h.fileService.GetMinioClient().GetObject(ctx, h.fileService.GetBucketName(), filePath, minio.GetObjectOptions{})
+	if err != nil {
+		c.JSON(500, gin.H{"code": 500, "msg": "获取文件失败", "error": err.Error()})
+		return
+	}
+	defer object.Close()
+	//获取文件信息
+	stat, err := object.Stat()
+	if err != nil {
+		c.JSON(404, gin.H{"code": 404, "msg": "文件不存在"})
+		return
+	}
+	// 设置响应头（inline 表示浏览器直接显示，不是下载）
+	c.Header("Content-Type", stat.ContentType)
+	c.Header("Content-Disposition", "inline") // inline 表示预览，attachment 表示下载
+	c.Header("Content-Length", fmt.Sprintf("%d", stat.Size))
+	//将文件内容写入响应
+	_, err = io.Copy(c.Writer, object)
+	if err != nil {
+		c.JSON(500, gin.H{"code": 500, "msg": "预览文件失败", "error": err.Error()})
+		return
+	}
+}
