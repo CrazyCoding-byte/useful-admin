@@ -4,7 +4,7 @@ database:
   host: "localhost"     # 地址
   port: 3306            # 端口
   username: "root"      # 用户名
-  password: "yangzhixuan"    # 密码
+  password: "password"    # 密码
   dbname: "xz"     # 数据库名
   charset: "utf8mb4"    # 字符集
 #服务器发现注册配置
@@ -26,9 +26,9 @@ file:
   max-file-size: 200
   max-chunk-size: 5
 minio:
-  endpoint: localhost:19000       # MinIO服务地址（本地部署的话默认9000）
-  access-key-id: minioadmin      # 你的MinIO AccessKey
-  secret-access-key: minioadmin  # 你的MinIO SecretKey
+  endpoint: 192.168.56.129:19000       # MinIO服务地址（本地部署的话默认9000）
+  access-key-id: minio      # 你的MinIO AccessKey
+  secret-access-key: QWEasd123  # 你的MinIO SecretKey
   bucket-name: imbucket          # 桶名（和你测试代码里的imbucket一致）
   use-ssl: false                 # 本地测试一般关闭SSL
   redis-prefix: "minio_core_upload:" # Redis 元数据前缀（必填）

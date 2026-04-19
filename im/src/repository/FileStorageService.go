@@ -94,6 +94,16 @@ func NewMinioCoreChunkUploader(
 	}
 }
 
+// GetMinioClient 获取MinIO客户端
+func (s *FileStorageService) GetMinioClient() *minio.Client {
+	return s.minioClient
+}
+
+// GetBucketName 获取Bucket名称
+func (s *FileStorageService) GetBucketName() string {
+	return s.bucketName
+}
+
 // -------------------------- 5. 修复：哈希函数名实一致（MD5/SHA256可选） --------------------------
 // calculateChunkMD5Base64 真正计算MD5（Base64编码，MinIO标准）
 func calculateChunkMD5Base64(data []byte) string {

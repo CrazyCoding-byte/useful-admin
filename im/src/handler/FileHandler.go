@@ -3,7 +3,9 @@ package handler
 import "C"
 import (
 	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/minio/minio-go/v7"
 	"github.com/redis/go-redis/v9"
 	"io"
 	"local/im/src/repository"
@@ -183,4 +185,45 @@ func (h *FileHandler) CompleteChunkUpload(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{"code": 200, "msg": "合并成功", "data": gin.H{"filePath": objectKey}})
 
+}
+func (h *FileHandler) AbortChunkUpload(c *gin.Context) {
+	var req AbortChunkUploadRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"code": 400, "msg": "参数错误", "error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"code": 200, "msg": "取消上传成功"})
+}
+func (h *FileHandler) DownloadFile(c *gin.Context) {
+	filePath := c.Query("filePath")
+	if filePath == "" {
+		c.JSON(400, gin.H{"code": 400, "msg": "缺少参数 filePath"})
+		return
+	}
+	//从minio获取文件
+	ctx := context.Background()
+	object, err := h.fileService.GetMinioClient().GetObject(ctx, h.fileService.GetBucketName(), filePath, minio.GetObjectOptions{})
+	if err != nil {
+		c.JSON(500, gin.H{"code": 500, "msg": "获取文件失败", "error": err.Error()})
+		return
+	}
+	defer object.Close()
+
+	//获取文件信息
+	stat, err := object.Stat()
+	if err != nil {
+		c.JSON(404, gin.H{"code": 404, "msg": "文件不存在"})
+		return
+	}
+	//设置响应头
+	c.Header("Context-Type", stat.ContentType)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", stat.Key))
+	c.Header("Content-Length", fmt.Sprintf("%d", stat.Size))
+
+	//将文件内容写入响应
+	_, err = io.Copy(c.Writer, object)
+	if err != nil {
+		c.JSON(500, gin.H{"code": 500, "msg": "下载文件失败", "error": err.Error()})
+		return
+	}
 }
