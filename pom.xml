@@ -39,7 +39,7 @@
         <spring-boot.version>2.3.12.RELEASE</spring-boot.version>
         <spring-cloud.version>Hoxton.SR12</spring-cloud.version>
         <!--Lombok-->
-        <lombok.version>1.18.10</lombok.version>
+        <lombok.version>1.18.30</lombok.version>
         <commons-io.version>2.6</commons-io.version>
         <javadoc.version>3.0.0</javadoc.version>
         <mysql.version>8.0.25</mysql.version>
