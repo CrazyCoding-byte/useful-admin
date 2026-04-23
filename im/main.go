@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	"local/im/src/config"
 	"local/im/src/handler"
 	"local/im/src/repository"
 	"log"
+
+	"github.com/gin-gonic/gin"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 func main() {
@@ -99,6 +100,21 @@ func main() {
 	fmt.Println("9. 正在创建路由...")
 	r := gin.Default()
 
+	// 添加 CORS 中间件（解决跨域问题）
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// 处理预检请求
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
+
 	// 10. 创建文件处理器
 	fileHandler := handler.NewFileHandler(fileService, chunkUploader, redisClient)
 	fileGroup := r.Group("/api/file")
@@ -126,6 +142,6 @@ func main() {
 	// 11. 启动服务
 	fmt.Println("10. 服务器启动在: 8080")
 	fmt.Println("=== 启动完成，等待请求 ===")
-	r.Run(":8080")
+	r.Run(":8781")
 
 }

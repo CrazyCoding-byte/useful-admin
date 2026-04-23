@@ -255,17 +255,19 @@
     <t-dialog v-model:visible="showImage" width="900px">
       <!--      这里应该显示一个图片-->
       <t-upload
-        v-for="item in showImages" :key="item.id"
         ref="uploadRef2"
         v-model="file2"
-        action="https://service-bv448zsw-1257786608.gz.apigw.tencentcs.com/api/upload-demo"
+        action="http://localhost:8781/api/file/upload"
         theme="image"
         accept="image/*"
         :disabled="disabled"
         :auto-upload="autoUpload"
         :upload-all-files-in-one-request="uploadAllFilesInOneRequest"
         :show-image-file-name="showImageFileName"
-        :format-response="formatImgResponse"
+        multiple
+        :max="9"
+        :format-response="formatResponse"
+        @success="handleUploadSuccess"
         @fail="handleFail"
       ></t-upload>
     </t-dialog>
@@ -323,10 +325,20 @@ const file2 = ref<UploadProps['value']>([
   },
 ]);
 
-const formatResponse: UploadProps['formatResponse'] = () => {
+const formatResponse: UploadProps['formatResponse'] = (response) => {
+  console.log('后端返回:', response); // 调试用
+
+  // 根据Postman返回格式解析
+  if (response.code === 200) {
+    return {
+      url: response.data.filePath,  // 文件路径（用于显示图片）
+      name: response.data.fileName, // 文件名
+    };
+  }
+
+  // 上传失败
   return {
-    name: 'FileName',
-    error: '网络异常，图片上传失败',
+    error: response.msg || '上传失败',
   };
 };
 // 状态选项
@@ -447,7 +459,10 @@ const skuFormRules = {
   stock: [{required: true, message: '请输入库存', trigger: 'blur'}],
   specCombination: [{required: true, message: '请输入规格组合', trigger: 'blur'}],
 };
-
+// 页面加载时获取数据
+onMounted(() => {
+  fetchSkuList();
+});
 // 删除确认弹窗
 const deleteVisible = ref(false);
 const deleteIds = ref<string[]>([]);
@@ -469,11 +484,10 @@ const fetchSkuList = async () => {
     loading.value = false;
   }
 };
+const handleUploadSuccess: UploadProps['onSuccess'] = (params) => {
+  console.log(params);
+}
 
-// 页面加载时获取数据
-onMounted(() => {
-  fetchSkuList();
-});
 
 // 查询
 const onSubmit = () => {
