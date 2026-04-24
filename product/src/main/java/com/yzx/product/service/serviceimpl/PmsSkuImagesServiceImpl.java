@@ -36,7 +36,7 @@ public class PmsSkuImagesServiceImpl extends ServiceImpl<PmsSkuImagesMapper, Pms
     public List<PmsSkuImages> listBySkuIds(List<Long> skuIds) {
         log.info("查询SKU图片列表，skuIds={}", skuIds);
         if (!CollectionUtils.isEmpty(skuIds)) {
-            List<PmsSkuImages> pmsSkuImages = this.listByIds(skuIds);
+            List<PmsSkuImages> pmsSkuImages = this.list(new LambdaQueryWrapper<PmsSkuImages>().in(PmsSkuImages::getSkuId, skuIds));
             return pmsSkuImages;
         }
         return Collections.emptyList();

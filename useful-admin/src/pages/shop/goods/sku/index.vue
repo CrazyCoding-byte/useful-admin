@@ -256,7 +256,7 @@
       <!--      这里应该显示一个图片-->
       <t-upload
         ref="uploadRef2"
-        v-model="file2"
+        v-model="imageData"
         action="http://localhost:8781/api/file/upload"
         theme="image"
         accept="image/*"
@@ -319,7 +319,7 @@ const showImageFileName = ref(true);
  */
 
 //上传图片
-const file2 = ref<UploadProps['value']>([]);
+const imageData = ref<UploadProps['value']>([]);
 
 
 // 状态选项
@@ -497,14 +497,16 @@ const formatResponse: UploadProps['formatResponse'] = (response) => {
 //确定修改图片状态
 const handleSubmitImage = () => {
   alert("确认保存图片被触发")
-  console.log("ref2图片上传被触发", file2.value)
-  const filePath=[]
-  file2.value.forEach(file => {
+  console.log("ref2图片上传被触发", imageData.value)
+  const filePath = []
+  imageData.value.forEach(file => {
     filePath.push(file.url)
   })
   productApi.updateSkuImage(selectSkuId.value, filePath).then(resp => {
     console.log("响应的结果", resp)
+    fetchSkuList()
   })
+
 }
 // 查询
 const onSubmit = () => {

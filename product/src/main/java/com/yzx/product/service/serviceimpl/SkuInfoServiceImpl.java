@@ -34,6 +34,7 @@ public class SkuInfoServiceImpl extends ServiceImpl<SkuInfoMapper, SkuInfoEntity
         }
         // 更新SKU图片信息
         SkuInfoEntity skuInfo = this.getById(skuId);
+        if (Objects.isNull(skuInfo)) return true;
         pmsSkuImagesService.remove(new LambdaQueryWrapper<PmsSkuImages>().eq(PmsSkuImages::getSkuId, skuInfo.getSkuId()));
         if (!CollectionUtils.isEmpty(images)) {
             List<PmsSkuImages> pmsSkuImages = new ArrayList<>();
@@ -46,6 +47,6 @@ public class SkuInfoServiceImpl extends ServiceImpl<SkuInfoMapper, SkuInfoEntity
             }
             pmsSkuImagesService.saveBatch(pmsSkuImages);
         }
-        return true;
+            return true;
     }
 }

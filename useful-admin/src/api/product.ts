@@ -77,7 +77,7 @@ export const productApi = {
   /**
    * 修改sku图片
    */
-  updateSkuImage: (skuId: string, imgUrl: []) => {
+  updateSkuImage: (skuId: string, imgUrl: string[]) => {
     return request.post({
       url: `/product/updateSkuImage/${skuId}`,
       data: imgUrl
