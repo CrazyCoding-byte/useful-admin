@@ -5,6 +5,7 @@ import com.yzx.common.utils.PageResult;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.product.SpuInfoEntity;
 import com.yzx.model.product.vo.SkuVo;
+import com.yzx.product.service.SkuInfoService;
 import com.yzx.product.service.SpuInfoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,8 @@ public class ProductController {
 
     @Autowired
     private SpuInfoService spuInfoService;
+    @Autowired
+    private SkuInfoService skuInfoService;
 
     /**
      * 获取商品列表（分页）
@@ -210,5 +213,23 @@ public class ProductController {
     @GetMapping("Test")
     public AjaxResult ajaxResult() {
         return AjaxResult.success();
+    }
+
+
+    /**
+     * 更新图片
+     * @param skuId
+     * @param images
+     * @return
+     */
+    @PostMapping("/updateSkuImage/{skuId}")
+    public AjaxResult updateSkuImage(@PathVariable("skuId") @NotNull(message = "skuId 不能为空") String skuId, @RequestBody List<String> images) {
+        log.info("开始执行 SPU 更新图片操作，spuId:{}", skuId);
+        boolean success = skuInfoService.updateSkuImage(skuId, images);
+        if (success) {
+            return AjaxResult.success("SKU 更新图片成功");
+        } else {
+            return AjaxResult.error("SKU 更新图片失败");
+        }
     }
 }

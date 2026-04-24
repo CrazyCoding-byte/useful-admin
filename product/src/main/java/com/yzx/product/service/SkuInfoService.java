@@ -3,6 +3,9 @@ package com.yzx.product.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yzx.model.product.SkuInfoEntity;
 
+import javax.validation.constraints.NotNull;
+import java.util.List;
+
 /**
  * @className: SkuInfoService
  * @author: yzx
@@ -11,4 +14,5 @@ import com.yzx.model.product.SkuInfoEntity;
  * @description:
  */ 
 public interface SkuInfoService extends IService<SkuInfoEntity> {
+    boolean updateSkuImage(@NotNull(message = "skuId 不能为空") String skuId, List<String> images);
 }

@@ -1,5 +1,5 @@
-import { request } from '@/utils/request';
-import type { Product } from '@/api/model/productModel';
+import {request} from '@/utils/request';
+import type {Product} from '@/api/model/productModel';
 
 /**
  * 商品管理API
@@ -11,7 +11,7 @@ export const productApi = {
    * @returns 商品列表数据
    */
   getProductList: (params: any) => {
-    const { pageNum = 1, pageSize = 10, ...productParams } = params;
+    const {pageNum = 1, pageSize = 10, ...productParams} = params;
     return request.post({
       url: `/product/list/${pageNum}/${pageSize}`,
       data: productParams,
@@ -73,4 +73,14 @@ export const productApi = {
       url: `/product/downPd/${spuId}`,
     });
   },
+
+  /**
+   * 修改sku图片
+   */
+  updateSkuImage: (skuId: string, imgUrl: []) => {
+    return request.post({
+      url: `/product/updateSkuImage/${skuId}`,
+      data: imgUrl
+    })
+  }
 };

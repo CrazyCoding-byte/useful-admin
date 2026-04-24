@@ -252,7 +252,7 @@
 
 
     <!--图片弹出框 -->
-    <t-dialog v-model:visible="showImage" width="900px">
+    <t-dialog v-model:visible="showImage" width="900px" @confirm="handleSubmitImage">
       <!--      这里应该显示一个图片-->
       <t-upload
         ref="uploadRef2"
@@ -287,6 +287,7 @@ import {
   ButtonProps
 } from 'tdesign-vue-next';
 import {request} from '@/utils/request';
+import {productApi} from '@/api/product';
 
 const autoUpload = ref(true);
 const route = useRoute();
@@ -318,29 +319,9 @@ const showImageFileName = ref(true);
  */
 
 //上传图片
-const file2 = ref<UploadProps['value']>([
-  {
-    name: 'demo-image-1.png',
-    url: 'https://tdesign.gtimg.com/demo/demo-image-1.png',
-  },
-]);
+const file2 = ref<UploadProps['value']>([]);
 
-const formatResponse: UploadProps['formatResponse'] = (response) => {
-  console.log('后端返回:', response); // 调试用
 
-  // 根据Postman返回格式解析
-  if (response.code === 200) {
-    return {
-      url: response.data.filePath,  // 文件路径（用于显示图片）
-      name: response.data.fileName, // 文件名
-    };
-  }
-
-  // 上传失败
-  return {
-    error: response.msg || '上传失败',
-  };
-};
 // 状态选项
 const STATUS_OPTIONS = [
   {label: '上架', value: '1'},
@@ -459,13 +440,18 @@ const skuFormRules = {
   stock: [{required: true, message: '请输入库存', trigger: 'blur'}],
   specCombination: [{required: true, message: '请输入规格组合', trigger: 'blur'}],
 };
+// 删除确认弹窗
+const deleteVisible = ref(false);
+const deleteIds = ref<string[]>([]);
+
+const selectSkuId = ref<string>("");
+
+//*********************************************方法**************************************/
 // 页面加载时获取数据
 onMounted(() => {
   fetchSkuList();
 });
-// 删除确认弹窗
-const deleteVisible = ref(false);
-const deleteIds = ref<string[]>([]);
+
 
 // 获取SKU列表
 const fetchSkuList = async () => {
@@ -484,11 +470,42 @@ const fetchSkuList = async () => {
     loading.value = false;
   }
 };
+//上传图片成功回调
 const handleUploadSuccess: UploadProps['onSuccess'] = (params) => {
   console.log(params);
 }
+//上传图片之后的回显
+const formatResponse: UploadProps['formatResponse'] = (response) => {
+  console.log('后端返回:', response); // 调试用
+  // 根据Postman返回格式解析
+  if (response.code === 200) {
+    const filePath = response.data.filePath;
+    const previewUrl = `http://localhost:8781/api/file/preview?filePath=${encodeURIComponent(filePath)}`
+    console.log("预览URL:", previewUrl)
+    return {
+      url: previewUrl,
+      name: response.data.fileName,
+      filePath: filePath
+    };
+  }
 
-
+  // 上传失败
+  return {
+    error: response.msg || '上传失败',
+  };
+};
+//确定修改图片状态
+const handleSubmitImage = () => {
+  alert("确认保存图片被触发")
+  console.log("ref2图片上传被触发", file2.value)
+  const filePath=[]
+  file2.value.forEach(file => {
+    filePath.push(file.url)
+  })
+  productApi.updateSkuImage(selectSkuId.value, filePath).then(resp => {
+    console.log("响应的结果", resp)
+  })
+}
 // 查询
 const onSubmit = () => {
   pagination.value.current = 1;
@@ -511,6 +528,8 @@ const handleImagePreview = (row) => {
     showImages.value = row.images;
     console.log("图片111", showImages.value)
   }
+  console.log("row.skuId", row)
+  selectSkuId.value = row.skuId
 }
 // 分页变化
 const handlePageChange = (pageInfo: PageInfo) => {
