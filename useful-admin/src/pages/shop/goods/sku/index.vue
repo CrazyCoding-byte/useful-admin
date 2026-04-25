@@ -9,31 +9,18 @@
 
     <!-- 搜索筛选区 -->
     <div class="search-container">
-      <t-form
-        :data="formData"
-        :label-width="80"
-        colon
-        @reset="onReset"
-        @submit="onSubmit"
-      >
+      <t-form :data="formData" :label-width="80" colon @reset="onReset" @submit="onSubmit">
         <t-row>
           <t-col :span="12">
             <t-row :gutter="16">
               <t-col :span="8">
                 <t-form-item label="规格组合" name="specCombination">
-                  <t-input
-                    v-model="formData.specCombination"
-                    placeholder="请输入规格组合（如：黑色，256G）"
-                  />
+                  <t-input v-model="formData.specCombination" placeholder="请输入规格组合（如：黑色，256G）" />
                 </t-form-item>
               </t-col>
               <t-col :span="8">
                 <t-form-item label="SKU状态" name="status">
-                  <t-select
-                    v-model="formData.status"
-                    :options="STATUS_OPTIONS"
-                    placeholder="请选择SKU状态"
-                  />
+                  <t-select v-model="formData.status" :options="STATUS_OPTIONS" placeholder="请选择SKU状态" />
                 </t-form-item>
               </t-col>
             </t-row>
@@ -49,20 +36,15 @@
     <!-- 操作工具栏 -->
     <div class="toolbar-container">
       <t-button theme="primary" @click="handleBatchGenerate">
-        <t-icon name="plus"/>
+        <t-icon name="plus" />
         批量生成SKU
       </t-button>
       <t-button theme="default" @click="handleAdd" style="margin-left: 8px">
-        <t-icon name="plus-circle"/>
+        <t-icon name="plus-circle" />
         新增单个SKU
       </t-button>
-      <t-button
-        v-if="selectedRowKeys.length > 0"
-        theme="danger"
-        @click="handleBatchDelete"
-        style="margin-left: 8px"
-      >
-        <t-icon name="delete"/>
+      <t-button v-if="selectedRowKeys.length > 0" theme="danger" @click="handleBatchDelete" style="margin-left: 8px">
+        <t-icon name="delete" />
         批量删除
       </t-button>
     </div>
@@ -80,13 +62,25 @@
         @page-change="handlePageChange"
         @select-change="handleSelectChange"
       >
+        <template #skuDefaultImg="{ row }">
+          <div>
+            <t-image
+              v-if="row.skuDefaultImg"
+              :src="row.skuDefaultImg"
+              :preview-src-list="[row.skuDefaultImg]"
+              style="width: 80px; height: 80px; object-fit: cover"
+              @click="handleImagePreview(row, 'seDefault')"
+            />
+          </div>
+        </template>
         <template #skuImage="{ row }">
           <div>
-            <t-button v-if="row.images&&row.images.length>0"
-                      theme="primary"
-                      variant="text"
-                      size="small"
-                      @click="handleImagePreview(row)"
+            <t-button
+              v-if="row.images && row.images.length > 0"
+              theme="primary"
+              variant="text"
+              size="small"
+              @click="handleImagePreview(row, 'view')"
             >
               查看{{ row.images.length }}张图片
             </t-button>
@@ -104,14 +98,7 @@
           <span>{{ row.specCombination }}</span>
         </template>
         <template #op="{ row }">
-          <t-button
-            theme="primary"
-            variant="text"
-            @click="handleEdit(row)"
-            style="margin-right: 8px"
-          >
-            编辑
-          </t-button>
+          <t-button theme="primary" variant="text" @click="handleEdit(row)" style="margin-right: 8px"> 编辑 </t-button>
           <t-button
             :theme="row.status === '1' ? 'danger' : 'success'"
             variant="text"
@@ -120,13 +107,7 @@
           >
             {{ row.status === '1' ? '下架' : '上架' }}
           </t-button>
-          <t-button
-            theme="danger"
-            variant="text"
-            @click="handleDelete(row)"
-          >
-            删除
-          </t-button>
+          <t-button theme="danger" variant="text" @click="handleDelete(row)"> 删除 </t-button>
         </template>
       </t-table>
     </div>
@@ -140,21 +121,18 @@
       @confirm="handleBatchGenerateConfirm"
     >
       <div class="batch-generate-container">
-        <t-form
-          :data="batchFormData"
-          :rules="batchFormRules"
-        >
+        <t-form :data="batchFormData" :rules="batchFormRules">
           <t-form-item label="属性1名称" name="attr1Name">
-            <t-input v-model="batchFormData.attr1Name" placeholder="请输入属性名称（如：颜色）"/>
+            <t-input v-model="batchFormData.attr1Name" placeholder="请输入属性名称（如：颜色）" />
           </t-form-item>
           <t-form-item label="属性1值" name="attr1Values">
-            <t-input v-model="batchFormData.attr1Values" placeholder="请输入属性值，用逗号分隔（如：黑色,白色,蓝色）"/>
+            <t-input v-model="batchFormData.attr1Values" placeholder="请输入属性值，用逗号分隔（如：黑色,白色,蓝色）" />
           </t-form-item>
           <t-form-item label="属性2名称" name="attr2Name">
-            <t-input v-model="batchFormData.attr2Name" placeholder="请输入属性名称（如：内存）"/>
+            <t-input v-model="batchFormData.attr2Name" placeholder="请输入属性名称（如：内存）" />
           </t-form-item>
           <t-form-item label="属性2值" name="attr2Values">
-            <t-input v-model="batchFormData.attr2Values" placeholder="请输入属性值，用逗号分隔（如：128G,256G,512G）"/>
+            <t-input v-model="batchFormData.attr2Values" placeholder="请输入属性值，用逗号分隔（如：128G,256G,512G）" />
           </t-form-item>
           <t-form-item label="统一价格" name="price">
             <t-input-number
@@ -166,12 +144,7 @@
             />
           </t-form-item>
           <t-form-item label="统一库存" name="stock">
-            <t-input-number
-              v-model="batchFormData.stock"
-              :min="0"
-              placeholder="请输入库存"
-              style="width: 100%"
-            />
+            <t-input-number v-model="batchFormData.stock" :min="0" placeholder="请输入库存" style="width: 100%" />
           </t-form-item>
         </t-form>
       </div>
@@ -185,15 +158,12 @@
       :footer="true"
       @confirm="handleEditConfirm"
     >
-      <t-form
-        :data="skuFormData"
-        :rules="skuFormRules"
-      >
+      <t-form :data="skuFormData" :rules="skuFormRules">
         <t-form-item label="SKU名称" name="skuName">
-          <t-input v-model="skuFormData.skuName" placeholder="请输入SKU名称"/>
+          <t-input v-model="skuFormData.skuName" placeholder="请输入SKU名称" />
         </t-form-item>
         <t-form-item label="SKU编码" name="skuCode">
-          <t-input v-model="skuFormData.skuCode" placeholder="请输入SKU编码"/>
+          <t-input v-model="skuFormData.skuCode" placeholder="请输入SKU编码" />
         </t-form-item>
         <t-form-item label="销售价格" name="price">
           <t-input-number
@@ -205,28 +175,19 @@
           />
         </t-form-item>
         <t-form-item label="库存" name="stock">
-          <t-input-number
-            v-model="skuFormData.stock"
-            :min="0"
-            placeholder="请输入库存"
-            style="width: 100%"
-          />
+          <t-input-number v-model="skuFormData.stock" :min="0" placeholder="请输入库存" style="width: 100%" />
         </t-form-item>
         <t-form-item label="默认图片" name="skuDefaultImg">
-          <t-input v-model="skuFormData.skuDefaultImg" placeholder="请输入默认图片URL"/>
+          <t-input v-model="skuFormData.skuDefaultImg" placeholder="请输入默认图片URL" />
         </t-form-item>
         <t-form-item label="SKU标题" name="skuTitle">
-          <t-input v-model="skuFormData.skuTitle" placeholder="请输入SKU标题"/>
+          <t-input v-model="skuFormData.skuTitle" placeholder="请输入SKU标题" />
         </t-form-item>
         <t-form-item label="SKU副标题" name="skuSubtitle">
-          <t-input v-model="skuFormData.skuSubtitle" placeholder="请输入SKU副标题"/>
+          <t-input v-model="skuFormData.skuSubtitle" placeholder="请输入SKU副标题" />
         </t-form-item>
         <t-form-item label="SKU描述" name="skuDesc">
-          <t-textarea
-            v-model="skuFormData.skuDesc"
-            placeholder="请输入SKU描述"
-            :rows="3"
-          />
+          <t-textarea v-model="skuFormData.skuDesc" placeholder="请输入SKU描述" :rows="3" />
         </t-form-item>
         <t-form-item label="状态" name="status">
           <t-radio-group v-model="skuFormData.status">
@@ -235,21 +196,15 @@
           </t-radio-group>
         </t-form-item>
         <t-form-item label="规格组合" name="specCombination">
-          <t-input v-model="skuFormData.specCombination" placeholder="请输入规格组合（如：颜色：黑色，内存：256G）"/>
+          <t-input v-model="skuFormData.specCombination" placeholder="请输入规格组合（如：颜色：黑色，内存：256G）" />
         </t-form-item>
       </t-form>
     </t-dialog>
 
     <!-- 删除确认弹窗 -->
-    <t-dialog
-      v-model:visible="deleteVisible"
-      header="确认删除"
-      :footer="true"
-      @confirm="handleDeleteConfirm"
-    >
+    <t-dialog v-model:visible="deleteVisible" header="确认删除" :footer="true" @confirm="handleDeleteConfirm">
       <div>删除后无法恢复，是否继续？</div>
     </t-dialog>
-
 
     <!--图片弹出框 -->
     <t-dialog v-model:visible="showImage" width="900px" @confirm="handleSubmitImage">
@@ -270,13 +225,18 @@
         @success="handleUploadSuccess"
         @fail="handleFail"
       ></t-upload>
+      <t-button
+      v-if="dialogMode==='setDefault'"
+      theme="primary"
+      @click="handleSetDefault"
+      >设置默认图片</t-button>
     </t-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import {ref, computed, onMounted} from 'vue';
-import {useRoute, useRouter} from 'vue-router';
+import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import {
   MessagePlugin,
   TTableCol,
@@ -284,10 +244,11 @@ import {
   PageInfo,
   UploadProps,
   UploadInstanceFunctions,
-  ButtonProps
+  ButtonProps,
 } from 'tdesign-vue-next';
-import {request} from '@/utils/request';
-import {productApi} from '@/api/product';
+import { request } from '@/utils/request';
+import { productApi } from '@/api/product';
+import { title } from 'process';
 
 const autoUpload = ref(true);
 const route = useRoute();
@@ -295,7 +256,6 @@ const productId = route.params.productId;
 const spuName = route.params.spuName;
 const showImage = ref(false);
 const showImageFileName = ref(true);
-
 
 /**
  * t-upload组件
@@ -321,11 +281,10 @@ const showImageFileName = ref(true);
 //上传图片
 const imageData = ref<UploadProps['value']>([]);
 
-
 // 状态选项
 const STATUS_OPTIONS = [
-  {label: '上架', value: '1'},
-  {label: '下架', value: '0'},
+  { label: '上架', value: '1' },
+  { label: '下架', value: '0' },
 ];
 
 // 搜索表单数据
@@ -349,42 +308,79 @@ const pagination = ref({
 
 // 表格列定义
 const columns: TTableCol<any>[] = [
-  {type: 'multiple', width: 60, fixed: 'left'},
-  {
-    title: 'SKU图片',
-    colKey: 'skuImage',
-    width: 80,
-    fixed: 'left',
-  },
+  { type: 'multiple', width: 60, fixed: 'left' },
   {
     title: 'SKU ID',
     colKey: 'skuId',
     width: 100,
+    fixed: 'left',
   },
   {
-    title: '规格组合',
-    colKey: 'specCombination',
+    title: 'SKU名称',
+    colKey: 'skuName',
+    ellipsis: true,
+    width: 200,
+    fixed: 'left',
+  },
+  {
+    title: 'SKU标题',
+    colKey: 'skuTitle',
+    ellipsis: true,
     width: 200,
   },
   {
-    title: 'SKU编码',
-    colKey: 'skuCode',
-    width: 150,
+    title: 'SKU副标题',
+    colKey: 'skuSubtitle',
+    ellipsis: true,
+    width: 200,
+  },
+  {
+    title: '默认图片',
+    colKey: 'skuDefaultImg',
+    width: 200,
+  },
+  {
+    title: 'SKU描述',
+    colKey: 'skuDesc',
+    ellipsis: true,
+    width: 200,
+  },
+
+  {
+    title: 'SKU图片',
+    colKey: 'skuImage',
+    width: 200,
+  },
+  {
+    title: '销售属性',
+    colKey: 'saleAttrValues',
+    ellipsis: true,
+    cell: (h, { row }) => {
+      //格式:属性名:属性值/属性名:属性值
+      const attrs = row.saleAttrValues?.map((item) => `${item.attrName}:${item.attrValue}`).join('/');
+      return h('span', { attrs: { title: attrs } }, attrs || '-');
+    },
+    width: 200,
+  },
+  {
+    title: '销售数量',
+    colKey: 'saleCount',
+    width: 200,
   },
   {
     title: '价格',
     colKey: 'price',
-    width: 100,
+    width: 200,
   },
   {
     title: '库存',
     colKey: 'stock',
-    width: 80,
+    width: 200,
   },
   {
     title: '状态',
     colKey: 'status',
-    width: 80,
+    width: 200,
   },
   {
     title: '操作',
@@ -406,12 +402,12 @@ const batchFormData = ref({
 });
 
 const batchFormRules = {
-  attr1Name: [{required: true, message: '请输入属性1名称', trigger: 'blur'}],
-  attr1Values: [{required: true, message: '请输入属性1值', trigger: 'blur'}],
-  attr2Name: [{required: true, message: '请输入属性2名称', trigger: 'blur'}],
-  attr2Values: [{required: true, message: '请输入属性2值', trigger: 'blur'}],
-  price: [{required: true, message: '请输入统一价格', trigger: 'blur'}],
-  stock: [{required: true, message: '请输入统一库存', trigger: 'blur'}],
+  attr1Name: [{ required: true, message: '请输入属性1名称', trigger: 'blur' }],
+  attr1Values: [{ required: true, message: '请输入属性1值', trigger: 'blur' }],
+  attr2Name: [{ required: true, message: '请输入属性2名称', trigger: 'blur' }],
+  attr2Values: [{ required: true, message: '请输入属性2值', trigger: 'blur' }],
+  price: [{ required: true, message: '请输入统一价格', trigger: 'blur' }],
+  stock: [{ required: true, message: '请输入统一库存', trigger: 'blur' }],
 };
 
 // 新增/编辑SKU表单数据
@@ -434,24 +430,23 @@ const skuFormData = ref({
 });
 
 const skuFormRules = {
-  skuName: [{required: true, message: '请输入SKU名称', trigger: 'blur'}],
-  skuCode: [{required: true, message: '请输入SKU编码', trigger: 'blur'}],
-  price: [{required: true, message: '请输入销售价格', trigger: 'blur'}],
-  stock: [{required: true, message: '请输入库存', trigger: 'blur'}],
-  specCombination: [{required: true, message: '请输入规格组合', trigger: 'blur'}],
+  skuName: [{ required: true, message: '请输入SKU名称', trigger: 'blur' }],
+  skuCode: [{ required: true, message: '请输入SKU编码', trigger: 'blur' }],
+  price: [{ required: true, message: '请输入销售价格', trigger: 'blur' }],
+  stock: [{ required: true, message: '请输入库存', trigger: 'blur' }],
+  specCombination: [{ required: true, message: '请输入规格组合', trigger: 'blur' }],
 };
 // 删除确认弹窗
 const deleteVisible = ref(false);
 const deleteIds = ref<string[]>([]);
 
-const selectSkuId = ref<string>("");
-
+const selectSkuId = ref<string>('');
+const dialogMode = ref(''); //'view'=查看图片
 //*********************************************方法**************************************/
 // 页面加载时获取数据
 onMounted(() => {
   fetchSkuList();
 });
-
 
 // 获取SKU列表
 const fetchSkuList = async () => {
@@ -462,7 +457,7 @@ const fetchSkuList = async () => {
     });
     data.value = res.records;
     pagination.value.total = res.total || 0;
-    console.log("获取到的数据2212312321321", data.value)
+    console.log('获取到的数据2212312321321', data.value);
   } catch (error) {
     console.error('获取SKU列表失败:', error);
     MessagePlugin.error('获取SKU列表失败');
@@ -470,22 +465,23 @@ const fetchSkuList = async () => {
     loading.value = false;
   }
 };
+
 //上传图片成功回调
 const handleUploadSuccess: UploadProps['onSuccess'] = (params) => {
   console.log(params);
-}
+};
 //上传图片之后的回显
 const formatResponse: UploadProps['formatResponse'] = (response) => {
   console.log('后端返回:', response); // 调试用
   // 根据Postman返回格式解析
   if (response.code === 200) {
     const filePath = response.data.filePath;
-    const previewUrl = `http://localhost:8781/api/file/preview?filePath=${encodeURIComponent(filePath)}`
-    console.log("预览URL:", previewUrl)
+    const previewUrl = `http://localhost:8781/api/file/preview?filePath=${encodeURIComponent(filePath)}`;
+    console.log('预览URL:', previewUrl);
     return {
       url: previewUrl,
       name: response.data.fileName,
-      filePath: filePath
+      filePath: filePath,
     };
   }
 
@@ -496,18 +492,17 @@ const formatResponse: UploadProps['formatResponse'] = (response) => {
 };
 //确定修改图片状态
 const handleSubmitImage = () => {
-  alert("确认保存图片被触发")
-  console.log("ref2图片上传被触发", imageData.value)
-  const filePath = []
-  imageData.value.forEach(file => {
-    filePath.push(file.url)
-  })
-  productApi.updateSkuImage(selectSkuId.value, filePath).then(resp => {
-    console.log("响应的结果", resp)
-    fetchSkuList()
-  })
-
-}
+  alert('确认保存图片被触发');
+  console.log('ref2图片上传被触发', imageData.value);
+  const filePath = [];
+  imageData.value.forEach((file) => {
+    filePath.push(file.url);
+  });
+  productApi.updateSkuImage(selectSkuId.value, filePath).then((resp) => {
+    console.log('响应的结果', resp);
+    fetchSkuList();
+  });
+};
 // 查询
 const onSubmit = () => {
   pagination.value.current = 1;
@@ -523,15 +518,23 @@ const onReset = () => {
   pagination.value.current = 1;
   fetchSkuList();
 };
-const handleImagePreview = (row) => {
-  //打开dialog
+const handleImagePreview = (row, mode) => {
+  dialogMode.Value = mode;
+  selectSkuId.value = row.skuId;
+  imageData.value =
+    row.images
+      ?.filter((img) => img.imgUrl)
+      ?.map((img) => ({
+        url: img.imgUrl,
+        id: img.id,
+        isDefault: img.imgUrl === row.skuDefaultImg, // 标记是否是默认图
+      })) || [];
+
   showImage.value = true;
-  if (row) {
-    showImages.value = row.images;
-    console.log("图片111", showImages.value)
-  }
-  console.log("row.skuId", row)
-  selectSkuId.value = row.skuId
+};
+//设置默认图片接口
+const handleSetDefault=(skuId,defaultImgId)=>{
+
 }
 // 分页变化
 const handlePageChange = (pageInfo: PageInfo) => {
@@ -539,9 +542,7 @@ const handlePageChange = (pageInfo: PageInfo) => {
   pagination.value.pageSize = pageInfo.pageSize;
   fetchSkuList();
 };
-const requireImage = (image) => {
-
-}
+const requireImage = (image) => {};
 // 选择变化
 const handleSelectChange = (value: string[]) => {
   selectedRowKeys.value = value;
@@ -556,8 +557,8 @@ const handleBatchGenerate = () => {
 const handleBatchGenerateConfirm = async () => {
   try {
     // 生成属性组合的笛卡尔积
-    const attr1Values = batchFormData.value.attr1Values.split(',').map(v => v.trim());
-    const attr2Values = batchFormData.value.attr2Values.split(',').map(v => v.trim());
+    const attr1Values = batchFormData.value.attr1Values.split(',').map((v) => v.trim());
+    const attr2Values = batchFormData.value.attr2Values.split(',').map((v) => v.trim());
     const combinations = [];
     for (const attr1 of attr1Values) {
       for (const attr2 of attr2Values) {
