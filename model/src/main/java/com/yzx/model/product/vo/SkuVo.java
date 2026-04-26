@@ -74,6 +74,11 @@ public class SkuVo implements Serializable {
      */
     private Long saleCount;
 
+    /**
+     * 发布状态
+     */
+    private Integer publishStatus;
+
     // ========== pms_sku_images 字段（列表） ==========
     /**
      * SKU图片列表

@@ -24,6 +24,7 @@
         <module>wms</module>
         <module>wallet</module>
         <module>coupon</module>
+        <module>product</module>
     </modules>
 
     <parent>

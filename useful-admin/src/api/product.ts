@@ -82,5 +82,13 @@ export const productApi = {
       url: `/product/updateSkuImage/${skuId}`,
       data: imgUrl
     })
+  },
+  /**
+   * 修改默认图片
+   */
+  updateDefaultImage: (skuId: string, imgId: string) => {
+    return request.post({
+      url: `/product/setSkuDefaultImg/${skuId}/${imgId}`,
+    })
   }
 };

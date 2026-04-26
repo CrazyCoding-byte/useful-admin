@@ -2,6 +2,7 @@ package com.yzx.wms.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.yzx.model.wms.WareSkuEntity;
+import org.apache.ibatis.annotations.Mapper;
 
 /**
  * @className: WareMapper
@@ -10,6 +11,7 @@ import com.yzx.model.wms.WareSkuEntity;
  * @Version: 1.0
  * @description:
  */
+@Mapper
 public interface WareMapper extends BaseMapper<WareSkuEntity> {
     Long getSkuStock(Long skuid);
 }

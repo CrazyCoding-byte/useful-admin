@@ -43,4 +43,11 @@ public interface WmsFeignService {
      */
     @PostMapping(value = "/wms/waresku/lock/order")
     AjaxResult orderLockStock(@RequestBody WareSkuLockVo vo);
+
+
+    /**
+     * 根据SkuId获取库存信息
+     */
+    @GetMapping("/was/waresku/getStockBySkuId")
+    public AjaxResult getStockBySkuId(@RequestParam("skuId") Long skuId);
 }

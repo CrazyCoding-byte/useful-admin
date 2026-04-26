@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    username: root
+    password: password
+    driver-class-name: "com.mysql.cj.jdbc.Driver"
+    url: jdbc:mysql://localhost:3306/xz?useUnicode=true&characterEncoding=utf-8&useSSL=false
+  rabbitmq:
+    port: 5672
+    host: 192.168.56.129
+  redis:
+    host: localhost
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+eureka:
+  client:
+    serviceUrl:
+      #配置服务中心(可配置多个,用逗号隔开)
+      defaultZone: http://admin:admin@localhost:9000/eureka/

@@ -189,10 +189,10 @@
         <t-form-item label="SKU描述" name="skuDesc">
           <t-textarea v-model="skuFormData.skuDesc" placeholder="请输入SKU描述" :rows="3"/>
         </t-form-item>
-        <t-form-item label="状态" name="status">
-          <t-radio-group v-model="skuFormData.status">
-            <t-radio value="1">上架</t-radio>
-            <t-radio value="0">下架</t-radio>
+        <t-form-item label="状态" name="publishStatus">
+          <t-radio-group v-model="skuFormData.publishStatus">
+            <t-radio :value=1>上架</t-radio>
+            <t-radio :value=0>下架</t-radio>
           </t-radio-group>
         </t-form-item>
         <t-form-item label="规格组合" name="specCombination">
@@ -426,7 +426,7 @@ const skuFormData = ref({
   skuTitle: '',
   skuSubtitle: '',
   skuDesc: '',
-  status: '1',
+  publishStatus: '1',
   specCombination: '',
 });
 
@@ -448,9 +448,15 @@ const dialogMode = ref(''); //'view'=查看图片
 onMounted(() => {
   fetchSkuList();
 });
-
+const clearTable = () => {
+  data.value = []; //清空数据
+  selectedRowKeys.value = [];//清空选中
+  pagination.value.current = 1;//清空分页
+  pagination.value.total = 0;//清空分页
+}
 // 获取SKU列表
 const fetchSkuList = async () => {
+  clearTable();
   loading.value = true;
   try {
     const res = await request.post({
@@ -527,7 +533,8 @@ const handleImagePreview = (row) => {
       ?.filter((img) => img.imgUrl)
       ?.map((img) => ({
         url: img.imgUrl,
-        id: img.id,
+        imgId: img.id,
+        skuId: img.skuId,
         name: img.skuDefaultImg,
         isDefault: img.skuDefaultImg
       })) || [];
@@ -537,7 +544,16 @@ const handleImagePreview = (row) => {
 };
 //设置默认图片接口
 const handleSetDefault = (item) => {
-  console.log("设置修改的item",item)
+  console.log("设置修改的item", item)
+  productApi.updateDefaultImage(item.skuId, item.imgId).then(resp => {
+    console.log('设置默认图片接口返回结果', resp)
+    if (resp && resp.code == 200) {
+      fetchSkuList()
+      showImage.value = false;
+    } else {
+      MessagePlugin.error('设置默认图片失败')
+    }
+  })
 }
 // 分页变化
 const handlePageChange = (pageInfo: PageInfo) => {
@@ -617,7 +633,7 @@ const handleAdd = () => {
     skuTitle: '',
     skuSubtitle: '',
     skuDesc: '',
-    status: '1',
+    publishStatus: '1',
     specCombination: '',
   };
   editVisible.value = true;
@@ -625,6 +641,7 @@ const handleAdd = () => {
 
 // 编辑SKU
 const handleEdit = (row: any) => {
+  console.log("需要修改的row", row)
   isEdit.value = true;
   currentSku.value = row;
   skuFormData.value = {
@@ -638,7 +655,7 @@ const handleEdit = (row: any) => {
     skuTitle: row.skuTitle,
     skuSubtitle: row.skuSubtitle,
     skuDesc: row.skuDesc,
-    status: row.status,
+    publishStatus: row.publishStatus,
     specCombination: row.specCombination,
   };
   editVisible.value = true;
