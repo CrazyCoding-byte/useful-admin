@@ -15,12 +15,12 @@
             <t-row :gutter="16">
               <t-col :span="8">
                 <t-form-item label="规格组合" name="specCombination">
-                  <t-input v-model="formData.specCombination" placeholder="请输入规格组合（如：黑色，256G）" />
+                  <t-input v-model="formData.specCombination" placeholder="请输入规格组合（如：黑色，256G）"/>
                 </t-form-item>
               </t-col>
               <t-col :span="8">
                 <t-form-item label="SKU状态" name="status">
-                  <t-select v-model="formData.status" :options="STATUS_OPTIONS" placeholder="请选择SKU状态" />
+                  <t-select v-model="formData.status" :options="STATUS_OPTIONS" placeholder="请选择SKU状态"/>
                 </t-form-item>
               </t-col>
             </t-row>
@@ -36,15 +36,15 @@
     <!-- 操作工具栏 -->
     <div class="toolbar-container">
       <t-button theme="primary" @click="handleBatchGenerate">
-        <t-icon name="plus" />
+        <t-icon name="plus"/>
         批量生成SKU
       </t-button>
       <t-button theme="default" @click="handleAdd" style="margin-left: 8px">
-        <t-icon name="plus-circle" />
+        <t-icon name="plus-circle"/>
         新增单个SKU
       </t-button>
       <t-button v-if="selectedRowKeys.length > 0" theme="danger" @click="handleBatchDelete" style="margin-left: 8px">
-        <t-icon name="delete" />
+        <t-icon name="delete"/>
         批量删除
       </t-button>
     </div>
@@ -69,7 +69,7 @@
               :src="row.skuDefaultImg"
               :preview-src-list="[row.skuDefaultImg]"
               style="width: 80px; height: 80px; object-fit: cover"
-              @click="handleImagePreview(row, 'seDefault')"
+              @click="handleImagePreview(row)"
             />
           </div>
         </template>
@@ -80,7 +80,7 @@
               theme="primary"
               variant="text"
               size="small"
-              @click="handleImagePreview(row, 'view')"
+              @click="handleImagePreview(row)"
             >
               查看{{ row.images.length }}张图片
             </t-button>
@@ -98,7 +98,7 @@
           <span>{{ row.specCombination }}</span>
         </template>
         <template #op="{ row }">
-          <t-button theme="primary" variant="text" @click="handleEdit(row)" style="margin-right: 8px"> 编辑 </t-button>
+          <t-button theme="primary" variant="text" @click="handleEdit(row)" style="margin-right: 8px"> 编辑</t-button>
           <t-button
             :theme="row.status === '1' ? 'danger' : 'success'"
             variant="text"
@@ -107,7 +107,7 @@
           >
             {{ row.status === '1' ? '下架' : '上架' }}
           </t-button>
-          <t-button theme="danger" variant="text" @click="handleDelete(row)"> 删除 </t-button>
+          <t-button theme="danger" variant="text" @click="handleDelete(row)"> 删除</t-button>
         </template>
       </t-table>
     </div>
@@ -123,16 +123,16 @@
       <div class="batch-generate-container">
         <t-form :data="batchFormData" :rules="batchFormRules">
           <t-form-item label="属性1名称" name="attr1Name">
-            <t-input v-model="batchFormData.attr1Name" placeholder="请输入属性名称（如：颜色）" />
+            <t-input v-model="batchFormData.attr1Name" placeholder="请输入属性名称（如：颜色）"/>
           </t-form-item>
           <t-form-item label="属性1值" name="attr1Values">
-            <t-input v-model="batchFormData.attr1Values" placeholder="请输入属性值，用逗号分隔（如：黑色,白色,蓝色）" />
+            <t-input v-model="batchFormData.attr1Values" placeholder="请输入属性值，用逗号分隔（如：黑色,白色,蓝色）"/>
           </t-form-item>
           <t-form-item label="属性2名称" name="attr2Name">
-            <t-input v-model="batchFormData.attr2Name" placeholder="请输入属性名称（如：内存）" />
+            <t-input v-model="batchFormData.attr2Name" placeholder="请输入属性名称（如：内存）"/>
           </t-form-item>
           <t-form-item label="属性2值" name="attr2Values">
-            <t-input v-model="batchFormData.attr2Values" placeholder="请输入属性值，用逗号分隔（如：128G,256G,512G）" />
+            <t-input v-model="batchFormData.attr2Values" placeholder="请输入属性值，用逗号分隔（如：128G,256G,512G）"/>
           </t-form-item>
           <t-form-item label="统一价格" name="price">
             <t-input-number
@@ -144,7 +144,7 @@
             />
           </t-form-item>
           <t-form-item label="统一库存" name="stock">
-            <t-input-number v-model="batchFormData.stock" :min="0" placeholder="请输入库存" style="width: 100%" />
+            <t-input-number v-model="batchFormData.stock" :min="0" placeholder="请输入库存" style="width: 100%"/>
           </t-form-item>
         </t-form>
       </div>
@@ -160,10 +160,10 @@
     >
       <t-form :data="skuFormData" :rules="skuFormRules">
         <t-form-item label="SKU名称" name="skuName">
-          <t-input v-model="skuFormData.skuName" placeholder="请输入SKU名称" />
+          <t-input v-model="skuFormData.skuName" placeholder="请输入SKU名称"/>
         </t-form-item>
         <t-form-item label="SKU编码" name="skuCode">
-          <t-input v-model="skuFormData.skuCode" placeholder="请输入SKU编码" />
+          <t-input v-model="skuFormData.skuCode" placeholder="请输入SKU编码"/>
         </t-form-item>
         <t-form-item label="销售价格" name="price">
           <t-input-number
@@ -175,19 +175,19 @@
           />
         </t-form-item>
         <t-form-item label="库存" name="stock">
-          <t-input-number v-model="skuFormData.stock" :min="0" placeholder="请输入库存" style="width: 100%" />
+          <t-input-number v-model="skuFormData.stock" :min="0" placeholder="请输入库存" style="width: 100%"/>
         </t-form-item>
         <t-form-item label="默认图片" name="skuDefaultImg">
-          <t-input v-model="skuFormData.skuDefaultImg" placeholder="请输入默认图片URL" />
+          <t-input v-model="skuFormData.skuDefaultImg" placeholder="请输入默认图片URL"/>
         </t-form-item>
         <t-form-item label="SKU标题" name="skuTitle">
-          <t-input v-model="skuFormData.skuTitle" placeholder="请输入SKU标题" />
+          <t-input v-model="skuFormData.skuTitle" placeholder="请输入SKU标题"/>
         </t-form-item>
         <t-form-item label="SKU副标题" name="skuSubtitle">
-          <t-input v-model="skuFormData.skuSubtitle" placeholder="请输入SKU副标题" />
+          <t-input v-model="skuFormData.skuSubtitle" placeholder="请输入SKU副标题"/>
         </t-form-item>
         <t-form-item label="SKU描述" name="skuDesc">
-          <t-textarea v-model="skuFormData.skuDesc" placeholder="请输入SKU描述" :rows="3" />
+          <t-textarea v-model="skuFormData.skuDesc" placeholder="请输入SKU描述" :rows="3"/>
         </t-form-item>
         <t-form-item label="状态" name="status">
           <t-radio-group v-model="skuFormData.status">
@@ -196,7 +196,7 @@
           </t-radio-group>
         </t-form-item>
         <t-form-item label="规格组合" name="specCombination">
-          <t-input v-model="skuFormData.specCombination" placeholder="请输入规格组合（如：颜色：黑色，内存：256G）" />
+          <t-input v-model="skuFormData.specCombination" placeholder="请输入规格组合（如：颜色：黑色，内存：256G）"/>
         </t-form-item>
       </t-form>
     </t-dialog>
@@ -226,17 +226,18 @@
         @fail="handleFail"
       ></t-upload>
       <t-button
-      v-if="dialogMode==='setDefault'"
-      theme="primary"
-      @click="handleSetDefault"
-      >设置默认图片</t-button>
+        v-for="(item,index) in imageData"
+        theme="primary"
+        @click="handleSetDefault(item)"
+      >设置默认图片
+      </t-button>
     </t-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import {ref, computed, onMounted} from 'vue';
+import {useRoute, useRouter} from 'vue-router';
 import {
   MessagePlugin,
   TTableCol,
@@ -246,9 +247,9 @@ import {
   UploadInstanceFunctions,
   ButtonProps,
 } from 'tdesign-vue-next';
-import { request } from '@/utils/request';
-import { productApi } from '@/api/product';
-import { title } from 'process';
+import {request} from '@/utils/request';
+import {productApi} from '@/api/product';
+import {title} from 'process';
 
 const autoUpload = ref(true);
 const route = useRoute();
@@ -283,8 +284,8 @@ const imageData = ref<UploadProps['value']>([]);
 
 // 状态选项
 const STATUS_OPTIONS = [
-  { label: '上架', value: '1' },
-  { label: '下架', value: '0' },
+  {label: '上架', value: '1'},
+  {label: '下架', value: '0'},
 ];
 
 // 搜索表单数据
@@ -308,7 +309,7 @@ const pagination = ref({
 
 // 表格列定义
 const columns: TTableCol<any>[] = [
-  { type: 'multiple', width: 60, fixed: 'left' },
+  {type: 'multiple', width: 60, fixed: 'left'},
   {
     title: 'SKU ID',
     colKey: 'skuId',
@@ -355,10 +356,10 @@ const columns: TTableCol<any>[] = [
     title: '销售属性',
     colKey: 'saleAttrValues',
     ellipsis: true,
-    cell: (h, { row }) => {
+    cell: (h, {row}) => {
       //格式:属性名:属性值/属性名:属性值
       const attrs = row.saleAttrValues?.map((item) => `${item.attrName}:${item.attrValue}`).join('/');
-      return h('span', { attrs: { title: attrs } }, attrs || '-');
+      return h('span', {attrs: {title: attrs}}, attrs || '-');
     },
     width: 200,
   },
@@ -402,12 +403,12 @@ const batchFormData = ref({
 });
 
 const batchFormRules = {
-  attr1Name: [{ required: true, message: '请输入属性1名称', trigger: 'blur' }],
-  attr1Values: [{ required: true, message: '请输入属性1值', trigger: 'blur' }],
-  attr2Name: [{ required: true, message: '请输入属性2名称', trigger: 'blur' }],
-  attr2Values: [{ required: true, message: '请输入属性2值', trigger: 'blur' }],
-  price: [{ required: true, message: '请输入统一价格', trigger: 'blur' }],
-  stock: [{ required: true, message: '请输入统一库存', trigger: 'blur' }],
+  attr1Name: [{required: true, message: '请输入属性1名称', trigger: 'blur'}],
+  attr1Values: [{required: true, message: '请输入属性1值', trigger: 'blur'}],
+  attr2Name: [{required: true, message: '请输入属性2名称', trigger: 'blur'}],
+  attr2Values: [{required: true, message: '请输入属性2值', trigger: 'blur'}],
+  price: [{required: true, message: '请输入统一价格', trigger: 'blur'}],
+  stock: [{required: true, message: '请输入统一库存', trigger: 'blur'}],
 };
 
 // 新增/编辑SKU表单数据
@@ -430,11 +431,11 @@ const skuFormData = ref({
 });
 
 const skuFormRules = {
-  skuName: [{ required: true, message: '请输入SKU名称', trigger: 'blur' }],
-  skuCode: [{ required: true, message: '请输入SKU编码', trigger: 'blur' }],
-  price: [{ required: true, message: '请输入销售价格', trigger: 'blur' }],
-  stock: [{ required: true, message: '请输入库存', trigger: 'blur' }],
-  specCombination: [{ required: true, message: '请输入规格组合', trigger: 'blur' }],
+  skuName: [{required: true, message: '请输入SKU名称', trigger: 'blur'}],
+  skuCode: [{required: true, message: '请输入SKU编码', trigger: 'blur'}],
+  price: [{required: true, message: '请输入销售价格', trigger: 'blur'}],
+  stock: [{required: true, message: '请输入库存', trigger: 'blur'}],
+  specCombination: [{required: true, message: '请输入规格组合', trigger: 'blur'}],
 };
 // 删除确认弹窗
 const deleteVisible = ref(false);
@@ -518,23 +519,25 @@ const onReset = () => {
   pagination.value.current = 1;
   fetchSkuList();
 };
-const handleImagePreview = (row, mode) => {
-  dialogMode.Value = mode;
+const handleImagePreview = (row) => {
   selectSkuId.value = row.skuId;
+  imageData.value = [];
   imageData.value =
     row.images
       ?.filter((img) => img.imgUrl)
       ?.map((img) => ({
         url: img.imgUrl,
         id: img.id,
-        isDefault: img.imgUrl === row.skuDefaultImg, // 标记是否是默认图
+        name: img.skuDefaultImg,
+        isDefault: img.skuDefaultImg
       })) || [];
-
   showImage.value = true;
+  console.log("被点击的row", row)
+  console.log('图片数据', imageData.value)
 };
 //设置默认图片接口
-const handleSetDefault=(skuId,defaultImgId)=>{
-
+const handleSetDefault = (item) => {
+  console.log("设置修改的item",item)
 }
 // 分页变化
 const handlePageChange = (pageInfo: PageInfo) => {
@@ -542,7 +545,7 @@ const handlePageChange = (pageInfo: PageInfo) => {
   pagination.value.pageSize = pageInfo.pageSize;
   fetchSkuList();
 };
-const requireImage = (image) => {};
+
 // 选择变化
 const handleSelectChange = (value: string[]) => {
   selectedRowKeys.value = value;

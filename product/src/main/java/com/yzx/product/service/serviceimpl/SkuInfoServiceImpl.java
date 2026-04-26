@@ -1,7 +1,9 @@
 package com.yzx.product.service.serviceimpl;
 
+import ch.qos.logback.core.util.StringCollectionUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.yzx.model.StringUtils;
 import com.yzx.model.product.PmsSkuImages;
 import com.yzx.model.product.SkuInfoEntity;
 import com.yzx.product.mapper.SkuInfoMapper;
@@ -47,6 +49,23 @@ public class SkuInfoServiceImpl extends ServiceImpl<SkuInfoMapper, SkuInfoEntity
             }
             pmsSkuImagesService.saveBatch(pmsSkuImages);
         }
-            return true;
+        return true;
+    }
+
+    @Override
+    public boolean setSkuDefaultImg(String skuId, String imgId) {
+        if (StringUtils.isEmpty(skuId) || StringUtils.isEmpty(imgId)) {
+            return false;
+        }
+        //先去查询出image
+        PmsSkuImages pmsSkuImages = pmsSkuImagesService.getById(imgId);
+        if (!Objects.isNull(pmsSkuImages)) {
+            pmsSkuImages.setDefaultImg(1);
+            pmsSkuImagesService.updateById(pmsSkuImages);
+        }
+        SkuInfoEntity skuInfo = this.getOne(new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSkuId, skuId));
+        skuInfo.setSkuDefaultImg(pmsSkuImages.getImgUrl());
+        boolean b = this.updateById(skuInfo);
+        return b;
     }
 }

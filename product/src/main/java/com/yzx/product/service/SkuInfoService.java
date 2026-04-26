@@ -15,4 +15,6 @@ import java.util.List;
  */ 
 public interface SkuInfoService extends IService<SkuInfoEntity> {
     boolean updateSkuImage(@NotNull(message = "skuId 不能为空") String skuId, List<String> images);
+
+    boolean setSkuDefaultImg(@NotNull(message = "skuId 不能为空") String skuId, @NotNull(message = "imgId 不能为空") String imgId);
 }

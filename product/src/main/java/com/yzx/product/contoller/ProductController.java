@@ -232,4 +232,18 @@ public class ProductController {
             return AjaxResult.error("SKU 更新图片失败");
         }
     }
+
+    /**
+     * 设置默认图片
+     */
+    @PostMapping("/setSkuDefaultImg/{skuId}/{imgId}")
+    public AjaxResult setSkuDefaultImg(@PathVariable("skuId") @NotNull(message = "skuId 不能为空") String skuId, @PathVariable("imgId") @NotNull(message = "imgId 不能为空") String imgId) {
+        log.info("开始执行 SPU 设置默认图片操作，spuId:{}", skuId);
+        boolean success = skuInfoService.setSkuDefaultImg(skuId, imgId);
+        if (success) {
+            return AjaxResult.success("SKU 设置默认图片成功");
+        } else {
+            return AjaxResult.error("SKU 设置默认图片失败");
+        }
+    }
 }
