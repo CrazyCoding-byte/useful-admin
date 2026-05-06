@@ -181,13 +181,13 @@
           <t-input v-model="skuFormData.skuDefaultImg" placeholder="请输入默认图片URL"/>
         </t-form-item>
         <t-form-item label="SKU标题" name="skuTitle">
-          <t-input v-model="skuFormData.skuTitle" placeholder="请输入SKU标题"/>
+          <t-textarea v-model="skuFormData.skuTitle" placeholder="请输入SKU标题"/>
         </t-form-item>
         <t-form-item label="SKU副标题" name="skuSubtitle">
-          <t-input v-model="skuFormData.skuSubtitle" placeholder="请输入SKU副标题"/>
+          <t-textarea v-model="skuFormData.skuSubtitle" placeholder="请输入SKU标题"/>
         </t-form-item>
         <t-form-item label="SKU描述" name="skuDesc">
-          <t-textarea v-model="skuFormData.skuDesc" placeholder="请输入SKU描述" :rows="3"/>
+          <t-textarea v-model="skuFormData.skuDesc" placeholder="请输入SKU标题"/>
         </t-form-item>
         <t-form-item label="状态" name="publishStatus">
           <t-radio-group v-model="skuFormData.publishStatus">
@@ -240,7 +240,6 @@ import {ref, computed, onMounted} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {
   MessagePlugin,
-  TTableCol,
   TableRowData,
   PageInfo,
   UploadProps,
@@ -306,7 +305,7 @@ const pagination = ref({
   pageSize: 10,
   total: 0,
 });
-
+const attr = ref<any[]>([]);
 // 表格列定义
 const columns: TTableCol<any>[] = [
   {type: 'multiple', width: 60, fixed: 'left'},
@@ -472,7 +471,16 @@ const fetchSkuList = async () => {
     loading.value = false;
   }
 };
-
+//获取attr列表
+const fetchAttr = (categoryId: number) => {
+  if (!categoryId) {
+    return;
+  }
+  productApi.getAttrByCateGoryId(categoryId).then(resp => {
+    console.log("获取到的attr列表", resp)
+    attr.value = resp;
+  })
+}
 //上传图片成功回调
 const handleUploadSuccess: UploadProps['onSuccess'] = (params) => {
   console.log(params);
@@ -659,6 +667,7 @@ const handleEdit = (row: any) => {
     specCombination: row.specCombination,
   };
   editVisible.value = true;
+  fetchAttr(row.catalogId)
 };
 
 // 编辑SKU确认

@@ -1,13 +1,11 @@
 package com.yzx.product.service.serviceimpl;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.yzx.model.product.AttrEntity;
-import com.yzx.product.mapper.AttrMapper;
-import com.yzx.product.service.AttrService;
+import com.yzx.model.product.PmsAttr;
+import com.yzx.product.mapper.PmsAttrMapper;
+import com.yzx.product.service.PmsAttrService;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -18,7 +16,7 @@ import java.util.List;
  * @description:
  */
 @Service
-public class AttrServiceImpl extends ServiceImpl<AttrMapper, AttrEntity> implements AttrService {
+public class PmsAttrServiceImpl extends ServiceImpl<PmsAttrMapper, PmsAttr> implements PmsAttrService {
     @Override
     public List<Long> selectByIds(List<Long> attrIds) {
        return baseMapper.selectByids(attrIds);

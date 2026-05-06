@@ -14,7 +14,7 @@ import java.util.List;
 
 @Data
 @TableName("pms_category")
-public class CategoryEntity implements Serializable {
+public class PmsCategory implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	/**
@@ -58,7 +58,7 @@ public class CategoryEntity implements Serializable {
 
 	@JsonInclude(JsonInclude.Include.NON_EMPTY)
 	@TableField(exist=false)
-	private List<CategoryEntity> children;
+	private List<PmsCategory> children;
 
 
 

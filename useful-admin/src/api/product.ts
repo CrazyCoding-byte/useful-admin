@@ -90,5 +90,15 @@ export const productApi = {
     return request.post({
       url: `/product/setSkuDefaultImg/${skuId}/${imgId}`,
     })
+  },
+
+  /**
+   * 获取attr
+   *
+   */
+  getAttrByCateGoryId: (categoryId: number) => {
+    return request.get({
+      url: `/product/getAttrByCategoryId/${categoryId}`
+    })
   }
 };

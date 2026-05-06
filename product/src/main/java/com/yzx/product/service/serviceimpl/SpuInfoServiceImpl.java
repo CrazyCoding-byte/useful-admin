@@ -10,14 +10,10 @@ import com.yzx.common.mqlocalmessage.MqMessage;
 import com.yzx.common.service.impl.MqMessageServiceImpl;
 import com.yzx.common.utils.PageResult;
 import com.yzx.model.AjaxResult;
-import com.yzx.model.product.PmsSkuImages;
-import com.yzx.model.product.PmsSkuSaleAttrValue;
-import com.yzx.model.product.SkuInfoEntity;
-import com.yzx.model.product.SpuInfoEntity;
+import com.yzx.model.product.*;
 import com.yzx.model.product.vo.SkuVo;
 import com.yzx.product.mapper.SpuMapper;
-import com.yzx.product.service.SkuInfoService;
-import com.yzx.product.service.SpuInfoService;
+import com.yzx.product.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -46,6 +42,9 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
     private final MqMessageServiceImpl mqMessageService;
     private final PmsSkuImagesServiceImpl pmsSkuImagesService;
     private final PmsSkuSaleAttrValueServiceImpl pmsSkuSaleAttrValueService;
+    private final PmsAttrService pmsAttrService;
+    private final PmsAttrGroupService pmsAttrGroupService;
+    private final PmsAttrAttrgroupRelationService pmsAttrAttrgroupRelationService;
 
     public static String longestCommonPrefix(String[] strs) {
         if (strs.length == 0) return "";
@@ -228,7 +227,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
         // 2. 查询 SKU 列表（分页）
         skuInfoService.page(page, new LambdaQueryWrapper<SkuInfoEntity>()
                 .eq(SkuInfoEntity::getSpuId, spuId)
-                );
+        );
 
         // 3. 如果没有数据，返回空分页结果
         if (CollectionUtils.isEmpty(page.getRecords())) {
@@ -282,6 +281,20 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
 
         // 7. 返回分页结果
         return new PageResult<>(page.getTotal(), page.getSize(), page.getCurrent(), skuVoList);
+    }
+
+    @Override
+    public List<PmsAttr> getAttrByCategoryId(Long id) {
+        List<PmsAttrGroup> pmsAttrGroups = pmsAttrGroupService.list(new LambdaQueryWrapper<PmsAttrGroup>().eq(PmsAttrGroup::getCatelogId, id));
+        if (!CollectionUtils.isEmpty(pmsAttrGroups)) {
+            List<Long> pmsAttrGroupIds = pmsAttrGroups.stream().map(item -> item.getAttrGroupId()).collect(Collectors.toList());
+            List<PmsAttrAttrgroupRelation> pmsAttrAttrgroupRelations = pmsAttrAttrgroupRelationService.list(new LambdaQueryWrapper<PmsAttrAttrgroupRelation>().in(PmsAttrAttrgroupRelation::getAttrGroupId, pmsAttrGroupIds));
+            if (!CollectionUtils.isEmpty(pmsAttrAttrgroupRelations)) {
+                List<Long> pmsAttrIds = pmsAttrAttrgroupRelations.stream().map(item -> item.getAttrId()).collect(Collectors.toList());
+                return pmsAttrService.listByIds(pmsAttrIds);
+            }
+        }
+        return Collections.emptyList();
     }
 
     @Transactional

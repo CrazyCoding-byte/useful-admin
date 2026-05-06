@@ -1,7 +1,7 @@
 package com.yzx.product.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.yzx.model.product.CategoryEntity;
+import com.yzx.model.product.PmsCategory;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
@@ -12,5 +12,5 @@ import org.apache.ibatis.annotations.Mapper;
  * @description:
  */
 @Mapper
-public interface CategoryMapper extends BaseMapper<CategoryEntity> {
+public interface PmsCategoryMapper extends BaseMapper<PmsCategory> {
 }

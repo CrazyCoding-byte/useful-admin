@@ -2,7 +2,7 @@ package com.yzx.product.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yzx.model.Result;
-import com.yzx.model.product.CategoryEntity;
+import com.yzx.model.product.PmsCategory;
 
 /**
  * @className: ProductCateGoryService
@@ -11,6 +11,6 @@ import com.yzx.model.product.CategoryEntity;
  * @Version: 1.0
  * @description:
  */
-public interface ProductCateGoryService extends IService<CategoryEntity> {
+public interface ProductCateGoryService extends IService<PmsCategory> {
     Result getCateGory();
 }

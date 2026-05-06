@@ -1,7 +1,7 @@
 package com.yzx.product.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.yzx.model.product.AttrEntity;
+import com.yzx.model.product.PmsAttr;
 
 import java.util.List;
 
@@ -12,6 +12,6 @@ import java.util.List;
  * @Version: 1.0
  * @description:
  */
-public interface AttrService extends IService<AttrEntity> {
+public interface PmsAttrService extends IService<PmsAttr> {
     List<Long> selectByIds(List<Long> attrIds);
 }

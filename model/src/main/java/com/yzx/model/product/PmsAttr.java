@@ -1,6 +1,7 @@
 package com.yzx.model.product;
 
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 /**
@@ -11,7 +12,8 @@ import lombok.Data;
  * @description:
  */
 @Data
-public class AttrEntity {
+@TableName("pms_attr")
+public class PmsAttr {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -27,6 +29,10 @@ public class AttrEntity {
      * 是否需要检索[0-不需要，1-需要]
      */
     private Integer searchType;
+    /**
+     * '值类型[0-为单个值，1-可以选择多个值]',
+     */
+    private String valueType;
     /**
      * 属性图标
      */

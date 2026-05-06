@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yzx.common.utils.PageResult;
 import com.yzx.model.AjaxResult;
+import com.yzx.model.product.PmsAttr;
 import com.yzx.model.product.SpuInfoEntity;
 import com.yzx.model.product.vo.SkuVo;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,4 +51,6 @@ public interface SpuInfoService extends IService<SpuInfoEntity> {
     boolean upSku(@NotNull(message = "skuId 不能为空") String skuId);
 
     PageResult<SkuVo> getSkuInfoBySpuIdPage(Long spuId,Integer pageNum, Integer pageSize);
+
+    List<PmsAttr> getAttrByCategoryId(Long id);
 }

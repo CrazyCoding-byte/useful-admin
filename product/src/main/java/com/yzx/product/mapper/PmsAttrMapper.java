@@ -1,7 +1,7 @@
 package com.yzx.product.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.yzx.model.product.AttrEntity;
+import com.yzx.model.product.PmsAttr;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -13,6 +13,6 @@ import java.util.List;
  * @Version: 1.0
  * @description:
  */
-public interface AttrMapper extends BaseMapper<AttrEntity> {
+public interface PmsAttrMapper extends BaseMapper<PmsAttr> {
     List<Long> selectByids(@Param("ids") List<Long> attrIds);
 }

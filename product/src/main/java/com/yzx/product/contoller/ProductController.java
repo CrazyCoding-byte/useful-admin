@@ -3,6 +3,7 @@ package com.yzx.product.contoller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yzx.common.utils.PageResult;
 import com.yzx.model.AjaxResult;
+import com.yzx.model.product.PmsAttr;
 import com.yzx.model.product.SpuInfoEntity;
 import com.yzx.model.product.vo.SkuVo;
 import com.yzx.product.service.SkuInfoService;
@@ -32,6 +33,14 @@ public class ProductController {
     @Autowired
     private SkuInfoService skuInfoService;
 
+
+    @GetMapping("/getAttrByCategoryId/{id}")
+    public AjaxResult getAttrByCategoryId(@PathVariable Long id) {
+        log.info("查询商品属性，id={}", id);
+        List<PmsAttr> attrs = spuInfoService.getAttrByCategoryId(id);
+        return AjaxResult.success(attrs);
+    }
+
     /**
      * 获取商品列表（分页）
      * @param pageNum 页码
@@ -39,10 +48,7 @@ public class ProductController {
      * @return 分页数据
      */
     @PostMapping("/list/{pageNum}/{pageSize}")
-    public AjaxResult list(
-            @PathVariable Integer pageNum,
-            @PathVariable Integer pageSize,
-            @RequestBody(required = false) Map<String, Object> params) {
+    public AjaxResult list(@PathVariable Integer pageNum, @PathVariable Integer pageSize, @RequestBody(required = false) Map<String, Object> params) {
         log.info("查询商品列表，pageNum={}, pageSize={}, params={}", pageNum, pageSize, params);
 
         Page<SpuInfoEntity> page = spuInfoService.queryPage(pageNum, pageSize, params);
@@ -73,8 +79,7 @@ public class ProductController {
     @GetMapping("/{id}")
     public AjaxResult info(@PathVariable String id) {
         log.info("查询商品信息，id={}", id);
-        SpuInfoEntity spu = spuInfoService.getById(Long.valueOf(id
-        ));
+        SpuInfoEntity spu = spuInfoService.getById(Long.valueOf(id));
         if (spu == null) {
             return AjaxResult.error("商品不存在");
         }
@@ -88,8 +93,7 @@ public class ProductController {
      */
     @PostMapping
     public AjaxResult save(@Valid @RequestBody SpuInfoEntity spuInfoEntity) {
-        log.info("保存商品信息，id={}, name={}",
-                spuInfoEntity.getId(), spuInfoEntity.getSpuName());
+        log.info("保存商品信息，id={}, name={}", spuInfoEntity.getId(), spuInfoEntity.getSpuName());
         if (Objects.isNull(spuInfoEntity)) return AjaxResult.error("传的数据不能未未空");
         boolean success;
         if (spuInfoEntity.getId() == null) {
