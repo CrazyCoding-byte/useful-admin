@@ -196,15 +196,16 @@
           </t-radio-group>
         </t-form-item>
         <t-form-item label="规格组合" name="specCombination">
-          <t-space>
+        <div style="display: flex;flex-direction: column;flex-wrap: nowrap;gap: 10px; align-items: center;">
             <div v-for="(item,index) in attributes" :key="index"
-                 style="display: flex;flex-direction: row;flex-wrap: nowrap;gap: 10px; align-items: center;">
+                 style="display: flex;flex-direction: row;gap: 10px; align-items: center;">
               <t-select v-model="item.attrName" :options="attrOptions" size="small"
                         @change="(value) => onFocus(value, index)"/>
               <t-select v-model="item.attrValue" :options="attrValueOptions" size="small"></t-select>
               <t-button @click="removeAttribute(index)" theme="danger">删除</t-button>
             </div>
-          </t-space>
+          <t-button @click="addAttribute">添加</t-button>
+        </div>
         </t-form-item>
       </t-form>
     </t-dialog>
@@ -419,10 +420,10 @@ const batchFormRules = {
   stock: [{required: true, message: '请输入统一库存', trigger: 'blur'}],
 };
 
-// 新增/编辑SKU表单数据
 const editVisible = ref(false);
 const isEdit = ref(false);
 const currentSku = ref<any>(null);
+const skuFormRef = ref();
 const skuFormData = ref({
   skuId: undefined,
   spuId: '',
@@ -435,15 +436,14 @@ const skuFormData = ref({
   skuSubtitle: '',
   skuDesc: '',
   publishStatus: '1',
-  specCombination: '',
+  specCombination: [],
 });
 
 const skuFormRules = {
-  skuName: [{required: true, message: '请输入SKU名称', trigger: 'blur'}],
-  skuCode: [{required: true, message: '请输入SKU编码', trigger: 'blur'}],
+  skuName: [{required: true, message: '请输入 SKU 名称', trigger: 'blur'}],
+  skuCode: [{required: true, message: '请输入 SKU 编码', trigger: 'blur'}],
   price: [{required: true, message: '请输入销售价格', trigger: 'blur'}],
   stock: [{required: true, message: '请输入库存', trigger: 'blur'}],
-  specCombination: [{required: true, message: '请输入规格组合', trigger: 'blur'}],
 };
 // 删除确认弹窗
 const deleteVisible = ref(false);
@@ -459,6 +459,7 @@ const attrValueOptions = ref<SelectProps['options']>([]);
 const value1 = ref('');
 const value2 = ref('');
 const onFocus = (value, index) => {
+  attrValueOptions.value = []
   attrOptions.value.forEach(item => {
     if (value == item.value) {
       item.valueSelect.forEach(obj => {
@@ -717,30 +718,52 @@ const handleEdit = (row: any) => {
   fetchAttr(row.catalogId)
 };
 
-// 编辑SKU确认
+// 编辑 SKU 确认
 const handleEditConfirm = async () => {
+  // 1. 手动校验规格组合
+  if (!attributes.value || attributes.value.length === 0) {
+    MessagePlugin.warning('请添加至少一个规格组合');
+    return;
+  }
+  const hasEmptyAttr = attributes.value.some(item => !item.attrName || !item.attrValue);
+  if (hasEmptyAttr) {
+    MessagePlugin.warning('请完整填写所有规格项');
+    return;
+  }
+
+  // 2. 触发表单其他字段校验
+  const result = await skuFormRef.value.validate();
+  if (result !== true) return;
+
   try {
+    // 3. 将 attributes 数组转换为规格组合字符串
+    const specCombinationStr = attributes.value
+      .map(item => {
+        const attrLabel = attrOptions.value.find(o => o.value === item.attrName)?.label || item.attrName;
+        return `${attrLabel}:${item.attrValue}`;
+      })
+      .join('/');
+
+    skuFormData.value.specCombination = specCombinationStr;
+
     if (isEdit.value) {
-      // 编辑SKU
       await request.put({
         url: `/product/sku/${skuFormData.value.skuId}`,
         data: skuFormData.value,
       });
-      MessagePlugin.success('编辑SKU成功');
+      MessagePlugin.success('编辑 SKU 成功');
     } else {
-      // 新增SKU
       await request.post({
         url: '/product/sku',
         data: skuFormData.value,
       });
-      MessagePlugin.success('新增SKU成功');
+      MessagePlugin.success('新增 SKU 成功');
     }
     editVisible.value = false;
-    // 刷新列表
     fetchSkuList();
   } catch (error) {
-    console.error('保存SKU失败:', error);
-    MessagePlugin.error('保存SKU失败');
+    console.error('保存 SKU 失败:', error);
+    MessagePlugin.error('保存 SKU 失败');
   }
 };
 
