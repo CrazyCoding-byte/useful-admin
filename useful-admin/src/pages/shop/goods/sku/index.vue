@@ -196,7 +196,15 @@
           </t-radio-group>
         </t-form-item>
         <t-form-item label="规格组合" name="specCombination">
-          <t-input v-model="skuFormData.specCombination" placeholder="请输入规格组合（如：颜色：黑色，内存：256G）"/>
+          <t-space>
+            <div v-for="(item,index) in attributes" :key="index"
+                 style="display: flex;flex-direction: row;flex-wrap: nowrap;gap: 10px; align-items: center;">
+              <t-select v-model="item.attrName" :options="attrOptions" size="small"
+                        @change="(value) => onFocus(value, index)"/>
+              <t-select v-model="item.attrValue" :options="attrValueOptions" size="small"></t-select>
+              <t-button @click="removeAttribute(index)" theme="danger">删除</t-button>
+            </div>
+          </t-space>
         </t-form-item>
       </t-form>
     </t-dialog>
@@ -236,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, onMounted} from 'vue';
+import {ref, computed, onMounted, h} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {
   MessagePlugin,
@@ -245,6 +253,8 @@ import {
   UploadProps,
   UploadInstanceFunctions,
   ButtonProps,
+  SelectProps,
+  PrimaryTableCol
 } from 'tdesign-vue-next';
 import {request} from '@/utils/request';
 import {productApi} from '@/api/product';
@@ -305,9 +315,8 @@ const pagination = ref({
   pageSize: 10,
   total: 0,
 });
-const attr = ref<any[]>([]);
 // 表格列定义
-const columns: TTableCol<any>[] = [
+const columns: PrimaryTableCol<any>[] = [
   {type: 'multiple', width: 60, fixed: 'left'},
   {
     title: 'SKU ID',
@@ -439,9 +448,27 @@ const skuFormRules = {
 // 删除确认弹窗
 const deleteVisible = ref(false);
 const deleteIds = ref<string[]>([]);
-
 const selectSkuId = ref<string>('');
 const dialogMode = ref(''); //'view'=查看图片
+const attributes = ref([{
+  attrName: '', attrValue: ''
+}])
+//规格select选择框
+const attrOptions = ref<SelectProps['options']>([]);
+const attrValueOptions = ref<SelectProps['options']>([]);
+const value1 = ref('');
+const value2 = ref('');
+const onFocus = (value, index) => {
+  attrOptions.value.forEach(item => {
+    if (value == item.value) {
+      item.valueSelect.forEach(obj => {
+        attrValueOptions.value.push({label: obj, value: obj})
+      })
+      console.log("attrValueOptions", attrValueOptions.value)
+    }
+  })
+};
+
 //*********************************************方法**************************************/
 // 页面加载时获取数据
 onMounted(() => {
@@ -473,13 +500,32 @@ const fetchSkuList = async () => {
 };
 //获取attr列表
 const fetchAttr = (categoryId: number) => {
+  /**
+   *   {
+   *     label: '人工智能',
+   *     value: '5',
+   *   },
+   */
   if (!categoryId) {
     return;
   }
   productApi.getAttrByCateGoryId(categoryId).then(resp => {
     console.log("获取到的attr列表", resp)
-    attr.value = resp;
+    attrOptions.value = resp.map((attr) => ({
+      label: attr.attrName,
+      value: attr.attrId,
+      valueSelect: attr.valueSelect.split(';'),
+    }))
+    console.log("attrOptions", attrOptions.value)
   })
+}
+//新增attr选择下拉框
+const addAttribute = () => {
+  attributes.value.push({attrName: '', attrValue: ''})
+}
+//删除attr选择下拉框
+const removeAttribute = (index) => {
+  attributes.value.splice(index, 1)
 }
 //上传图片成功回调
 const handleUploadSuccess: UploadProps['onSuccess'] = (params) => {
@@ -667,6 +713,7 @@ const handleEdit = (row: any) => {
     specCombination: row.specCombination,
   };
   editVisible.value = true;
+  attrOptions.value = []
   fetchAttr(row.catalogId)
 };
 
