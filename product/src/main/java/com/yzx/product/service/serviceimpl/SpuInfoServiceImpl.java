@@ -11,6 +11,7 @@ import com.yzx.common.service.impl.MqMessageServiceImpl;
 import com.yzx.common.utils.PageResult;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.product.*;
+import com.yzx.model.product.vo.PmsGroupVo;
 import com.yzx.model.product.vo.SkuVo;
 import com.yzx.product.mapper.SpuMapper;
 import com.yzx.product.service.*;
@@ -284,15 +285,57 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
     }
 
     @Override
-    public List<PmsAttr> getAttrByCategoryId(Long id) {
+    public List<PmsGroupVo> getAttrByCategoryId(Long id) {
         List<PmsAttrGroup> pmsAttrGroups = pmsAttrGroupService.list(new LambdaQueryWrapper<PmsAttrGroup>().eq(PmsAttrGroup::getCatelogId, id));
         if (!CollectionUtils.isEmpty(pmsAttrGroups)) {
-            List<Long> pmsAttrGroupIds = pmsAttrGroups.stream().map(item -> item.getAttrGroupId()).collect(Collectors.toList());
+            List<PmsGroupVo> pmsGroupVos = pmsAttrGroups.stream().map(item -> {
+                PmsGroupVo pmsGroupVo = new PmsGroupVo();
+                BeanUtils.copyProperties(item, pmsGroupVo);
+                return pmsGroupVo;
+            }).collect(Collectors.toList());
+            List<Long> pmsAttrGroupIds = pmsGroupVos.stream().map(item -> item.getAttrGroupId()).collect(Collectors.toList());
             List<PmsAttrAttrgroupRelation> pmsAttrAttrgroupRelations = pmsAttrAttrgroupRelationService.list(new LambdaQueryWrapper<PmsAttrAttrgroupRelation>().in(PmsAttrAttrgroupRelation::getAttrGroupId, pmsAttrGroupIds));
             if (!CollectionUtils.isEmpty(pmsAttrAttrgroupRelations)) {
-                List<Long> pmsAttrIds = pmsAttrAttrgroupRelations.stream().map(item -> item.getAttrId()).collect(Collectors.toList());
-                return pmsAttrService.listByIds(pmsAttrIds);
+                // 按属性组ID分组，方便后续匹配
+                Map<Long, List<Long>> attrGroupToAttrMap = pmsAttrAttrgroupRelations.stream()
+                        .collect(Collectors.groupingBy(
+                                PmsAttrAttrgroupRelation::getAttrGroupId,
+                                Collectors.mapping(PmsAttrAttrgroupRelation::getAttrId, Collectors.toList())
+                        ));
+
+                // 获取所有属性ID
+                List<Long> allAttrIds = pmsAttrAttrgroupRelations.stream()
+                        .map(PmsAttrAttrgroupRelation::getAttrId)
+                        .distinct()
+                        .collect(Collectors.toList());
+
+                // 批量查询所有属性
+                List<PmsAttr> allAttrs = pmsAttrService.listByIds(allAttrIds);
+
+                // 将属性按ID建立映射
+                Map<Long, PmsAttr> attrMap = allAttrs.stream()
+                        .collect(Collectors.toMap(PmsAttr::getAttrId, attr -> attr));
+
+                // 为每个属性组设置对应的属性列表
+                pmsGroupVos.forEach(groupVo -> {
+                    List<Long> attrIds = attrGroupToAttrMap.get(groupVo.getAttrGroupId());
+                    if (attrIds != null && !attrIds.isEmpty()) {
+                        List<PmsAttr> attrs = attrIds.stream()
+                                .map(attrMap::get)
+                                .filter(attr -> attr != null)
+                                .collect(Collectors.toList());
+                        groupVo.setPmsAttrs(attrs);
+                    } else {
+                        groupVo.setPmsAttrs(Collections.emptyList());
+                    }
+                });
+            } else {
+                // 如果没有关联关系，为每个组设置空列表
+                pmsGroupVos.forEach(groupVo -> groupVo.setPmsAttrs(Collections.emptyList()));
             }
+            // TODO: 这里返回类型是List<PmsAttr>，但实际应该返回List<PmsGroupVo>
+            // 建议修改方法签名返回类型为 List<PmsGroupVo>
+            return pmsGroupVos;
         }
         return Collections.emptyList();
     }

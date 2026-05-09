@@ -721,20 +721,19 @@ const handleEdit = (row: any) => {
 
 // 编辑 SKU 确认
 const handleEditConfirm = async () => {
-  console.log("确认提交的skuFormData", skuFormData.value)
-  console.log("确认提交的attributes", attributes.value)
   const specCombination = attributes.value.filter(item => item.attrName && item.attrValue)//过滤空值
     .map(item => {
       //获取属性名称
       const attrOption = attrOptions.value.find(o => o.value === item.attrName);
       console.log("获取到的attrOption", attrOption)
       return {
-        value: item.attrName,  //属性Id
-        label: item.attrValue, //选中的属性值(如"2018")
-        attrId: attrOption?.label || '' //属性名称
+        attrValue: item.attrValue,  //属性Id
+        attrName: attrOption?.label || '', //选中的属性值(如"2018")
+        attrId: item.attrName//属性名称
       }
     })
-  console.log("确认提交的specCombination", specCombination)
+  skuFormData.value.specCombination = specCombination
+  console.log("当前提交的参数:", skuFormData.value)
   // // 1. 手动校验规格组合
   // if (!attributes.value || attributes.value.length === 0) {
   //   MessagePlugin.warning('请添加至少一个规格组合');
@@ -752,15 +751,17 @@ const handleEditConfirm = async () => {
   //
   // try {
   //   // 3. 将 attributes 数组转换为规格组合字符串
-  //   const specCombinationStr = attributes.value
+  //   const specCombination = attributes.value.filter(item => item.attrName && item.attrValue)//过滤空值
   //     .map(item => {
-  //       const attrLabel = attrOptions.value.find(o => o.value === item.attrName)?.label || item.attrName;
-  //       return `${attrLabel}:${item.attrValue}`;
+  //       //获取属性名称
+  //       const attrOption = attrOptions.value.find(o => o.value === item.attrName);
+  //       console.log("获取到的attrOption", attrOption)
+  //       return {
+  //         value: item.attrValue,  //属性Id
+  //         label: attrOption?.label || '', //选中的属性值(如"2018")
+  //         attrId: item.attrName//属性名称
+  //       }
   //     })
-  //     .join('/');
-  //
-  //   skuFormData.value.specCombination = specCombinationStr;
-  //
   //   if (isEdit.value) {
   //     await request.put({
   //       url: `/product/sku/${skuFormData.value.skuId}`,

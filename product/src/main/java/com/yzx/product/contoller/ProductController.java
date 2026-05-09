@@ -5,6 +5,7 @@ import com.yzx.common.utils.PageResult;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.product.PmsAttr;
 import com.yzx.model.product.SpuInfoEntity;
+import com.yzx.model.product.vo.PmsGroupVo;
 import com.yzx.model.product.vo.SkuVo;
 import com.yzx.product.service.SkuInfoService;
 import com.yzx.product.service.SpuInfoService;
@@ -33,11 +34,15 @@ public class ProductController {
     @Autowired
     private SkuInfoService skuInfoService;
 
-
+    /**
+     * 根据分类id查询属性
+     * @param id
+     * @return
+     */
     @GetMapping("/getAttrByCategoryId/{id}")
     public AjaxResult getAttrByCategoryId(@PathVariable Long id) {
         log.info("查询商品属性，id={}", id);
-        List<PmsAttr> attrs = spuInfoService.getAttrByCategoryId(id);
+        List<PmsGroupVo> attrs = spuInfoService.getAttrByCategoryId(id);
         return AjaxResult.success(attrs);
     }
 
@@ -168,6 +173,11 @@ public class ProductController {
         }
     }
 
+    /**
+     * 根据skuId下架
+     * @param skuId
+     * @return
+     */
     @PostMapping("/downSku/{skuId}")
     public AjaxResult downSku(@PathVariable("skuId") @NotNull(message = "skuId 不能为空") String skuId) {
         log.info("开始执行 SKU 下架操作，skuId:{}", skuId);
@@ -177,7 +187,7 @@ public class ProductController {
 
 
     /**
-     * sku商品添加
+     * sku商品添加/修改
      */
     @PostMapping("/save/sku")
     public AjaxResult saveOrUpdateSku(@RequestBody SkuVo skuVo) {

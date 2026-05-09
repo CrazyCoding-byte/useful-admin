@@ -15,7 +15,7 @@ import java.util.List;
  */
 @Data
 public class SkuVo implements Serializable {
-    
+
     private static final long serialVersionUID = 1L;
 
     // ========== pms_sku_info 字段 ==========
@@ -90,6 +90,7 @@ public class SkuVo implements Serializable {
      * SKU销售属性值列表
      */
     private List<SkuSaleAttrValueVo> saleAttrValues;
+
 
     /**
      * SKU图片VO
