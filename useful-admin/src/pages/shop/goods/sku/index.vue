@@ -199,9 +199,26 @@
           <div style="display: flex;flex-direction: column;flex-wrap: nowrap;gap: 10px; align-items: center;">
             <div v-for="(item,index) in attributes" :key="index"
                  style="display: flex;flex-direction: row;gap: 10px; align-items: center;">
-              <t-select v-model="item.attrName" :options="attrOptions" size="small"
-                        @change="(value) => onFocus(value, index)"/>
-              <t-select v-model="item.attrValue" :options="attrValueOptions" size="small"></t-select>
+              <t-select
+                v-model="item.attrGroupId"
+                :options="attrGroupOptions"
+                placeholder="选择属性组"
+                @change="(value) => onAttrGroupChange(value, index)"
+                style="width: 150px"
+              />
+              <t-select
+                v-model="item.attrId"
+                :options="getAttrOptionsForGroup(item.attrGroupId)"
+                placeholder="选择属性"
+                @change="(value) => onAttrChange(value, index)"
+                style="width: 150px"
+              />
+              <t-select
+                v-model="item.attrValue"
+                :options="getAttrValueOptions(item.attrGroupId, item.attrId)"
+                placeholder="选择属性值"
+                style="width: 150px"
+              />
               <t-button @click="removeAttribute(index)" theme="danger">删除</t-button>
             </div>
             <t-button @click="addAttribute">添加</t-button>
@@ -459,10 +476,7 @@ const attributes = ref([{
 }])
 //规格select选择框
 const attrGroups = ref([]) //存储所有属性组及属性
-const attrOptions = ref<SelectProps['options']>([]);
-const attrValueOptions = ref<SelectProps['options']>([]);
-const value1 = ref('');
-const value2 = ref('');
+
 const onFocus = (value, index) => {
   attrValueOptions.value = []
   attrOptions.value.forEach(item => {
@@ -511,6 +525,7 @@ const attrValueOptions = computed(() => {
 onMounted(() => {
   fetchSkuList();
 });
+
 const clearTable = () => {
   data.value = []; //清空数据
   selectedRowKeys.value = [];//清空选中
@@ -550,10 +565,44 @@ const fetchAttrGroups = (categoryId: number) => {
     attrGroups.value = resp
   })
 }
-//新增attr选择下拉框
-const addAttribute = () => {
-  attributes.value.push({attrName: '', attrValue: ''})
+
+//属性变化时的处理
+const onAttrGroupChange = (groupId, index) => {
+  const group = attrGroups.value.find(g => g.attrGroupId === groupId)
+  if (group) {
+    attributes.value[index].attrGroupName = group.attrGroupName
+    attributes.value[index].attrId = '' //清空属性选择
+    attributes.value[index].attrValue = ''//清空属性选择
+  }
 }
+//获取指定属性的属性选项
+const onAttrChange = (attrId, index) => {
+  const group = attrGroups.value.find(g => g.attrGroupId === attributes.value[index].attrGroupId)
+  const attr = group?.pmsAttrs?.find(a => a.attrId === attrId)
+  if (attr) {
+    attributes.value[index].attrName = attr.attrName
+    attributes.value[index].attrValue = ''//清空属性值选择
+
+  }
+}
+//获取指定属性组的属性选项
+const getAttrOptionsForGroup = (groupId) => {
+  const group = attrGroups.value.find(g => g.attrGroupId === groupId)
+  return group?.pmsAttrs?.map(attr => ({
+    label: attr.attrName,
+    value: attr.attrId
+  })) || []
+}
+//获取指定属性的值的选项
+const getAttrValueOptions = (groupId, attrId) => {
+  const group = attrGroups.value.find(g => g.attrGroupId === groupId)
+  const attr = group?.pmsAttrs?.find(a => a.attrId === attrId)
+  return attr?.valueSelect?.split(";").map(value => ({
+    label: value,
+    value: value
+  })) || []
+}
+
 //删除attr选择下拉框
 const removeAttribute = (index) => {
   attributes.value.splice(index, 1)
@@ -745,22 +794,19 @@ const handleEdit = (row: any) => {
   };
   editVisible.value = true;
   attrOptions.value = []
-  fetchAttr(row.catalogId)
+  fetchAttrGroups(row.catalogId)
 };
 
 // 编辑 SKU 确认
 const handleEditConfirm = async () => {
-  const specCombination = attributes.value.filter(item => item.attrName && item.attrValue)//过滤空值
-    .map(item => {
-      //获取属性名称
-      const attrOption = attrOptions.value.find(o => o.value === item.attrName);
-      console.log("获取到的attrOption", attrOption)
-      return {
-        attrValue: item.attrValue,  //属性Id
-        attrName: attrOption?.label || '', //选中的属性值(如"2018")
-        attrId: item.attrName//属性名称
-      }
-    })
+  const specCombination = attributes.value.filter(item => item.attrGroupId && item.attrId && item.attrValue)
+    .map(item => ({
+      attrGroupId: item.attrGroupId,
+      attrGroupName: item.attrGroupName,
+      attrId: item.attrId,
+      attrName: item.attrName,
+      attrValue: item.attrValue
+    }))
   skuFormData.value.specCombination = specCombination
   console.log("当前提交的参数:", skuFormData.value)
   // // 1. 手动校验规格组合
