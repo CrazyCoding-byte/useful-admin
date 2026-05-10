@@ -296,7 +296,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
             List<Long> pmsAttrGroupIds = pmsGroupVos.stream().map(item -> item.getAttrGroupId()).collect(Collectors.toList());
             List<PmsAttrAttrgroupRelation> pmsAttrAttrgroupRelations = pmsAttrAttrgroupRelationService.list(new LambdaQueryWrapper<PmsAttrAttrgroupRelation>().in(PmsAttrAttrgroupRelation::getAttrGroupId, pmsAttrGroupIds));
             if (!CollectionUtils.isEmpty(pmsAttrAttrgroupRelations)) {
-                // 按属性组ID分组，方便后续匹配
+                // 按属性组ID分组，方便后续匹配 组->组下面的组id
                 Map<Long, List<Long>> attrGroupToAttrMap = pmsAttrAttrgroupRelations.stream()
                         .collect(Collectors.groupingBy(
                                 PmsAttrAttrgroupRelation::getAttrGroupId,
@@ -333,8 +333,6 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
                 // 如果没有关联关系，为每个组设置空列表
                 pmsGroupVos.forEach(groupVo -> groupVo.setPmsAttrs(Collections.emptyList()));
             }
-            // TODO: 这里返回类型是List<PmsAttr>，但实际应该返回List<PmsGroupVo>
-            // 建议修改方法签名返回类型为 List<PmsGroupVo>
             return pmsGroupVos;
         }
         return Collections.emptyList();

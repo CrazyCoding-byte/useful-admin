@@ -451,9 +451,14 @@ const deleteIds = ref<string[]>([]);
 const selectSkuId = ref<string>('');
 const dialogMode = ref(''); //'view'=查看图片
 const attributes = ref([{
-  attrName: '', attrValue: ''
+  attrGroupId: '',//属性组ID
+  attrGroupName: '',//属性组名称
+  attrId: '',//属性ID
+  attrName: '',//属性名称
+  attrValue: '',//属性值
 }])
 //规格select选择框
+const attrGroups = ref([]) //存储所有属性组及属性
 const attrOptions = ref<SelectProps['options']>([]);
 const attrValueOptions = ref<SelectProps['options']>([]);
 const value1 = ref('');
@@ -469,7 +474,38 @@ const onFocus = (value, index) => {
     }
   })
 };
+//*********************************************计算属性************************************/
+//第一级:属性组选项
+const attrGroupOptions = computed(() => {
+  return attrGroups.value.map(group => ({
+    label: group.attrGroupName,
+    value: group.attrGroupId
+  }))
+})
+//第二级:根据选中的属性组,显示该组下的属性
+const attrOptions = computed(() => {
+  const currentGroupIndex = attributes.value.length - 1
+  const currentGroup = attributes.value[currentGroupIndex]
+  if (!currentGroup || !currentGroup.attrGroupId) return []
 
+  const group = attrGroups.value.find(g => g.attrGroupId === currentGroup.attrGroupId)
+  return group?.pmsAttrs?.map(attr => ({
+    label: attr.attrName,
+    value: attr.attrId
+  })) || []
+})
+//第三级:根据选中的属性,显示该属性的可选值
+const attrValueOptions = computed(() => {
+  const currentGroupIndex = attributes.value.length - 1
+  const currentAttr = attributes.value[currentGroupIndex]
+  if (!currentAttr || !currentAttr.attrId) return []
+  const group = attrGroups.value.find(g => g.attrGroupId === currentGroup.attrGroupId)
+  const attr = group?.pmsAttrs?.find(a => a.attrId === currentAttr.attrId)
+  return attr?.valueSelect?.split(";").map(value => ({
+    label: value,
+    value: value
+  }))
+})
 //*********************************************方法**************************************/
 // 页面加载时获取数据
 onMounted(() => {
@@ -500,7 +536,7 @@ const fetchSkuList = async () => {
   }
 };
 //获取attr列表
-const fetchAttr = (categoryId: number) => {
+const fetchAttrGroups = (categoryId: number) => {
   /**
    *   {
    *     label: '人工智能',
@@ -511,14 +547,7 @@ const fetchAttr = (categoryId: number) => {
     return;
   }
   productApi.getAttrByCateGoryId(categoryId).then(resp => {
-    console.log("获取到的attr列表", resp)
-    attrOptions.value = resp.map((attr) => ({
-      attrId: attr.attrId,
-      label: attr.attrName,
-      value: attr.attrId,
-      valueSelect: attr.valueSelect.split(';'),
-    }))
-    console.log("attrOptions", attrOptions.value)
+    attrGroups.value = resp
   })
 }
 //新增attr选择下拉框
