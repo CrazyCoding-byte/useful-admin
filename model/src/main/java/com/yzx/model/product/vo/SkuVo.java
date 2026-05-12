@@ -91,6 +91,7 @@ public class SkuVo implements Serializable {
      */
     private List<SkuSaleAttrValueVo> saleAttrValues;
 
+    private List<PmsGroupVo> specCombination;
 
     /**
      * SKU图片VO

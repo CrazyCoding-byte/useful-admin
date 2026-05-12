@@ -20,5 +20,5 @@ public class PmsGroupVo {
     private String descript;
     private String icon;
     private Long catelogId;
-    private List<PmsAttr> pmsAttrs;
+    private List<SkuVo.SkuSaleAttrValueVo> pmsAttrs;
 }

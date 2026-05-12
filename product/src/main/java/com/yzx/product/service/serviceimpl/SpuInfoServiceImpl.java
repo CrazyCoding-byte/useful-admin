@@ -155,13 +155,19 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
             }
 
             // 3. 处理 SKU 销售属性值列表
-            if (!CollectionUtils.isEmpty(skuVo.getSaleAttrValues())) {
-                List<PmsSkuSaleAttrValue> attrValueList = skuVo.getSaleAttrValues().stream()
-                        .map(attrVo -> {
-                            PmsSkuSaleAttrValue attrValue = new PmsSkuSaleAttrValue();
-                            BeanUtils.copyProperties(attrVo, attrValue);
-                            attrValue.setSkuId(skuId);
-                            return attrValue;
+            if (!CollectionUtils.isEmpty(skuVo.getSpecCombination())) {
+                List<PmsSkuSaleAttrValue> attrValueList = skuVo.getSpecCombination().stream()
+                        .flatMap(groupVo -> {
+                            if (CollectionUtils.isEmpty(groupVo.getPmsAttrs())) {
+                                return Stream.empty();
+                            }
+                            return groupVo.getPmsAttrs().stream()
+                                    .map(attrVo -> {
+                                        PmsSkuSaleAttrValue attrValue = new PmsSkuSaleAttrValue();
+                                        BeanUtils.copyProperties(attrVo, attrValue);
+                                        attrValue.setSkuId(skuId);
+                                        return attrValue;
+                                    });
                         })
                         .collect(Collectors.toList());
 
@@ -320,9 +326,16 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
                 pmsGroupVos.forEach(groupVo -> {
                     List<Long> attrIds = attrGroupToAttrMap.get(groupVo.getAttrGroupId());
                     if (attrIds != null && !attrIds.isEmpty()) {
-                        List<PmsAttr> attrs = attrIds.stream()
+                        List<SkuVo.SkuSaleAttrValueVo> attrs = attrIds.stream()
                                 .map(attrMap::get)
                                 .filter(attr -> attr != null)
+                                .map(attr -> {
+                                    SkuVo.SkuSaleAttrValueVo vo = new SkuVo.SkuSaleAttrValueVo();
+                                    vo.setAttrId(attr.getAttrId());
+                                    vo.setAttrName(attr.getAttrName());
+                                    // 注意：这里没有 attrValue，因为 PmsAttr 是属性定义，不是具体的属性值
+                                    return vo;
+                                })
                                 .collect(Collectors.toList());
                         groupVo.setPmsAttrs(attrs);
                     } else {
@@ -331,7 +344,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
                 });
             } else {
                 // 如果没有关联关系，为每个组设置空列表
-                pmsGroupVos.forEach(groupVo -> groupVo.setPmsAttrs(Collections.emptyList()));
+                pmsGroupVos.forEach(groupVo -> groupVo.setPmsAttrs(Collections.<SkuVo.SkuSaleAttrValueVo>emptyList()));
             }
             return pmsGroupVos;
         }
