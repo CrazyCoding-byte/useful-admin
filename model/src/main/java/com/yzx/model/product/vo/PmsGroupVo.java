@@ -16,9 +16,12 @@ import java.util.List;
 public class PmsGroupVo {
     private Long attrGroupId;
     private String attrGroupName;
+    private Long attrId;
+    private String attrName;
+    private String attrValue;
     private Integer sort;
     private String descript;
     private String icon;
     private Long catelogId;
-    private List<SkuVo.SkuSaleAttrValueVo> pmsAttrs;
+    private List<PmsAttr> pmsAttrs;
 }

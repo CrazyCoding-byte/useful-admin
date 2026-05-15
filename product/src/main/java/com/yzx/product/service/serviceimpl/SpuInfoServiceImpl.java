@@ -130,66 +130,31 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
             }
 
             Long skuId = skuVo.getSkuId();
-
-            // 2. 处理 SKU 图片列表
-            if (!CollectionUtils.isEmpty(skuVo.getImages())) {
-                List<PmsSkuImages> imagesList = skuVo.getImages().stream()
-                        .map(imageVo -> {
-                            PmsSkuImages image = new PmsSkuImages();
-                            BeanUtils.copyProperties(imageVo, image);
-                            image.setSkuId(skuId);
-                            return image;
-                        })
-                        .collect(Collectors.toList());
-
-                // 批量保存或更新图片（先删后增）
-                boolean imagesSuccess = pmsSkuImagesService.saveOrUpdateBySkuId(skuId, imagesList);
-                if (!imagesSuccess) {
-                    throw new RuntimeException("保存SKU图片失败");
-                }
-                log.info("保存SKU图片成功，数量={}", imagesList.size());
-            } else {
-                // 如果没有图片，删除原有图片
-                pmsSkuImagesService.removeBySkuId(skuId);
-                log.info("清空SKU图片，skuId={}", skuId);
-            }
-
             // 3. 处理 SKU 销售属性值列表
             if (!CollectionUtils.isEmpty(skuVo.getSpecCombination())) {
-                List<PmsSkuSaleAttrValue> attrValueList = skuVo.getSpecCombination().stream()
-                        .flatMap(groupVo -> {
-                            if (CollectionUtils.isEmpty(groupVo.getPmsAttrs())) {
-                                return Stream.empty();
-                            }
-                            return groupVo.getPmsAttrs().stream()
-                                    .map(attrVo -> {
-                                        PmsSkuSaleAttrValue attrValue = new PmsSkuSaleAttrValue();
-                                        BeanUtils.copyProperties(attrVo, attrValue);
-                                        attrValue.setSkuId(skuId);
-                                        return attrValue;
-                                    });
-                        })
-                        .collect(Collectors.toList());
-
+                List<PmsGroupVo> specCombination = skuVo.getSpecCombination();
+                List<PmsSkuSaleAttrValue> pmsSkuSaleAttrValues = specCombination.stream().map(item -> {
+                    PmsSkuSaleAttrValue attrValue = new PmsSkuSaleAttrValue();
+                    BeanUtils.copyProperties(item, attrValue);
+                    return attrValue;
+                }).collect(Collectors.toList());
                 // 批量保存或更新销售属性值（先删后增）
-                boolean attrSuccess = pmsSkuSaleAttrValueService.saveOrUpdateBySkuId(skuId, attrValueList);
+                boolean attrSuccess = pmsSkuSaleAttrValueService.saveOrUpdateBySkuId(skuId, pmsSkuSaleAttrValues);
                 if (!attrSuccess) {
                     throw new RuntimeException("保存SKU销售属性值失败");
                 }
-                log.info("保存SKU销售属性值成功，数量={}", attrValueList.size());
+                log.info("保存SKU销售属性值成功，数量={}", pmsSkuSaleAttrValues.size());
             } else {
                 // 如果没有销售属性值，删除原有数据
                 pmsSkuSaleAttrValueService.removeBySkuId(skuId);
                 log.info("清空SKU销售属性值，skuId={}", skuId);
             }
-
             // 4. 清理缓存（如果已上架）
             if (isUpdate) {
                 String key = "product:sku:" + skuId;
                 redisTemplate.delete(key);
                 log.info("清理SKU缓存，key={}", key);
             }
-
             String message = isUpdate ? "更新成功" : "新增成功";
             log.info("SKU信息{}，skuId={}", message, skuId);
             return AjaxResult.success(message);
@@ -232,9 +197,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
         Page<SkuInfoEntity> page = new Page<>(pageNum, pageSize);
 
         // 2. 查询 SKU 列表（分页）
-        skuInfoService.page(page, new LambdaQueryWrapper<SkuInfoEntity>()
-                .eq(SkuInfoEntity::getSpuId, spuId)
-        );
+        skuInfoService.page(page, new LambdaQueryWrapper<SkuInfoEntity>().eq(SkuInfoEntity::getSpuId, spuId));
 
         // 3. 如果没有数据，返回空分页结果
         if (CollectionUtils.isEmpty(page.getRecords())) {
@@ -242,9 +205,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
         }
 
         // 4. 获取 SKU ID 列表
-        List<Long> skuIds = page.getRecords().stream()
-                .map(SkuInfoEntity::getSkuId)
-                .collect(Collectors.toList());
+        List<Long> skuIds = page.getRecords().stream().map(SkuInfoEntity::getSkuId).collect(Collectors.toList());
 
         // 5. 批量查询属性和图片
         List<PmsSkuSaleAttrValue> pmsSkuSaleAttrValues = pmsSkuSaleAttrValueService.listBySkuIds(skuIds);
@@ -256,30 +217,24 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
             BeanUtils.copyProperties(item, skuVo);
 
             // 设置属性
-            List<PmsSkuSaleAttrValue> filterSkuSaleAttrValue = pmsSkuSaleAttrValues.stream()
-                    .filter(attr -> attr.getSkuId().equals(item.getSkuId()))
-                    .collect(Collectors.toList());
+            List<PmsSkuSaleAttrValue> filterSkuSaleAttrValue = pmsSkuSaleAttrValues.stream().filter(attr -> attr.getSkuId().equals(item.getSkuId())).collect(Collectors.toList());
             if (!CollectionUtils.isEmpty(filterSkuSaleAttrValue)) {
-                List<SkuVo.SkuSaleAttrValueVo> skuSaleAttrValueVos = filterSkuSaleAttrValue.stream()
-                        .map(attr -> {
-                            SkuVo.SkuSaleAttrValueVo vo = new SkuVo.SkuSaleAttrValueVo();
-                            BeanUtils.copyProperties(attr, vo);
-                            return vo;
-                        }).collect(Collectors.toList());
+                List<SkuVo.SkuSaleAttrValueVo> skuSaleAttrValueVos = filterSkuSaleAttrValue.stream().map(attr -> {
+                    SkuVo.SkuSaleAttrValueVo vo = new SkuVo.SkuSaleAttrValueVo();
+                    BeanUtils.copyProperties(attr, vo);
+                    return vo;
+                }).collect(Collectors.toList());
                 skuVo.setSaleAttrValues(skuSaleAttrValueVos);
             }
 
             // 设置图片
-            List<PmsSkuImages> filterSkuImage = pmsSkuImages.stream()
-                    .filter(img -> img.getSkuId().equals(item.getSkuId()))
-                    .collect(Collectors.toList());
+            List<PmsSkuImages> filterSkuImage = pmsSkuImages.stream().filter(img -> img.getSkuId().equals(item.getSkuId())).collect(Collectors.toList());
             if (!CollectionUtils.isEmpty(filterSkuImage)) {
-                List<SkuVo.SkuImageVo> skuImageVos = filterSkuImage.stream()
-                        .map(img -> {
-                            SkuVo.SkuImageVo vo = new SkuVo.SkuImageVo();
-                            BeanUtils.copyProperties(img, vo);
-                            return vo;
-                        }).collect(Collectors.toList());
+                List<SkuVo.SkuImageVo> skuImageVos = filterSkuImage.stream().map(img -> {
+                    SkuVo.SkuImageVo vo = new SkuVo.SkuImageVo();
+                    BeanUtils.copyProperties(img, vo);
+                    return vo;
+                }).collect(Collectors.toList());
                 skuVo.setImages(skuImageVos);
             }
 
@@ -303,40 +258,22 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
             List<PmsAttrAttrgroupRelation> pmsAttrAttrgroupRelations = pmsAttrAttrgroupRelationService.list(new LambdaQueryWrapper<PmsAttrAttrgroupRelation>().in(PmsAttrAttrgroupRelation::getAttrGroupId, pmsAttrGroupIds));
             if (!CollectionUtils.isEmpty(pmsAttrAttrgroupRelations)) {
                 // 按属性组ID分组，方便后续匹配 组->组下面的组id
-                Map<Long, List<Long>> attrGroupToAttrMap = pmsAttrAttrgroupRelations.stream()
-                        .collect(Collectors.groupingBy(
-                                PmsAttrAttrgroupRelation::getAttrGroupId,
-                                Collectors.mapping(PmsAttrAttrgroupRelation::getAttrId, Collectors.toList())
-                        ));
+                Map<Long, List<Long>> attrGroupToAttrMap = pmsAttrAttrgroupRelations.stream().collect(Collectors.groupingBy(PmsAttrAttrgroupRelation::getAttrGroupId, Collectors.mapping(PmsAttrAttrgroupRelation::getAttrId, Collectors.toList())));
 
                 // 获取所有属性ID
-                List<Long> allAttrIds = pmsAttrAttrgroupRelations.stream()
-                        .map(PmsAttrAttrgroupRelation::getAttrId)
-                        .distinct()
-                        .collect(Collectors.toList());
+                List<Long> allAttrIds = pmsAttrAttrgroupRelations.stream().map(PmsAttrAttrgroupRelation::getAttrId).distinct().collect(Collectors.toList());
 
                 // 批量查询所有属性
                 List<PmsAttr> allAttrs = pmsAttrService.listByIds(allAttrIds);
 
                 // 将属性按ID建立映射
-                Map<Long, PmsAttr> attrMap = allAttrs.stream()
-                        .collect(Collectors.toMap(PmsAttr::getAttrId, attr -> attr));
+                Map<Long, PmsAttr> attrMap = allAttrs.stream().collect(Collectors.toMap(PmsAttr::getAttrId, attr -> attr));
 
                 // 为每个属性组设置对应的属性列表
                 pmsGroupVos.forEach(groupVo -> {
                     List<Long> attrIds = attrGroupToAttrMap.get(groupVo.getAttrGroupId());
                     if (attrIds != null && !attrIds.isEmpty()) {
-                        List<SkuVo.SkuSaleAttrValueVo> attrs = attrIds.stream()
-                                .map(attrMap::get)
-                                .filter(attr -> attr != null)
-                                .map(attr -> {
-                                    SkuVo.SkuSaleAttrValueVo vo = new SkuVo.SkuSaleAttrValueVo();
-                                    vo.setAttrId(attr.getAttrId());
-                                    vo.setAttrName(attr.getAttrName());
-                                    // 注意：这里没有 attrValue，因为 PmsAttr 是属性定义，不是具体的属性值
-                                    return vo;
-                                })
-                                .collect(Collectors.toList());
+                        List<PmsAttr> attrs = attrIds.stream().map(attrMap::get).filter(attr -> attr != null).collect(Collectors.toList());
                         groupVo.setPmsAttrs(attrs);
                     } else {
                         groupVo.setPmsAttrs(Collections.emptyList());
@@ -344,7 +281,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
                 });
             } else {
                 // 如果没有关联关系，为每个组设置空列表
-                pmsGroupVos.forEach(groupVo -> groupVo.setPmsAttrs(Collections.<SkuVo.SkuSaleAttrValueVo>emptyList()));
+                pmsGroupVos.forEach(groupVo -> groupVo.setPmsAttrs(Collections.<PmsAttr>emptyList()));
             }
             return pmsGroupVos;
         }
@@ -470,8 +407,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
         }
 
         LambdaUpdateWrapper<SkuInfoEntity> skuInfoEntityLambdaQueryWrapper = new LambdaUpdateWrapper<>();
-        skuInfoEntityLambdaQueryWrapper.eq(SkuInfoEntity::getSpuId, spuId)
-                .set(SkuInfoEntity::getPublishStatus, 1);
+        skuInfoEntityLambdaQueryWrapper.eq(SkuInfoEntity::getSpuId, spuId).set(SkuInfoEntity::getPublishStatus, 1);
         skuInfoService.update(skuInfoEntityLambdaQueryWrapper);
         log.info("spu上架,同步批量上架该spu下所有sku,spuId:{}", spuId);
 
@@ -508,15 +444,10 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
             @Override
             public void afterCommit() {
                 try {
-                    rabbitTemplate.convertAndSend(
-                            "product.up.exchange",
-                            "product.up",
-                            content,
-                            message -> {
-                                message.getMessageProperties().setCorrelationId(msgId);
-                                return message;
-                            }
-                    );
+                    rabbitTemplate.convertAndSend("product.up.exchange", "product.up", content, message -> {
+                        message.getMessageProperties().setCorrelationId(msgId);
+                        return message;
+                    });
                     log.info("消息发送成功，msgId：{}", msgId);
                 } catch (Exception e) {
                     log.error("消息发送失败", e);

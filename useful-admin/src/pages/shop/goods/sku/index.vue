@@ -551,7 +551,7 @@ const fetchSkuList = async () => {
   }
 };
 //获取attr列表
-const fetchAttrGroups = (categoryId: number) => {
+const fetchAttrGroups = (categoryId: number): Promise<void> => {
   /**
    *   {
    *     label: '人工智能',
@@ -559,9 +559,9 @@ const fetchAttrGroups = (categoryId: number) => {
    *   },
    */
   if (!categoryId) {
-    return;
+    return Promise.resolve();
   }
-  productApi.getAttrByCateGoryId(categoryId).then(resp => {
+  return productApi.getAttrByCateGoryId(categoryId).then(resp => {
     attrGroups.value = resp
   })
 }
@@ -793,8 +793,40 @@ const handleEdit = (row: any) => {
     specCombination: row.specCombination,
   };
   editVisible.value = true;
-  attrOptions.value = []
+  attributes.value = []
+
+  // 先获取属性组定义，然后回显已选择的属性值
   fetchAttrGroups(row.catalogId)
+
+  // 等待属性组数据加载完成后回显
+  setTimeout(() => {
+    if (row.saleAttrValues && row.saleAttrValues.length > 0) {
+      // 将 saleAttrValues 转换为 attributes 数组格式
+      attributes.value = row.saleAttrValues.map((saleAttr: any) => {
+        // 查找对应的属性组ID
+        let attrGroupId = ''
+        let attrGroupName = ''
+        for (const group of attrGroups.value) {
+          const attr = group.pmsAttrs?.find((a: any) => a.attrId === saleAttr.attrId)
+          if (attr) {
+            attrGroupId = group.attrGroupId
+            attrGroupName = group.attrGroupName
+            break
+          }
+        }
+
+        return {
+          attrGroupId: attrGroupId,
+          attrGroupName: attrGroupName,
+          attrId: saleAttr.attrId,
+          attrName: saleAttr.attrName,
+          attrValue: saleAttr.attrValue,
+        }
+      })
+
+      console.log('回显的attributes数据', attributes.value)
+    }
+  }, 500)
 };
 
 // 编辑 SKU 确认
@@ -809,53 +841,9 @@ const handleEditConfirm = async () => {
     }))
   skuFormData.value.specCombination = specCombination
   console.log("当前提交的参数:", skuFormData.value)
-  // // 1. 手动校验规格组合
-  // if (!attributes.value || attributes.value.length === 0) {
-  //   MessagePlugin.warning('请添加至少一个规格组合');
-  //   return;
-  // }
-  // const hasEmptyAttr = attributes.value.some(item => !item.attrName || !item.attrValue);
-  // if (hasEmptyAttr) {
-  //   MessagePlugin.warning('请完整填写所有规格项');
-  //   return;
-  // }
-  //
-  // // 2. 触发表单其他字段校验
-  // const result = await skuFormRef.value.validate();
-  // if (result !== true) return;
-  //
-  // try {
-  //   // 3. 将 attributes 数组转换为规格组合字符串
-  //   const specCombination = attributes.value.filter(item => item.attrName && item.attrValue)//过滤空值
-  //     .map(item => {
-  //       //获取属性名称
-  //       const attrOption = attrOptions.value.find(o => o.value === item.attrName);
-  //       console.log("获取到的attrOption", attrOption)
-  //       return {
-  //         value: item.attrValue,  //属性Id
-  //         label: attrOption?.label || '', //选中的属性值(如"2018")
-  //         attrId: item.attrName//属性名称
-  //       }
-  //     })
-  //   if (isEdit.value) {
-  //     await request.put({
-  //       url: `/product/sku/${skuFormData.value.skuId}`,
-  //       data: skuFormData.value,
-  //     });
-  //     MessagePlugin.success('编辑 SKU 成功');
-  //   } else {
-  //     await request.post({
-  //       url: '/product/sku',
-  //       data: skuFormData.value,
-  //     });
-  //     MessagePlugin.success('新增 SKU 成功');
-  //   }
-  //   editVisible.value = false;
-  //   fetchSkuList();
-  // } catch (error) {
-  //   console.error('保存 SKU 失败:', error);
-  //   MessagePlugin.error('保存 SKU 失败');
-  // }
+  productApi.saveOrUpdateSku(skuFormData.value).then(resp => {
+    console.log("响应的结果", resp);
+  })
 };
 
 // 切换SKU状态

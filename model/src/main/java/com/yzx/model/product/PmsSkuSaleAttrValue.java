@@ -2,6 +2,7 @@ package com.yzx.model.product;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
+
 import java.io.Serializable;
 
 /**
@@ -48,6 +49,11 @@ public class PmsSkuSaleAttrValue implements Serializable {
     @TableField(value = "attr_sort")
     private Integer attrSort;
 
+    @TableField(value = "attr_group_id")
+    private Long attrGroupId;
+
+    @TableField(value = "attr_group_name")
+    private String attrGroupName;
     /**
      * 序列化版本号（避免反序列化异常）
      */

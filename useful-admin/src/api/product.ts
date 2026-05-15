@@ -100,5 +100,16 @@ export const productApi = {
     return request.get({
       url: `/product/getAttrByCategoryId/${categoryId}`
     })
+  },
+
+  /**
+   * 修改/添加sku
+   *
+   */
+  saveOrUpdateSku:(skuVo:any)=>{
+    return request.post({
+      url:`/product/save/sku`,
+      data:skuVo
+    })
   }
 };
