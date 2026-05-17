@@ -29,6 +29,7 @@ public class WareController {
     @Autowired
     private IWareSkuService wareSkuService;
 
+
     @PostMapping("/lock/order")
     public AjaxResult lockOrder(@RequestBody WareSkuLockVo vo) {
         try {

@@ -48,6 +48,6 @@ public interface WmsFeignService {
     /**
      * 根据SkuId获取库存信息
      */
-    @GetMapping("/was/waresku/getStockBySkuId")
+    @GetMapping("/ware/waresku/getStockBySkuId")
     public AjaxResult getStockBySkuId(@RequestParam("skuId") Long skuId);
 }

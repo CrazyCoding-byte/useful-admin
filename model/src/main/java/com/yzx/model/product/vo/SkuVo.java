@@ -1,5 +1,6 @@
 package com.yzx.model.product.vo;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -74,6 +75,16 @@ public class SkuVo implements Serializable {
      */
     private Long saleCount;
 
+    /**
+     * 仓库id
+     */
+    @TableField(exist = false)
+    private Long wareId;
+    /**
+     *库存
+     */
+    @TableField(exist = false)
+    private Integer stock;
     /**
      * 发布状态
      */

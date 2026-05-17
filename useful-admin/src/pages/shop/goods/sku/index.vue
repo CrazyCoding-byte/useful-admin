@@ -552,12 +552,6 @@ const fetchSkuList = async () => {
 };
 //获取attr列表
 const fetchAttrGroups = (categoryId: number): Promise<void> => {
-  /**
-   *   {
-   *     label: '人工智能',
-   *     value: '5',
-   *   },
-   */
   if (!categoryId) {
     return Promise.resolve();
   }
@@ -774,7 +768,7 @@ const handleAdd = () => {
 };
 
 // 编辑SKU
-const handleEdit = (row: any) => {
+const handleEdit = async (row: any) => {
   console.log("需要修改的row", row)
   isEdit.value = true;
   currentSku.value = row;
@@ -795,38 +789,21 @@ const handleEdit = (row: any) => {
   editVisible.value = true;
   attributes.value = []
 
-  // 先获取属性组定义，然后回显已选择的属性值
-  fetchAttrGroups(row.catalogId)
+  // 先获取属性组定义，等待加载完成
+  await fetchAttrGroups(row.catalogId)
 
-  // 等待属性组数据加载完成后回显
-  setTimeout(() => {
-    if (row.saleAttrValues && row.saleAttrValues.length > 0) {
-      // 将 saleAttrValues 转换为 attributes 数组格式
-      attributes.value = row.saleAttrValues.map((saleAttr: any) => {
-        // 查找对应的属性组ID
-        let attrGroupId = ''
-        let attrGroupName = ''
-        for (const group of attrGroups.value) {
-          const attr = group.pmsAttrs?.find((a: any) => a.attrId === saleAttr.attrId)
-          if (attr) {
-            attrGroupId = group.attrGroupId
-            attrGroupName = group.attrGroupName
-            break
-          }
-        }
-
-        return {
-          attrGroupId: attrGroupId,
-          attrGroupName: attrGroupName,
-          attrId: saleAttr.attrId,
-          attrName: saleAttr.attrName,
-          attrValue: saleAttr.attrValue,
-        }
-      })
-
-      console.log('回显的attributes数据', attributes.value)
-    }
-  }, 500)
+  // 属性组数据加载完成后，使用后端返回的 specCombination 回显
+  if (row.specCombination && row.specCombination.length > 0) {
+    // 直接将 specCombination 转换为 attributes 数组格式
+    attributes.value = row.specCombination.map((spec: any) => ({
+      attrGroupId: spec.attrGroupId,
+      attrGroupName: spec.attrGroupName,
+      attrId: spec.attrId,
+      attrName: spec.attrName,
+      attrValue: spec.attrValue,
+    }))
+    console.log('回显的attributes数据', attributes.value)
+  }
 };
 
 // 编辑 SKU 确认
@@ -843,6 +820,14 @@ const handleEditConfirm = async () => {
   console.log("当前提交的参数:", skuFormData.value)
   productApi.saveOrUpdateSku(skuFormData.value).then(resp => {
     console.log("响应的结果", resp);
+    if (resp && resp.code == 200) {
+      MessagePlugin.success('修改成功');
+      editVisible.value = false;
+      // 刷新列表
+      fetchSkuList();
+    } else {
+      MessagePlugin.error('修改失败')
+    }
   })
 };
 

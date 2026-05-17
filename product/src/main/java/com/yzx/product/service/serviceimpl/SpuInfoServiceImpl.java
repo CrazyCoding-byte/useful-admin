@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.alibaba.fastjson.JSON;
+import com.yzx.apiclient.api.WmsFeignService;
 import com.yzx.common.enums.MessageStatusEnum;
 import com.yzx.common.mqlocalmessage.MqMessage;
 import com.yzx.common.service.impl.MqMessageServiceImpl;
@@ -13,6 +14,7 @@ import com.yzx.model.AjaxResult;
 import com.yzx.model.product.*;
 import com.yzx.model.product.vo.PmsGroupVo;
 import com.yzx.model.product.vo.SkuVo;
+import com.yzx.model.wms.WareSkuEntity;
 import com.yzx.product.mapper.SpuMapper;
 import com.yzx.product.service.*;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +48,7 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
     private final PmsAttrService pmsAttrService;
     private final PmsAttrGroupService pmsAttrGroupService;
     private final PmsAttrAttrgroupRelationService pmsAttrAttrgroupRelationService;
+    private final WmsFeignService wmsFeignService;
 
     public static String longestCommonPrefix(String[] strs) {
         if (strs.length == 0) return "";
@@ -207,15 +210,15 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
         // 4. 获取 SKU ID 列表
         List<Long> skuIds = page.getRecords().stream().map(SkuInfoEntity::getSkuId).collect(Collectors.toList());
 
-        // 5. 批量查询属性和图片
+        // 5. 批量查询属性、图片和获取属性组定义
         List<PmsSkuSaleAttrValue> pmsSkuSaleAttrValues = pmsSkuSaleAttrValueService.listBySkuIds(skuIds);
         List<PmsSkuImages> pmsSkuImages = pmsSkuImagesService.listBySkuIds(skuIds);
+
 
         // 6. 组装数据
         List<SkuVo> skuVoList = page.getRecords().stream().map(item -> {
             SkuVo skuVo = new SkuVo();
             BeanUtils.copyProperties(item, skuVo);
-
             // 设置属性
             List<PmsSkuSaleAttrValue> filterSkuSaleAttrValue = pmsSkuSaleAttrValues.stream().filter(attr -> attr.getSkuId().equals(item.getSkuId())).collect(Collectors.toList());
             if (!CollectionUtils.isEmpty(filterSkuSaleAttrValue)) {
@@ -238,6 +241,78 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
                 skuVo.setImages(skuImageVos);
             }
 
+            // 设置规格组合 specCombination（关联查询属性表和属性组表）
+            if (!CollectionUtils.isEmpty(filterSkuSaleAttrValue)) {
+                // 获取当前 SKU 的所有 attrId
+                List<Long> attrIds = filterSkuSaleAttrValue.stream()
+                        .map(PmsSkuSaleAttrValue::getAttrId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .collect(Collectors.toList());
+
+                // 批量查询属性定义 map(attrId,attr)
+                Map<Long, PmsAttr> finalAttrMap;
+                if (!CollectionUtils.isEmpty(attrIds)) {
+                    List<PmsAttr> attrs = pmsAttrService.listByIds(attrIds);
+                    finalAttrMap = attrs.stream().collect(Collectors.toMap(PmsAttr::getAttrId, attr -> attr));
+                } else {
+                    finalAttrMap = new HashMap<>();
+                }
+
+                // 获取当前 SKU 的所有 attrGroupId
+                List<Long> attrGroupIds = filterSkuSaleAttrValue.stream()
+                        .map(PmsSkuSaleAttrValue::getAttrGroupId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .collect(Collectors.toList());
+
+                // 批量查询属性组  map(groupId,pmsAttrGroup)
+                Map<Long, PmsAttrGroup> finalAttrGroupMap;
+                if (!CollectionUtils.isEmpty(attrGroupIds)) {
+                    List<PmsAttrGroup> attrGroups = pmsAttrGroupService.listByIds(attrGroupIds);
+                    finalAttrGroupMap = attrGroups.stream().collect(Collectors.toMap(PmsAttrGroup::getAttrGroupId, g -> g));
+                } else {
+                    finalAttrGroupMap = new HashMap<>();
+                }
+
+                List<PmsGroupVo> specCombination = filterSkuSaleAttrValue.stream()
+                        .map(attr -> {
+                            PmsGroupVo groupVo = new PmsGroupVo();
+                            // 设置属性组信息（优先从查询结果获取）
+                            PmsAttrGroup attrGroup = finalAttrGroupMap.get(attr.getAttrGroupId());
+                            if (attrGroup != null) {
+                                groupVo.setAttrGroupId(attrGroup.getAttrGroupId());
+                                groupVo.setAttrGroupName(attrGroup.getAttrGroupName());
+                            } else {
+                                groupVo.setAttrGroupId(attr.getAttrGroupId());
+                                groupVo.setAttrGroupName(attr.getAttrGroupName());
+                            }
+                            // 设置属性信息（优先从查询结果获取，兜底用数据库记录）
+                            PmsAttr pmsAttr = finalAttrMap.get(attr.getAttrId());
+                            if (pmsAttr != null) {
+                                groupVo.setAttrId(pmsAttr.getAttrId());
+                                groupVo.setAttrName(pmsAttr.getAttrName());
+                            } else {
+                                groupVo.setAttrId(attr.getAttrId());
+                                groupVo.setAttrName(attr.getAttrName());
+                            }
+                            // 设置属性值
+                            groupVo.setAttrValue(attr.getAttrValue());
+                            return groupVo;
+                        })
+                        .collect(Collectors.toList());
+                skuVo.setSpecCombination(specCombination);
+            }
+            //远程调用获取库存信息
+            AjaxResult stockBySkuId = wmsFeignService.getStockBySkuId(skuVo.getSkuId());
+            if (stockBySkuId.get("code").equals(200)) {
+                String jsonString = JSON.toJSONString(stockBySkuId.get("data"));
+                WareSkuEntity wareSkuEntity = JSON.parseObject(jsonString, WareSkuEntity.class);
+                if (!Objects.isNull(wareSkuEntity)) {
+                    skuVo.setStock(wareSkuEntity.getStock());
+                    skuVo.setWareId(wareSkuEntity.getWareId());
+                }
+            }
             return skuVo;
         }).collect(Collectors.toList());
 

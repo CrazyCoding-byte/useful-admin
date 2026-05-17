@@ -36,8 +36,10 @@ public class PmsSkuSaleAttrValueServiceImpl extends ServiceImpl<PmsSkuSaleAttrVa
     public List<PmsSkuSaleAttrValue> listBySkuIds(List<Long> skuIds) {
         log.info("查询SKU销售属性值列表，skuIds={}", skuIds);
         if (!CollectionUtils.isEmpty(skuIds)) {
-            List<PmsSkuSaleAttrValue> pmsSkuSaleAttrValues = this.listByIds(skuIds);
-            return pmsSkuSaleAttrValues;
+            LambdaQueryWrapper<PmsSkuSaleAttrValue> wrapper = new LambdaQueryWrapper<>();
+            wrapper.in(PmsSkuSaleAttrValue::getSkuId, skuIds)
+                    .orderByAsc(PmsSkuSaleAttrValue::getAttrSort);
+            return this.list(wrapper);
         }
         return Collections.emptyList();
     }
