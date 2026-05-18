@@ -3,10 +3,7 @@ package com.yzx.apiclient.api;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.order.WareSkuLockVo;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -32,7 +29,7 @@ public interface WmsFeignService {
      * @param addrId
      * @return
      */
-    @GetMapping(value = "/wms/wareinfo/fare")
+    @GetMapping(value = "/wms/waresku/wareinfo/fare")
     AjaxResult getFare(@RequestParam("addrId") Long addrId);
 
 
@@ -48,6 +45,18 @@ public interface WmsFeignService {
     /**
      * 根据SkuId获取库存信息
      */
-    @GetMapping("/ware/waresku/getStockBySkuId")
+    @GetMapping("/wms/waresku/getStockBySkuId")
     public AjaxResult getStockBySkuId(@RequestParam("skuId") Long skuId);
+
+    /**
+     * 根据skuId添加库存
+     */
+    @PostMapping("/wms/waresku/add/{skuId}/{stock}")
+    public AjaxResult addStockBySkuId(@PathVariable Integer stock, @PathVariable("skuId") Long skuId, @RequestParam("skuName") String skuName);
+
+    /**
+     * 根据skuId修改库存
+     */
+    @PostMapping("/wms/waresku/update/{skuId}/{stock}")
+    public AjaxResult updateStockBySkuId(@PathVariable("skuId") Long skuId, @PathVariable("stock") Integer stock);
 }

@@ -152,6 +152,23 @@ public class SpuInfoServiceImpl extends ServiceImpl<SpuMapper, SpuInfoEntity> im
                 pmsSkuSaleAttrValueService.removeBySkuId(skuId);
                 log.info("清空SKU销售属性值，skuId={}", skuId);
             }
+
+            //2.处理库存
+            if (isUpdate) {
+                AjaxResult ajaxResult = wmsFeignService.updateStockBySkuId(skuId, skuVo.getStock());
+                if (ajaxResult.get("code").equals(200)) {
+                    log.info("修改库存成功{}", skuId);
+                } else {
+                    return AjaxResult.error("修改库存失败");
+                }
+            } else {
+                AjaxResult ajaxResult = wmsFeignService.addStockBySkuId(skuVo.getStock(), skuId, skuVo.getSkuName());
+                if (ajaxResult.get("code").equals(200)) {
+                    log.info("添加库存成功{}", skuId);
+                } else {
+                    return AjaxResult.error("添加库存失败");
+                }
+            }
             // 4. 清理缓存（如果已上架）
             if (isUpdate) {
                 String key = "product:sku:" + skuId;

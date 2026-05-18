@@ -224,12 +224,6 @@ public class ProductController {
         }
     }
 
-    @GetMapping("Test")
-    public AjaxResult ajaxResult() {
-        return AjaxResult.success();
-    }
-
-
     /**
      * 更新图片
      * @param skuId

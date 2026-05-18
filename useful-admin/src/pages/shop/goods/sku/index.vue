@@ -162,9 +162,6 @@
         <t-form-item label="SKU名称" name="skuName">
           <t-input v-model="skuFormData.skuName" placeholder="请输入SKU名称"/>
         </t-form-item>
-        <t-form-item label="SKU编码" name="skuCode">
-          <t-input v-model="skuFormData.skuCode" placeholder="请输入SKU编码"/>
-        </t-form-item>
         <t-form-item label="销售价格" name="price">
           <t-input-number
             v-model="skuFormData.price"
@@ -173,6 +170,9 @@
             placeholder="请输入销售价格"
             style="width: 100%"
           />
+        </t-form-item>
+        <t-form-item label="销量" name="saleCount">
+          <t-input-number v-model="skuFormData.saleCount" :min="0" placeholder="请输入销量" style="width: 100%"/>
         </t-form-item>
         <t-form-item label="库存" name="stock">
           <t-input-number v-model="skuFormData.stock" :min="0" placeholder="请输入库存" style="width: 100%"/>
@@ -445,8 +445,8 @@ const skuFormData = ref({
   skuId: undefined,
   spuId: '',
   skuName: '',
-  skuCode: '',
   price: 0,
+  saleCount: 0,
   stock: 0,
   skuDefaultImg: '',
   skuTitle: '',
@@ -458,8 +458,8 @@ const skuFormData = ref({
 
 const skuFormRules = {
   skuName: [{required: true, message: '请输入 SKU 名称', trigger: 'blur'}],
-  skuCode: [{required: true, message: '请输入 SKU 编码', trigger: 'blur'}],
   price: [{required: true, message: '请输入销售价格', trigger: 'blur'}],
+  saleCount: [{required: true, message: '请输入销量', trigger: 'blur'}],
   stock: [{required: true, message: '请输入库存', trigger: 'blur'}],
 };
 // 删除确认弹窗
@@ -467,13 +467,13 @@ const deleteVisible = ref(false);
 const deleteIds = ref<string[]>([]);
 const selectSkuId = ref<string>('');
 const dialogMode = ref(''); //'view'=查看图片
-const attributes = ref([{
-  attrGroupId: '',//属性组ID
-  attrGroupName: '',//属性组名称
-  attrId: '',//属性ID
-  attrName: '',//属性名称
-  attrValue: '',//属性值
-}])
+const attributes = ref<{
+  attrGroupId: string //属性组ID
+  attrGroupName: string //属性组名称
+  attrId: string //属性ID
+  attrName: string //属性名称
+  attrValue: string //属性值
+}[]>([])
 //规格select选择框
 const attrGroups = ref([]) //存储所有属性组及属性
 
@@ -600,6 +600,16 @@ const getAttrValueOptions = (groupId, attrId) => {
 //删除attr选择下拉框
 const removeAttribute = (index) => {
   attributes.value.splice(index, 1)
+}
+//添加attr选择下拉框
+const addAttribute = () => {
+  attributes.value.push({
+    attrGroupId: '',//属性组ID
+    attrGroupName: '',//属性组名称
+    attrId: '',//属性ID
+    attrName: '',//属性名称
+    attrValue: '',//属性值
+  })
 }
 //上传图片成功回调
 const handleUploadSuccess: UploadProps['onSuccess'] = (params) => {
@@ -747,15 +757,15 @@ const handleBatchGenerateConfirm = async () => {
 };
 
 // 新增单个SKU
-const handleAdd = () => {
+const handleAdd = async () => {
   isEdit.value = false;
   currentSku.value = null;
   skuFormData.value = {
     skuId: undefined,
     spuId: '',
     skuName: '',
-    skuCode: '',
     price: 0,
+    saleCount: 0,
     stock: 0,
     skuDefaultImg: '',
     skuTitle: '',
@@ -764,6 +774,9 @@ const handleAdd = () => {
     publishStatus: '1',
     specCombination: [],
   };
+  attributes.value = [];
+  // 加载属性组数据（假设categoryId为1，实际应该根据业务获取）
+  await fetchAttrGroups(1);
   editVisible.value = true;
 };
 
@@ -776,8 +789,8 @@ const handleEdit = async (row: any) => {
     skuId: row.skuId,
     spuId: row.spuId,
     skuName: row.skuName,
-    skuCode: row.skuCode,
     price: row.price,
+    saleCount: row.saleCount || 0,
     stock: row.stock,
     skuDefaultImg: row.skuDefaultImg,
     skuTitle: row.skuTitle,
