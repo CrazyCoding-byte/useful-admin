@@ -39,42 +39,51 @@ public class CustomUserAuthenticationConverter implements UserAuthenticationConv
      */
     @Override
     public Authentication extractAuthentication(Map<String, ?> map) {
-        // 1. 从JWT中提取加密字段（适配授权服务器的字段名：username/u_id/id/authorities/permissions）
+        // 1. 从 JWT中提取加密字段（适配授权服务器的字段名：username/u_id/id/authorities/permissions）
         String encryptedUsername = (String) map.get("username");
         String encryptedUserId = (String) map.get("u_id") != null ? (String) map.get("u_id") : (String) map.get("id");
         String encryptedAuthorities = (String) map.get("authorities");
         String encryptedPermissions = (String) map.get("permissions");
-
+            
+        // 提取租户ID（多租户支持）
+        String tenantId = (String) map.get("tenant_id");
+    
         // 2. AES解密核心字段
         String username = decrypt(encryptedUsername);
         Long userId = decryptToLong(encryptedUserId);
         Collection<GrantedAuthority> authorities = decryptToAuthorities(encryptedAuthorities);
         Set<String> permissions = decryptToPermissions(encryptedPermissions);
-
+    
         // 3. 仅当用户名不为空时，构建完整的BaseUserDetail
         if (!StringUtils.isEmpty(username)) {
             try {
                 // 3.1 构建BaseAuth（基础认证信息）
                 BaseAuth baseAuth = new BaseAuth();
                 baseAuth.setUserName(username); // 解密后的用户名
-
+    
                 // 3.2 构建BaseUser（用户基础信息）
                 BaseUser baseUser = new BaseUser();
                 if (userId != null) {
                     baseUser.setUserId(userId); // 解密后的用户ID
                 }
-
+                if (tenantId != null && !tenantId.isEmpty()) {
+                    baseUser.setTenantId(tenantId); // 设置租户ID
+                    log.debug("从 JWT Token 中解析到租户ID: {}", tenantId);
+                } else {
+                    log.warn("JWT Token 中未包含租户ID，用户: {}", username);
+                }
+    
                 // 3.3 构建Spring Security的User对象（用于BaseUserDetail构造）
                 User securityUser = new User(
                         username,
                         "N/A", // 密码无需存储，填占位符
                         authorities // 解密后的权限
                 );
-
+    
                 // 3.4 正确实例化BaseUserDetail（必须用构造函数）
                 BaseUserDetail userDetail = new BaseUserDetail(baseAuth, baseUser, securityUser);
                 userDetail.setPermissions(permissions); // 设置权限集合
-
+    
                 // 3.5 返回包含BaseUserDetail的认证信息（SecurityUtils能正确获取）
                 return new UsernamePasswordAuthenticationToken(
                         userDetail,
@@ -85,7 +94,7 @@ public class CustomUserAuthenticationConverter implements UserAuthenticationConv
                 log.error("构建BaseUserDetail失败", e);
             }
         }
-
+    
         // 兼容逻辑：解密失败时返回基础认证（仅用户名）
         String userNameFallback = (String) map.get("user_name") != null ?
                 (String) map.get("user_name") : (String) map.get("username");

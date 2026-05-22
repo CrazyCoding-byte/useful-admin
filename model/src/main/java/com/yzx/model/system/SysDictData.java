@@ -1,44 +1,57 @@
 package com.yzx.model.system;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.yzx.model.annotation.Excel;
+import com.yzx.model.system.TenantEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
-import java.io.Serializable;
 import java.util.Date;
 
 /**
- * @author Mr.Pan
- * @program xz-framework-parent
- * @description 数据字典实体类
- * @date created in  2020-02-04 13:04
+ * 字典数据表 sys_dict_data
+ * 
+ * @author yzx
  */
 @Data
-@TableName( "sys_dict_data")
-public class SysDictData implements Serializable {
+@EqualsAndHashCode(callSuper = true)
+@TableName("sys_dict_data")
+public class SysDictData extends TenantEntity {
+    
     private static final long serialVersionUID = 1L;
 
     /** 字典编码 */
+    @TableId(value = "dict_code", type = IdType.AUTO)
+    @Excel(name = "字典编码", cellType = Excel.ColumnType.NUMERIC)
     private Long dictCode;
 
     /** 字典排序 */
-    private Long dictSort;
+    @NotNull(message = "字典排序不能为空")
+    @Excel(name = "字典排序", cellType = Excel.ColumnType.NUMERIC)
+    private Integer dictSort;
 
     /** 字典标签 */
     @NotBlank(message = "字典标签不能为空")
     @Size(min = 0, max = 100, message = "字典标签长度不能超过100个字符")
+    @Excel(name = "字典标签")
     private String dictLabel;
 
     /** 字典键值 */
     @NotBlank(message = "字典键值不能为空")
     @Size(min = 0, max = 100, message = "字典键值长度不能超过100个字符")
+    @Excel(name = "字典键值")
     private String dictValue;
 
     /** 字典类型 */
     @NotBlank(message = "字典类型不能为空")
     @Size(min = 0, max = 100, message = "字典类型长度不能超过100个字符")
+    @Excel(name = "字典类型")
     private String dictType;
 
     /** 样式属性（其他样式扩展） */
@@ -49,32 +62,29 @@ public class SysDictData implements Serializable {
     private String listClass;
 
     /** 是否默认（Y是 N否） */
+    @Excel(name = "是否默认", readConverterExp = "Y=是,N=否")
     private String isDefault;
 
     /** 状态（0正常 1停用） */
+    @Excel(name = "状态", readConverterExp = "0=正常,1=停用")
     private String status;
 
-    /**
-     * 创建者
-     */
-    private String createBy;
+    /** 备注 */
+    @Excel(name = "备注")
+    private String remark;
 
-    /**
-     * 创建时间
-     */
+    /** 创建时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date createTime;
 
-    /**
-     * 更新者
-     */
-    private String updateBy;
-
-    /**
-     * 更新时间
-     */
+    /** 更新时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date updateTime;
 
-    private String remark;
+    public SysDictData() {
+    }
+
+    public SysDictData(Long dictCode) {
+        this.dictCode = dictCode;
+    }
 }

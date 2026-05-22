@@ -26,6 +26,11 @@ public class BaseUser {
     private Long userId; // 表中存在user_id，无需注解
 
     /**
+     * 租户编号（多租户支持）
+     */
+    private String tenantId;
+
+    /**
      * CID（表中无此字段）
      */
     @TableField(exist = false)

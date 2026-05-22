@@ -58,6 +58,7 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
             log.error("Base64解码失败，密文格式错误", e);
         }
     }
+
     @PostConstruct
     public void init() {
         // 设置密钥对
@@ -90,6 +91,15 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
             map.put("username", encryptedUsername);
 //        map.put("mobile", baseUserDetail.getBaseAuth().getPhoneNumber());
             map.put("u_id", encryptedUid);
+
+            // 添加租户ID到Token（多租户支持）
+            String tenantId = baseUserDetail.getBaseUser().getTenantId();
+            if (tenantId != null && !tenantId.isEmpty()) {
+                map.put("tenant_id", tenantId);
+                log.debug("JWT Token 中添加租户ID: {}", tenantId);
+            } else {
+                log.warn("用户 [{}] 的租户ID为空，可能导致多租户功能异常", baseUserDetail.getUsername());
+            }
         } catch (Exception e) {
             log.error("加密用户信息失败", e);
             throw new RuntimeException("Token 生成失败", e);

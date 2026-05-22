@@ -82,4 +82,10 @@ public class OauthClientDetails {
      */
     @TableField(value = "autoapprove")
     private String autoapprove;
+
+    /**
+     * 租户编号（多租户支持）
+     */
+    @TableField(value = "tenant_id")
+    private String tenantId;
 }
