@@ -532,7 +532,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                     BeanValidators.validateWithException(validator, user);
                     String password = configService.selectConfigByKey("sys.user.initPassword");
                     user.setPassword(SecurityUtils.encryptPassword(password));
-                    user.setCreateBy(operName);
+                    // createBy、createTime 由 MyMetaObjectHandler 自动填充
                     baseMapper.insert(user);
                     successNum++;
                     successMsg.append("<br/>" + successNum + "、账号 " + user.getUserName() + " 导入成功");
@@ -541,7 +541,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                     checkUserAllowed(u);
                     checkUserDataScope(u.getUserId());
                     user.setUserId(u.getUserId());
-                    user.setUpdateBy(operName);
+                    // updateBy、updateTime 由 MyMetaObjectHandler 自动填充
                     baseMapper.updateById(user);
                     successNum++;
                     successMsg.append("<br/>" + successNum + "、账号 " + user.getUserName() + " 更新成功");

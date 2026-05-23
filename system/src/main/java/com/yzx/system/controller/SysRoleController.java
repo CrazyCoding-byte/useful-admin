@@ -88,7 +88,7 @@ public class SysRoleController {
         {
             return AjaxResult.error("新增角色'" + role.getRoleName() + "'失败，角色权限已存在");
         }
-        role.setCreateBy(SecurityUtils.getUsername());
+        // createBy、createTime 由 MyMetaObjectHandler 自动填充
         return AjaxResult.success(roleService.insertRole(role));
 
     }
@@ -151,7 +151,7 @@ public class SysRoleController {
     {
         roleService.checkRoleAllowed(role);
         roleService.checkRoleDataScope(role.getRoleId());
-        role.setUpdateBy(SecurityUtils.getUsername());
+        // updateBy、updateTime 由 MyMetaObjectHandler 自动填充
         return AjaxResult.success(roleService.updateRoleStatus(role));
     }
 

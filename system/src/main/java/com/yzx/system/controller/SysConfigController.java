@@ -75,7 +75,7 @@ public class SysConfigController {
         {
             return AjaxResult.error("新增参数'" + config.getConfigName() + "'失败，参数键名已存在");
         }
-        config.setCreateBy(SecurityUtils.getUsername());
+        // createBy、createTime 由 MyMetaObjectHandler 自动填充
         return AjaxResult.success(configService.insertConfig(config));
     }
 
@@ -90,7 +90,7 @@ public class SysConfigController {
         {
             return AjaxResult.error("修改参数'" + config.getConfigName() + "'失败，参数键名已存在");
         }
-        config.setUpdateBy(SecurityUtils.getUsername());
+        // updateBy、updateTime 由 MyMetaObjectHandler 自动填充
         return AjaxResult.success(configService.updateConfig(config));
     }
 

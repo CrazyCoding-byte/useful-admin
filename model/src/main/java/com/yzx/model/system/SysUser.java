@@ -382,7 +382,6 @@ public class SysUser extends BaseEntity {
                 .append("createTime", getCreateTime()) // 继承BaseEntity的属性
                 .append("updateBy", getUpdateBy()) // 继承BaseEntity的属性
                 .append("updateTime", getUpdateTime()) // 继承BaseEntity的属性
-                .append("remark", getRemark()) // 继承BaseEntity的属性
                 .append("dept", getDept())
                 .append("roles", getRoles())
                 .append("roleIds", getRoleIds())

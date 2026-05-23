@@ -33,7 +33,9 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
 
     @Override
     public List<SysDept> selectDeptTreeList(SysDept dept) {
-        return Collections.emptyList();
+        // 查询部门列表并构建树形结构
+        List<SysDept> depts = baseMapper.selectDeptList(dept);
+        return buildDeptTree(depts);
     }
 
     @Override
@@ -68,37 +70,60 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
 
     @Override
     public List<Long> selectDeptListByRoleId(Long roleId) {
-        return Collections.emptyList();
+        // 根据角色ID查询部门列表
+        SysDept dept = new SysDept();
+        return baseMapper.selectDeptListByRoleId(roleId, false);
     }
 
     @Override
     public SysDept selectDeptById(Long deptId) {
-        return null;
+        // 根据部门ID查询部门信息
+        return baseMapper.selectById(deptId);
     }
 
     @Override
     public int selectNormalChildrenDeptById(Long deptId) {
-        return 0;
+        // 统计正常状态的子部门数量
+        List<SysDept> children = baseMapper.selectChildrenDeptById(deptId);
+        return children != null ? (int) children.stream()
+                .filter(dept -> "0".equals(dept.getStatus()))
+                .count() : 0;
     }
 
     @Override
     public boolean hasChildByDeptId(Long deptId) {
-        return false;
+        // 检查部门是否有子部门
+        List<SysDept> children = baseMapper.selectChildrenDeptById(deptId);
+        return children != null && !children.isEmpty();
     }
 
     @Override
     public boolean checkDeptExistUser(Long deptId) {
-        return false;
+        // 检查部门是否存在用户
+        int count = baseMapper.countUserByDeptId(deptId);
+        return count > 0;
     }
 
     @Override
     public boolean checkDeptNameUnique(SysDept dept) {
-        return false;
+        // 检查部门名称是否唯一
+        Long deptId = dept.getDeptId() == null ? -1L : dept.getDeptId();
+        SysDept info = baseMapper.checkDeptNameUnique(dept.getDeptName(), dept.getParentId());
+        if (info != null && info.getDeptId().longValue() != deptId.longValue()) {
+            return false; // 不唯一
+        }
+        return true; // 唯一
     }
 
     @Override
     public void checkDeptDataScope(Long deptId) {
-
+        // 检查数据权限（如果有数据权限注解，这里可以添加额外校验）
+        if (deptId != null) {
+            SysDept dept = baseMapper.selectById(deptId);
+            if (dept == null) {
+                throw new RuntimeException("部门不存在");
+            }
+        }
     }
 
     @Override
@@ -139,7 +164,18 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
 
     @Override
     public int deleteDeptById(Long deptId) {
-        return 0;
+        // 1. 检查是否有子部门
+        if (hasChildByDeptId(deptId)) {
+            throw new RuntimeException("存在下级部门,不允许删除");
+        }
+        
+        // 2. 检查部门是否存在用户
+        if (checkDeptExistUser(deptId)) {
+            throw new RuntimeException("部门存在用户,不允许删除");
+        }
+        
+        // 3. 删除部门
+        return baseMapper.deleteById(deptId);
     }
 
     @Override

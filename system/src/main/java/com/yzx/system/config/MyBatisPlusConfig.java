@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import com.yzx.system.tenant.CustomTenantLineHandler;
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,7 @@ import java.util.List;
  * @author ruoyi
  */
 @Configuration
+@MapperScan({"com.yzx.system.mapper", "com.yzx.common.mapper"})
 public class MyBatisPlusConfig {
     
     @Value("${tenant.enable:true}")

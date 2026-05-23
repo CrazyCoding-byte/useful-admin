@@ -38,10 +38,11 @@ public class SysDictDataServiceimpl extends ServiceImpl<SysDictDataMapper, SysDi
             return cache;
         }
 
-        //2.缓存未命中,查询数据库
-        List<SysDictData> list = selectDictDataByType(dictType);
+        //2.缓存未命中,查询数据库（修复：调用 Mapper 而不是递归调用自己）
+        List<SysDictData> list = baseMapper.selectDictDataByType(dictType);
+        
         //3.存入redis(过期1小时)
-        if (!list.isEmpty()) {
+        if (list != null && !list.isEmpty()) {
             redisTemplate.opsForValue().set(cacheKey, list, 1, TimeUnit.HOURS);
             log.debug("字典数据已缓存:{}", dictType);
         }
@@ -53,9 +54,13 @@ public class SysDictDataServiceimpl extends ServiceImpl<SysDictDataMapper, SysDi
         baseMapper.insert(dictData);
 
         //清除该字典类型的缓存
-        resetDictCache(dictData.getDictType());
+//        resetDictCache(dictData.getDictType());
     }
 
+    @Override
+    public void updateDictType(SysDictType dictType) {
+
+    }
 
 
 }

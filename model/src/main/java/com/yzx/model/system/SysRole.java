@@ -9,6 +9,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
+import java.util.Arrays;
 import java.util.Set;
 
 /**
@@ -220,23 +221,23 @@ public class SysRole extends BaseEntity
         this.permissions = permissions;
     }
 
+
     @Override
     public String toString() {
-        return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
-            .append("roleId", getRoleId())
-            .append("roleName", getRoleName())
-            .append("roleKey", getRoleKey())
-            .append("roleSort", getRoleSort())
-            .append("dataScope", getDataScope())
-            .append("menuCheckStrictly", isMenuCheckStrictly())
-            .append("deptCheckStrictly", isDeptCheckStrictly())
-            .append("status", getStatus())
-            .append("delFlag", getDelFlag())
-            .append("createBy", getCreateBy())
-            .append("createTime", getCreateTime())
-            .append("updateBy", getUpdateBy())
-            .append("updateTime", getUpdateTime())
-            .append("remark", getRemark())
-            .toString();
+        return "SysRole{" +
+                "roleId=" + roleId +
+                ", roleName='" + roleName + '\'' +
+                ", roleKey='" + roleKey + '\'' +
+                ", roleSort=" + roleSort +
+                ", dataScope='" + dataScope + '\'' +
+                ", menuCheckStrictly=" + menuCheckStrictly +
+                ", deptCheckStrictly=" + deptCheckStrictly +
+                ", status='" + status + '\'' +
+                ", delFlag='" + delFlag + '\'' +
+                ", flag=" + flag +
+                ", menuIds=" + Arrays.toString(menuIds) +
+                ", deptIds=" + Arrays.toString(deptIds) +
+                ", permissions=" + permissions +
+                '}';
     }
 }

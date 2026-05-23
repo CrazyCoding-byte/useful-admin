@@ -337,8 +337,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         menuDto.setCreateTime(parentMenu.getCreateTime());
         menuDto.setUpdateBy(parentMenu.getUpdateBy());
         menuDto.setUpdateTime(parentMenu.getUpdateTime());
-        menuDto.setRemark(parentMenu.getRemark());
-        
+
         List<SysMenuDto> children = new ArrayList<>();
         for (SysMenu menu : menus) {
             if (menu.getParentId().equals(parentMenu.getMenuId())) {

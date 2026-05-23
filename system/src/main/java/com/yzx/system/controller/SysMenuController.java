@@ -65,11 +65,13 @@ public class SysMenuController {
         ajax.put("menus", menuService.buildMenuTreeSelect(menus));
         return ajax;
     }
+
     @GetMapping(value = "/getMenusTreeByUserId/{userId}")
-    public AjaxResult getMenusTreeByUserId(@PathVariable Long userId){
+    public AjaxResult getMenusTreeByUserId(@PathVariable Long userId) {
         List<SysMenuDto> menus = menuService.selectMenuTreeByUserId(userId);
         return AjaxResult.success(menuService.buildMenus(menus));
     }
+
     /**
      * 新增菜单
      */
@@ -81,7 +83,7 @@ public class SysMenuController {
         } else if (UserConstants.YES_FRAME.equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
             return AjaxResult.error("新增菜单'" + menu.getMenuName() + "'失败，地址必须以http(s)://开头");
         }
-        menu.setCreateBy(SecurityUtils.getUsername());
+        // createBy、createTime 由 MyMetaObjectHandler 自动填充
         return AjaxResult.success(menuService.insertMenu(menu));
     }
 
@@ -98,7 +100,7 @@ public class SysMenuController {
         } else if (menu.getMenuId().equals(menu.getParentId())) {
             return AjaxResult.error("修改菜单'" + menu.getMenuName() + "'失败，上级菜单不能选择自己");
         }
-        menu.setUpdateBy(SecurityUtils.getUsername());
+        // updateBy、updateTime 由 MyMetaObjectHandler 自动填充
         return AjaxResult.success(menuService.updateMenu(menu));
     }
 

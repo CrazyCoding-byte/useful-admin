@@ -198,7 +198,7 @@ public class SysUserController {
         userService.checkUserAllowed(user);
         userService.checkUserDataScope(user.getUserId());
         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
-        user.setUpdateBy(SecurityUtils.getUsername());
+        // updateBy、updateTime 由 MyMetaObjectHandler 自动填充
         return AjaxResult.success(userService.resetPwd(user));
     }
 
@@ -210,7 +210,7 @@ public class SysUserController {
     public AjaxResult changeStatus(@RequestBody SysUser user) {
         userService.checkUserAllowed(user);
         userService.checkUserDataScope(user.getUserId());
-        user.setUpdateBy(SecurityUtils.getUsername());
+        // updateBy、updateTime 由 MyMetaObjectHandler 自动填充
         return AjaxResult.success(userService.updateUserStatus(user));
     }
 
@@ -262,14 +262,14 @@ public class SysUserController {
         
         if (user.getUserId() == null) {
             // 新增用户
-            user.setCreateBy(SecurityUtils.getUsername());
+            // createBy、createTime 由 MyMetaObjectHandler 自动填充
             user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
             return AjaxResult.success(userService.insertUser(user));
         } else {
             // 修改用户
             userService.checkUserAllowed(user);
             userService.checkUserDataScope(user.getUserId());
-            user.setUpdateBy(SecurityUtils.getUsername());
+            // updateBy、updateTime 由 MyMetaObjectHandler 自动填充
             // 如果密码不为空，才加密并设置密码
             if (!StringUtils.isEmpty(user.getPassword())) {
                 user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));

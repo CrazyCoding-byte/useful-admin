@@ -6,7 +6,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
-@ComponentScan(basePackages = {"com.yzx.model","com.yzx.system"})
+@ComponentScan(basePackages = {"com.yzx.model", "com.yzx.system", "com.yzx.common"})
 @EnableDiscoveryClient
 public class SystemApplication {
 
