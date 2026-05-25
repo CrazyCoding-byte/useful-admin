@@ -88,7 +88,7 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
             // 对敏感字段进行AES加密
             String encryptedUid = aesEncryptUtil.encrypt(baseUserDetail.getBaseUser().getUserId().toString());
             String encryptedUsername = aesEncryptUtil.encrypt(baseUserDetail.getBaseAuth().getUserName());
-            map.put("username", encryptedUsername);
+            map.put("userName", encryptedUsername);
 //        map.put("mobile", baseUserDetail.getBaseAuth().getPhoneNumber());
             map.put("u_id", encryptedUid);
 

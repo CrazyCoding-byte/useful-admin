@@ -66,6 +66,9 @@ public class SysRole extends BaseEntity
     /** 角色菜单权限 */
     private Set<String> permissions;
 
+    /** 备注 */
+    private String remark;
+
     public SysRole()
     {
 
@@ -221,6 +224,15 @@ public class SysRole extends BaseEntity
         this.permissions = permissions;
     }
 
+    public String getRemark()
+    {
+        return remark;
+    }
+
+    public void setRemark(String remark)
+    {
+        this.remark = remark;
+    }
 
     @Override
     public String toString() {
@@ -238,6 +250,7 @@ public class SysRole extends BaseEntity
                 ", menuIds=" + Arrays.toString(menuIds) +
                 ", deptIds=" + Arrays.toString(deptIds) +
                 ", permissions=" + permissions +
+                ", remark='" + remark + '\'' +
                 '}';
     }
 }

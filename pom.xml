@@ -13,17 +13,10 @@
         <module>auth-server</module>
         <module>resource-server</module>
         <module>system</module>
-        <module>gateway</module>
-        <module>order</module>
-        <module>file-storage</module>
-        <module>cart</module>
         <module>common</module>
         <module>api-client</module>
-        <module>distribution</module>
         <module>model</module>
         <module>wms</module>
-        <module>wallet</module>
-        <module>coupon</module>
         <module>product</module>
     </modules>
 
@@ -46,7 +39,7 @@
         <mysql.version>8.0.25</mysql.version>
         <!-- 区分 MyBatis 和 MyBatis-Plus 版本（避免混淆） -->
         <mybatis.version>3.5.6</mybatis.version> <!-- MyBatis 核心版本 -->
-        <mybatis-plus.version>3.4.1</mybatis-plus.version> <!-- MyBatis-Plus 版本 -->
+        <mybatis-plus.version>3.5.4</mybatis-plus.version> <!-- MyBatis-Plus 版本 -->
         <redis.version>2.3.12.RELEASE</redis.version>
         <fastjson.version>1.2.83</fastjson.version>
         <!-- OpenFeign 版本由 spring-cloud-dependencies 管理，无需单独定义 -->

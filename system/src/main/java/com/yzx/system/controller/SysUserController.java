@@ -14,7 +14,6 @@ import com.yzx.model.system.TableDataInfo;
 import com.yzx.model.utils.SecurityUtils;
 
 
-
 import com.yzx.system.annotation.RequiresPermission;
 import com.yzx.system.service.ISysRoleService;
 import com.yzx.system.service.ISysUserService;
@@ -54,12 +53,19 @@ public class SysUserController {
     /**
      * 获取用户列表
      */
-    @PostMapping ("/list/{pageNum}/{pageSize}")
+    @PostMapping("/list/{pageNum}/{pageSize}")
     @RequiresPermission("system:user:list")
-    public AjaxResult list(@RequestBody SysUser user,@PathVariable("pageNum") Integer pageNum,@PathVariable("pageSize") Integer pageSize) {
+    public AjaxResult list(@RequestBody SysUser user, @PathVariable("pageNum") Integer pageNum, @PathVariable("pageSize") Integer pageSize) {
         Page<SysUser> page = new Page<>(pageNum, pageSize);
         Page<SysUser> result = userService.selectUserList(user, page);
         return AjaxResult.success(result);
+    }
+
+    @GetMapping("/list")
+    public AjaxResult list() {
+        // 直接用 MP 自带的 list，数据权限自动生效
+        List<SysUser> list = userService.list();
+        return AjaxResult.success(list);
     }
 
 //    @Log(title = "用户管理", businessType = BusinessType.EXPORT)
@@ -180,7 +186,7 @@ public class SysUserController {
     @Log(title = "用户管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{userIds}")
     public AjaxResult remove(@PathVariable Long[] userIds) {
-        if (CollectionUtils.isEmpty(Arrays.asList(userIds))){
+        if (CollectionUtils.isEmpty(Arrays.asList(userIds))) {
             return AjaxResult.error("请选择要删除的用户");
         }
         if (ArrayUtils.contains(userIds, SecurityUtils.getUserId())) {
@@ -259,7 +265,7 @@ public class SysUserController {
         } else if (StringUtils.isNotEmpty(user.getEmail()) && !userService.checkEmailUnique(user)) {
             return AjaxResult.error("用户'" + user.getUserName() + "'失败，邮箱账号已存在");
         }
-        
+
         if (user.getUserId() == null) {
             // 新增用户
             // createBy、createTime 由 MyMetaObjectHandler 自动填充

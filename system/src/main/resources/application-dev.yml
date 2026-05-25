@@ -39,3 +39,7 @@ auth:
   clientId: yaohw
   clientSecret: yaohw
   smsCodeTime: 10 #验证码有效时间，粒度为分钟
+
+# 多租户配置
+tenant:
+  enable: false  # 临时禁用多租户，排查SQL问题

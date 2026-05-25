@@ -178,7 +178,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      * @return 结果
      */
     @Override
-    public int countUserRoleByRoleId(Long roleId) {
+    public Long countUserRoleByRoleId(Long roleId) {
         LambdaQueryWrapper<SysUserRole> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysUserRole::getRoleId, roleId);
         return userRoleMapper.selectCount(queryWrapper);
