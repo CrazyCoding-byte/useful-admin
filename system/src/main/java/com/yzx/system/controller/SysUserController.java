@@ -61,7 +61,20 @@ public class SysUserController {
         user.setNickName((String) params.get("nickName"));
         user.setPhonenumber((String) params.get("phonenumber"));
         user.setStatus((String) params.get("status"));
-        
+        // 设置部门ID（支持null值，null表示不按部门过滤）
+        Object deptIdObj = params.get("deptId");
+        System.out.println("[SysUserController] 接收到的deptId: " + deptIdObj + ", 类型: " + (deptIdObj != null ? deptIdObj.getClass().getName() : "null"));
+        if (deptIdObj != null) {
+            // 处理Integer或String类型的deptId
+            if (deptIdObj instanceof Integer) {
+                user.setDeptId(((Integer) deptIdObj).longValue());
+            } else if (deptIdObj instanceof Long) {
+                user.setDeptId((Long) deptIdObj);
+            } else if (deptIdObj instanceof String && !"null".equals(deptIdObj)) {
+                user.setDeptId(Long.parseLong((String) deptIdObj));
+            }
+        }
+        System.out.println("[SysUserController] 设置到user的deptId: " + user.getDeptId());
         Page<SysUser> page = new Page<>(pageNum, pageSize);
         Page<SysUser> result = userService.selectUserList(user, page, params);
         return AjaxResult.success(result);

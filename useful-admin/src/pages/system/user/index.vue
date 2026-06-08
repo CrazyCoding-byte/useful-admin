@@ -19,6 +19,7 @@
         transition
         :expand-all="true"
         :keys="{ label: 'label', value: 'id', children: 'children' }"
+        @click="handleDeptClick"
       />
     </div>
 
@@ -141,6 +142,7 @@
       <!-- 表格区域 -->
       <t-card class="table-card" :bordered="false">
         <t-table
+          :key="tableKey"
           :data="userList"
           :loading="loading"
           :columns="columns"
@@ -234,7 +236,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, onMounted, computed} from 'vue';
+import {ref, onMounted, computed, watch} from 'vue';
 import {userApi} from '@/api/system/user';
 import {DeptApi} from '@/api/system/dept'
 import type {SysUser} from '@/api/model/userModel';
@@ -245,51 +247,24 @@ import type {PaginationProps, TableProps} from 'tdesign-vue-next';
 const deptSearchText = ref('');
 
 // 部门树数据
-const deptItems = ref([
-  {
-    id: '1',
-    label: 'XXX科技',
-    children: [
-      {id: '11', label: 'fgh'},
-      {id: '12', label: 'fgn'},
-      {id: '13', label: 'fghgf'},
-    ],
-  },
-  {
-    id: '2',
-    label: '深圳总公司',
-    children: [
-      {id: '21', label: '研发部门'},
-      {id: '22', label: '市场部门'},
-      {id: '23', label: '测试部门'},
-      {id: '24', label: '财务部门'},
-      {id: '25', label: '运维部门'},
-    ],
-  },
-  {
-    id: '3',
-    label: '长沙分公司',
-    children: [
-      {id: '31', label: '市场部门'},
-      {id: '32', label: '财务部门'},
-    ],
-  },
-]);
+const deptItems = ref<any[]>([]);
+
+// 当前选中的部门ID
+const selectedDeptId = ref<number | null>(null);
 
 // 过滤后的部门树
 const filteredDeptItems = computed(() => {
   if (!deptSearchText.value) return deptItems.value;
   const filter = (items: any[]) => {
-    return items.filter(item => {
+    return items.map(item => ({
+      ...item,
+      children: item.children ? filter(item.children) : []
+    })).filter(item => {
       if (item.label.includes(deptSearchText.value)) return true;
-      if (item.children) {
-        item.children = filter(item.children);
-        return item.children.length > 0;
-      }
-      return false;
+      return item.children && item.children.length > 0;
     });
   };
-  return filter([...deptItems.value]);
+  return filter(deptItems.value);
 });
 
 // 搜索表单
@@ -305,6 +280,7 @@ const searchForm = ref<Partial<SysUser> & { createTime?: any }>({
 const userList = ref<SysUser[]>([]);
 const loading = ref(false);
 const selectedRowKeys = ref<number[]>([]);
+const tableKey = ref(0);  // 强制表格重新渲染
 
 // 表格列配置
 const columns: TableProps['columns'] = [
@@ -373,26 +349,36 @@ const getUserList = async (pageInfo?: PaginationProps) => {
     const current = pageInfo?.current || pagination.value.current || 1;
     const pageSize = pageInfo?.pageSize || pagination.value.pageSize || 10;
 
-    const requestParams = {
-      ...searchForm.value,
+    // 不使用展开运算符，避免 non-iterable 错误
+    const sf = searchForm.value || {} as any;
+    const requestParams: any = {
+      userName: sf.userName || '',
+      nickName: sf.nickName || '',
+      phonenumber: sf.phonenumber || '',
+      status: sf.status || '',
+      deptId: selectedDeptId.value,
       pageNum: current,
       pageSize: pageSize,
     };
-    console.log("拿到的数据", requestParams)
     const response = await userApi.getUserList(requestParams);
-    console.log("获取响应的数据111", response)
-    // 适配后端返回格式：{ code: 200, data: { records: [], total: 0 } }
-    const data = response.data || response;
-    userList.value = data.records || [];
+    const data = response?.data || response || {};
+    userList.value = Array.isArray(data.records) ? data.records : [];
     pagination.value.total = data.total || 0;
+    tableKey.value++;
   } catch (error) {
-    MessagePlugin.error('获取用户列表失败');
-    console.error('获取用户列表失败:', error);
     userList.value = [];
     pagination.value.total = 0;
   } finally {
     loading.value = false;
   }
+};
+
+// 处理部门树点击
+const handleDeptClick = (context: any) => {
+  const deptId = context?.node?.data?.id;
+  selectedDeptId.value = deptId ? Number(deptId) : null;
+  pagination.value.current = 1;
+  getUserList();
 };
 
 //获取部门列表

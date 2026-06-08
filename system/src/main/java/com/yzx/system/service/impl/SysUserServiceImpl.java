@@ -122,6 +122,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public Page<SysUser> selectUserList(SysUser user, Page<SysUser> page, Map<String, Object> params) {
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
 
+        System.out.println("[SysUserServiceImpl] 查询条件 - deptId: " + user.getDeptId());
+
         // 构建查询条件
         if (!StringUtils.isEmpty(user.getUserName())) {
             queryWrapper.like(SysUser::getUserName, user.getUserName());
@@ -139,6 +141,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             queryWrapper.eq(SysUser::getStatus, user.getStatus());
         }
         if (user.getDeptId() != null) {
+            System.out.println("[SysUserServiceImpl] 添加deptId过滤条件: " + user.getDeptId());
             queryWrapper.eq(SysUser::getDeptId, user.getDeptId());
         }
         if (!StringUtils.isEmpty(user.getDelFlag())) {
