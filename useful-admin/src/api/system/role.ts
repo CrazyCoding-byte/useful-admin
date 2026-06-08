@@ -41,6 +41,48 @@ export const roleApi = {
   },
 
   /**
+   * 修改角色
+   * @param role 角色信息
+   * @returns 修改结果
+   */
+  updateRole: (role: SysRole) => {
+    return request.put({
+      url: '/system/role',
+      data: role,
+    });
+  },
+
+  /**
+   * 保存角色（新增或修改）
+   * @param role 角色信息
+   * @returns 保存结果
+   */
+  saveRole: (role: Partial<SysRole>) => {
+    if (role.roleId) {
+      return request.put({
+        url: '/system/role',
+        data: role,
+      });
+    }
+    return request.post({
+      url: '/system/role',
+      data: role,
+    });
+  },
+
+  /**
+   * 分配数据权限
+   * @param role 角色信息
+   * @returns 分配结果
+   */
+  dataScope: (role: Partial<SysRole>) => {
+    return request.put({
+      url: '/system/role/dataScope',
+      data: role,
+    });
+  },
+
+  /**
    * 修改保存数据权限
    * @param role 角色信息
    * @returns 修改结果

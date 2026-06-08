@@ -26,6 +26,16 @@ public interface ISysUserService extends IService<SysUser> {
     public Page<SysUser> selectUserList(SysUser user, Page<SysUser> page);
 
     /**
+     * 根据条件分页查询用户列表（支持日期范围）
+     *
+     * @param user 用户信息
+     * @param page 分页信息
+     * @param params 额外参数（包含日期范围等）
+     * @return 用户信息集合信息
+     */
+    public Page<SysUser> selectUserList(SysUser user, Page<SysUser> page, java.util.Map<String, Object> params);
+
+    /**
      * 根据条件分页查询已分配用户角色列表
      *
      * @param user 用户信息

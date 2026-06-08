@@ -222,9 +222,17 @@ public class AuthService {
      */
     private boolean saveToken(String accessToken, String content, long ttl) {
         String key = Constants.USER_TOKEN + accessToken;
-        redisTemplate.boundValueOps(key).set(content, ttl, TimeUnit.SECONDS);
-        redisTemplate.boundValueOps(key);
-        return redisTemplate.getExpire(key, TimeUnit.SECONDS) > 0;
+        // 确保过期时间至少为1秒，避免Redis SETEX命令失败
+        if (ttl <= 0) {
+            ttl = 1;
+        }
+        try {
+            redisTemplate.boundValueOps(key).set(content, ttl, TimeUnit.SECONDS);
+            return true;
+        } catch (Exception e) {
+            log.error("保存令牌到Redis失败: " + e.getMessage(), e);
+            return false;
+        }
     }
 
     /**删除token*/

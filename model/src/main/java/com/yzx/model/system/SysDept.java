@@ -20,14 +20,14 @@ import java.util.List;
 
 /**
  * 部门表 sys_dept
- * 
+ *
  * @author yzx
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("sys_dept")
 public class SysDept extends TenantEntity {
-    
+
     private static final long serialVersionUID = 1L;
 
     /** 部门ID */
@@ -50,7 +50,7 @@ public class SysDept extends TenantEntity {
     private Integer orderNum;
 
     /** 负责人 */
-    private Long leader;
+    private String leader;
 
     /** 联系电话 */
     @Size(min = 0, max = 11, message = "联系电话长度不能超过11个字符")

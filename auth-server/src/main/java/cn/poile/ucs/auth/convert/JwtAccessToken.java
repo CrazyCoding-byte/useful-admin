@@ -73,7 +73,11 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
     public OAuth2AccessToken enhance(OAuth2AccessToken oAuth2AccessToken, OAuth2Authentication oAuth2Authentication) {
         String name = oAuth2Authentication.getName();
         log.debug("jwt token name is :" + name);
-        Map<String, Object> map = new LinkedHashMap<>();
+
+        // 先调用父类的 enhance 方法，让父类调用 convertUserAuthentication 设置用户信息
+        OAuth2AccessToken enhancedToken = super.enhance(oAuth2AccessToken, oAuth2Authentication);
+
+        // 获取 principal
         Object principal = oAuth2Authentication.getPrincipal();
         BaseUserDetail baseUserDetail = null;
         if (principal instanceof BaseUserDetail) {
@@ -83,13 +87,17 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
             baseUserDetail = (BaseUserDetail) user;
         }
         log.debug("ba user detail :" + baseUserDetail);
-        DefaultOAuth2AccessToken token = (DefaultOAuth2AccessToken) oAuth2AccessToken;
+
+        DefaultOAuth2AccessToken token = (DefaultOAuth2AccessToken) enhancedToken;
+
+        // 获取现有的 additional information（包含 convertUserAuthentication 设置的字段）
+        Map<String, Object> map = new LinkedHashMap<>(token.getAdditionalInformation());
+
         try {
             // 对敏感字段进行AES加密
             String encryptedUid = aesEncryptUtil.encrypt(baseUserDetail.getBaseUser().getUserId().toString());
-            String encryptedUsername = aesEncryptUtil.encrypt(baseUserDetail.getBaseAuth().getUserName());
-            map.put("userName", encryptedUsername);
-//        map.put("mobile", baseUserDetail.getBaseAuth().getPhoneNumber());
+
+            // 添加额外的字段
             map.put("u_id", encryptedUid);
 
             // 添加租户ID到Token（多租户支持）
@@ -104,10 +112,11 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
             log.error("加密用户信息失败", e);
             throw new RuntimeException("Token 生成失败", e);
         }
+
         token.setAdditionalInformation(map);
-        log.debug("oAuth2AccessToken==========>" + oAuth2AccessToken);
-        // 调用父类方法进行签名
-        return super.enhance(token, oAuth2Authentication);
+        log.debug("oAuth2AccessToken==========>" + enhancedToken);
+
+        return token;
     }
 
     /**

@@ -115,6 +115,65 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
+     * 根据条件分页查询用户列表（支持日期范围）
+     */
+    @DataScope(deptAlias = "d", userAlias = "u")
+    @Override
+    public Page<SysUser> selectUserList(SysUser user, Page<SysUser> page, Map<String, Object> params) {
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+
+        // 构建查询条件
+        if (!StringUtils.isEmpty(user.getUserName())) {
+            queryWrapper.like(SysUser::getUserName, user.getUserName());
+        }
+        if (!StringUtils.isEmpty(user.getNickName())) {
+            queryWrapper.like(SysUser::getNickName, user.getNickName());
+        }
+        if (!StringUtils.isEmpty(user.getPhonenumber())) {
+            queryWrapper.like(SysUser::getPhonenumber, user.getPhonenumber());
+        }
+        if (!StringUtils.isEmpty(user.getEmail())) {
+            queryWrapper.like(SysUser::getEmail, user.getEmail());
+        }
+        if (!StringUtils.isEmpty(user.getStatus())) {
+            queryWrapper.eq(SysUser::getStatus, user.getStatus());
+        }
+        if (user.getDeptId() != null) {
+            queryWrapper.eq(SysUser::getDeptId, user.getDeptId());
+        }
+        if (!StringUtils.isEmpty(user.getDelFlag())) {
+            queryWrapper.eq(SysUser::getDelFlag, user.getDelFlag());
+        } else {
+            // 默认查询未删除的用户
+            queryWrapper.eq(SysUser::getDelFlag, "0");
+        }
+
+        // 处理日期范围
+        Object createTimeObj = params.get("createTime");
+        if (createTimeObj != null && createTimeObj instanceof List) {
+            List<?> createTimeList = (List<?>) createTimeObj;
+            if (createTimeList.size() >= 2) {
+                Object startDate = createTimeList.get(0);
+                Object endDate = createTimeList.get(1);
+                if (startDate != null) {
+                    queryWrapper.ge(SysUser::getCreateTime, startDate);
+                }
+                if (endDate != null) {
+                    queryWrapper.le(SysUser::getCreateTime, endDate);
+                }
+            }
+        }
+
+        // 执行分页查询
+        long total = baseMapper.selectCount(queryWrapper);
+        List<SysUser> records = baseMapper.selectList(queryWrapper
+                .last("LIMIT " + (page.getCurrent() - 1) * page.getSize() + "," + page.getSize()));
+        page.setTotal(total);
+        page.setRecords(records);
+        return page;
+    }
+
+    /**
      * 根据条件分页查询已分配用户角色列表
      *
      * @param user 用户信息
@@ -358,7 +417,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             insertUserRole(user);
         }
         // 修改用户信息
-        return baseMapper.update(user,new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserId,user.getUserId())) > 0 ? 1 : 0;
+        return baseMapper.update(user, new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserId, user.getUserId())) > 0 ? 1 : 0;
     }
 
     /**
@@ -501,7 +560,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         sysUserRoleLambdaQueryWrapper.in(SysUserRole::getUserId, userIds);
         userRoleMapper.delete(sysUserRoleLambdaQueryWrapper);
         // 批量删除用户
-        return baseMapper.delete(new LambdaQueryWrapper<SysUser>().in(SysUser::getUserId,Arrays.asList(userIds))) > 0 ? 1 : 0;
+        return baseMapper.delete(new LambdaQueryWrapper<SysUser>().in(SysUser::getUserId, Arrays.asList(userIds))) > 0 ? 1 : 0;
     }
 
     /**

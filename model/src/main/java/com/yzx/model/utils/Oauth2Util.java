@@ -32,8 +32,8 @@ public class Oauth2Util {
         }
 
         // 调用指定的AESEncryptUtil解密ID字段
-         String encryptedId = (String) jwtClaims.get("u_id");
-         String idStr = decryptWithAesUtil(encryptedId);
+        String encryptedId = (String) jwtClaims.get("id");
+        String idStr = decryptWithAesUtil(encryptedId);
 
         // 核心逻辑保留：类型转换+数字校验
         Integer id = null;
@@ -47,7 +47,12 @@ public class Oauth2Util {
         }
 
         // 统一使用指定的AESEncryptUtil解密所有字段
-        userJwt.setUsername(decryptWithAesUtil((String) jwtClaims.get("username")));
+        // 注意：授权服务器存储的是 userName（驼峰），不是 username（小写）
+        String userName = (String) jwtClaims.get("userName");
+        if (userName == null) {
+            userName = (String) jwtClaims.get("username"); // 兼容旧版本
+        }
+        userJwt.setUsername(decryptWithAesUtil(userName));
         userJwt.setUtype(decryptWithAesUtil((String) jwtClaims.get("utype")));
         userJwt.setAvatar(decryptWithAesUtil((String) jwtClaims.get("avatar")));
         userJwt.setRole(decryptWithAesUtil((String) jwtClaims.get("role")));
@@ -62,46 +67,6 @@ public class Oauth2Util {
         private String avatar;
         private String utype;
         private String role;
-        
-        public Long getId() {
-            return id;
-        }
-        
-        public void setId(Long id) {
-            this.id = id;
-        }
-        
-        public String getUsername() {
-            return username;
-        }
-        
-        public void setUsername(String username) {
-            this.username = username;
-        }
-        
-        public String getAvatar() {
-            return avatar;
-        }
-        
-        public void setAvatar(String avatar) {
-            this.avatar = avatar;
-        }
-        
-        public String getUtype() {
-            return utype;
-        }
-        
-        public void setUtype(String utype) {
-            this.utype = utype;
-        }
-        
-        public String getRole() {
-            return role;
-        }
-        
-        public void setRole(String role) {
-            this.role = role;
-        }
     }
 
     public static Map getJwtClaimsFromHeader(HttpServletRequest request) {

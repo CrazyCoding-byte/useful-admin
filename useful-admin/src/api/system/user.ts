@@ -1,5 +1,5 @@
-import { request } from '@/utils/request';
-import type { SysUser } from '@/api/model/userModel';
+import {request} from '@/utils/request';
+import type {SysUser} from '@/api/model/userModel';
 
 /**
  * 用户管理API
@@ -11,7 +11,7 @@ export const userApi = {
    * @returns 用户列表数据
    */
   getUserList: (params: any) => {
-    const { pageNum = 1, pageSize = 10, ...userParams } = params;
+    const {pageNum = 1, pageSize = 10, ...userParams} = params;
     return request.post({
       url: `/system/user/list/${pageNum}/${pageSize}`,
       data: userParams,
@@ -120,7 +120,7 @@ export const userApi = {
     return request.post({
       url: '/system/user',
       data: user,
-      params: { code },
+      params: {code},
     });
   },
 

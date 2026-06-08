@@ -3,6 +3,8 @@ package cn.poile.ucs.auth;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.bootstrap.encrypt.KeyProperties;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.ComponentScan;
@@ -13,7 +15,7 @@ import org.springframework.context.annotation.FilterType;
  * @author: yaohw
  * @create: 2019-09-25 16:48
  **/
-@SpringBootApplication(exclude = {})
+@SpringBootApplication
 @EnableDiscoveryClient
 @MapperScan({"cn.poile.ucs.auth.mapper"})
 @ComponentScan(
@@ -24,6 +26,7 @@ import org.springframework.context.annotation.FilterType;
         basePackages = {"cn.poile.ucs.auth", "com.yzx.model.utils"}
 )
 @EnableFeignClients(basePackages = "com.yzx.apiclient.api")
+@EnableConfigurationProperties(KeyProperties.class)
 public class AuthServerApplication {
 
     public static void main(String[] args) {

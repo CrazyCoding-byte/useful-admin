@@ -5,7 +5,6 @@ import com.yzx.model.system.SysDept;
 import com.yzx.system.service.ISysDeptService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,7 +25,6 @@ public class SysDeptController extends BaseController {
     /**
      * 查询部门列表
      */
-    @PreAuthorize("@ss.hasPermi('system:dept:list')")
     @GetMapping("/list")
     public AjaxResult list(SysDept dept) {
         List<SysDept> depts = deptService.selectDeptTreeList(dept);
@@ -36,7 +34,6 @@ public class SysDeptController extends BaseController {
     /**
      * 查询部门详情
      */
-    @PreAuthorize("@ss.hasPermi('system:dept:query')")
     @GetMapping(value = "/{deptId}")
     public AjaxResult getInfo(@PathVariable Long deptId) {
         deptService.checkDeptDataScope(deptId);
@@ -46,7 +43,6 @@ public class SysDeptController extends BaseController {
     /**
      * 新增部门
      */
-    @PreAuthorize("@ss.hasPermi('system:dept:add')")
     @PostMapping
     public AjaxResult add(@RequestBody SysDept dept) {
         if (!deptService.checkDeptNameUnique(dept)) {
@@ -58,7 +54,6 @@ public class SysDeptController extends BaseController {
     /**
      * 修改部门
      */
-    @PreAuthorize("@ss.hasPermi('system:dept:edit')")
     @PutMapping
     public AjaxResult edit(@RequestBody SysDept dept) {
         if (!deptService.checkDeptNameUnique(dept)) {
@@ -71,7 +66,6 @@ public class SysDeptController extends BaseController {
     /**
      * 删除部门
      */
-    @PreAuthorize("@ss.hasPermi('system:dept:remove')")
     @DeleteMapping("/{deptId}")
     public AjaxResult remove(@PathVariable Long deptId) {
         deptService.checkDeptDataScope(deptId);
@@ -93,8 +87,7 @@ public class SysDeptController extends BaseController {
     @GetMapping("/list/exclude/{deptId}")
     public AjaxResult excludeChild(@PathVariable(value = "deptId", required = false) Long deptId) {
         List<SysDept> depts = deptService.selectDeptTreeList(new SysDept());
-        depts.removeIf(d -> d.getDeptId().equals(deptId)
-                || d.getAncestors().contains(String.valueOf(deptId)));
+        depts.removeIf(d -> d.getDeptId().equals(deptId) || d.getAncestors().contains(String.valueOf(deptId)));
         return AjaxResult.success(depts);
     }
 }

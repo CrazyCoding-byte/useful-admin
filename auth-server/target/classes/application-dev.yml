@@ -34,3 +34,7 @@ auth:
   tokenValiditySecondsMobile: 31536000 #token存储到redis的过期时间
   tokenValiditySecondsComputer: 172800
   smsCodeTime: 10 #验证码有效时间，粒度为分钟
+
+# 禁用 Seata 自动配置
+seata:
+  enabled: false

@@ -2,12 +2,14 @@ package com.yzx.system.controller;
 
 import com.yzx.model.AjaxResult;
 import com.yzx.system.service.ISysPermissionService;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.annotation.PostConstruct;
 import java.util.Set;
 
 /**
@@ -16,12 +18,18 @@ import java.util.Set;
  * @author: wdw
  * @create: 2020-02-13 14:46
  **/
+@Log4j2
 @RestController
 @RequestMapping("/system/permission")
 public class SysPermissionController {
 
     @Autowired
     ISysPermissionService sysPermissionService;
+
+    @PostConstruct
+    public void init() {
+        log.info("SysPermissionController 初始化成功！");
+    }
 
     /**
      * 获取角色数据权限

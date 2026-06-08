@@ -9,6 +9,7 @@ import com.yzx.model.StringUtils;
 import com.yzx.model.ucenter.BaseAuth;
 import com.yzx.model.ucenter.BaseUser;
 import com.yzx.model.ucenter.BaseUserDetail;
+import com.yzx.model.utils.AESEncryptUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -45,6 +46,9 @@ public abstract class BaseUserDetails implements UserDetailsService {
     @Autowired
     BaseUserMapper baseUserMapper;
 
+    @Autowired
+    private AESEncryptUtil aesEncryptUtil;
+
 
     @Override
     public UserDetails loadUserByUsername(String s) throws UsernameNotFoundException {
@@ -71,7 +75,16 @@ public abstract class BaseUserDetails implements UserDetailsService {
             //返回null表示用户不存在，Spring Security会抛出异常
             return null;
         }
-        BaseAuth baseAuth = getBaseAuth(s);
+        // 解密用户名（JWT中存储的是加密后的用户名）
+        String decryptedUsername = s;
+        try {
+            decryptedUsername = aesEncryptUtil.decrypt(s);
+            log.debug("解密后的用户名: {}", decryptedUsername);
+        } catch (Exception e) {
+            // 解密失败，可能已经是明文，直接使用
+            log.debug("用户名解密失败，使用原值: {}", s);
+        }
+        BaseAuth baseAuth = getBaseAuth(decryptedUsername);
         if (StringUtils.isEmpty(baseAuth)) {
             throw new UsernameNotFoundException("用户不存在");
         }

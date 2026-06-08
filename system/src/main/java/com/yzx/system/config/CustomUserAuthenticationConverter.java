@@ -39,8 +39,12 @@ public class CustomUserAuthenticationConverter implements UserAuthenticationConv
      */
     @Override
     public Authentication extractAuthentication(Map<String, ?> map) {
-        // 1. 从 JWT中提取加密字段（适配授权服务器的字段名：username/u_id/id/authorities/permissions）
-        String encryptedUsername = (String) map.get("username");
+        // 1. 从 JWT中提取加密字段（适配授权服务器的字段名：userName/u_id/id/authorities/permissions）
+        // 注意：授权服务器存储的是 userName（驼峰），不是 username（小写）
+        String encryptedUsername = (String) map.get("userName");
+        if (encryptedUsername == null) {
+            encryptedUsername = (String) map.get("username"); // 兼容旧版本
+        }
         String encryptedUserId = (String) map.get("u_id") != null ? (String) map.get("u_id") : (String) map.get("id");
         String encryptedAuthorities = (String) map.get("authorities");
         String encryptedPermissions = (String) map.get("permissions");

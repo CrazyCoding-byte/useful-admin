@@ -44,7 +44,11 @@ public class CustomUserAuthenticationConverter extends DefaultUserAuthentication
         }
 
         //TODO 此处根据用户的类别进行处理，让不同的用户携带不通的信息
-        response.put("userName", baseUserDetail.getBaseAuth().getUserName());
+        try {
+            response.put("userName", aesEncryptUtil.encrypt(baseUserDetail.getBaseAuth().getUserName()));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         response.put("nickName", baseUserDetail.getBaseUser().getNickName());
         response.put("sex", baseUserDetail.getBaseUser().getSex());
         try {
@@ -96,7 +100,8 @@ public class CustomUserAuthenticationConverter extends DefaultUserAuthentication
             }
 
             String userId = aesEncryptUtil.decrypt(encryptedId);
-            String username = (String) map.get("userName");
+            String encryptedUsername = (String) map.get("userName");
+            String username = encryptedUsername != null ? aesEncryptUtil.decrypt(encryptedUsername) : null;
 
             logger.debug("从JWT解析用户: userId=" + userId + ", username=" + username);
 

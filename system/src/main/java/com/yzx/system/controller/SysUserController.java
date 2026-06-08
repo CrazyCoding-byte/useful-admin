@@ -55,9 +55,15 @@ public class SysUserController {
      */
     @PostMapping("/list/{pageNum}/{pageSize}")
     @RequiresPermission("system:user:list")
-    public AjaxResult list(@RequestBody SysUser user, @PathVariable("pageNum") Integer pageNum, @PathVariable("pageSize") Integer pageSize) {
+    public AjaxResult list(@RequestBody Map<String, Object> params, @PathVariable("pageNum") Integer pageNum, @PathVariable("pageSize") Integer pageSize) {
+        SysUser user = new SysUser();
+        user.setUserName((String) params.get("userName"));
+        user.setNickName((String) params.get("nickName"));
+        user.setPhonenumber((String) params.get("phonenumber"));
+        user.setStatus((String) params.get("status"));
+        
         Page<SysUser> page = new Page<>(pageNum, pageSize);
-        Page<SysUser> result = userService.selectUserList(user, page);
+        Page<SysUser> result = userService.selectUserList(user, page, params);
         return AjaxResult.success(result);
     }
 
@@ -67,6 +73,7 @@ public class SysUserController {
         List<SysUser> list = userService.list();
         return AjaxResult.success(list);
     }
+
 
 //    @Log(title = "用户管理", businessType = BusinessType.EXPORT)
 //    @PostMapping("/export")

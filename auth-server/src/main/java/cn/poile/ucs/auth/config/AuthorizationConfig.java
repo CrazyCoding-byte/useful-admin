@@ -60,8 +60,11 @@ public class AuthorizationConfig extends AuthorizationServerConfigurerAdapter {
 
 
 
+    @Autowired
+    private TokenStore tokenStore;
+
     @Bean
-    public AuthorizationServerTokenServices tokenServices(TokenStore tokenStore) {
+    public AuthorizationServerTokenServices tokenServices() {
         DefaultTokenServices services = new DefaultTokenServices();
         // 1. 核心依赖注入（必须全！）
         services.setTokenStore(tokenStore);
@@ -111,7 +114,7 @@ public class AuthorizationConfig extends AuthorizationServerConfigurerAdapter {
         AuthorizationCodeServices authorizationCodeServices = endpoints.getAuthorizationCodeServices();
         List<TokenGranter> tokenGranters = getTokenGranters(
                 authorizationCodeServices,
-                tokenServices(tokenStore()),
+                tokenServices(),
                 endpoints.getClientDetailsService(),
                 endpoints.getOAuth2RequestFactory());
         tokenGranters.add(endpoints.getTokenGranter());
@@ -119,8 +122,8 @@ public class AuthorizationConfig extends AuthorizationServerConfigurerAdapter {
         endpoints.authenticationManager(authenticationManager)
                 // 使用自定义的JwtAccessToken转换器
                 .accessTokenConverter(jwtAccessToken)
-                .tokenStore(tokenStore())
-                .tokenServices(tokenServices(tokenStore()))
+                .tokenStore(tokenStore)
+                .tokenServices(tokenServices())
                 .tokenGranter(new CompositeTokenGranter(tokenGranters));
     }
 

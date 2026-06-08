@@ -162,12 +162,16 @@ const transform: AxiosTransform = {
 
     // If response indicates unauthorized, try refresh token flow
     const status = response?.status || response?.data?.code;
+    console.log('[Request] 响应错误:', { url: config?.url, status, isRefreshing });
+
     if (status === 401) {
       const userStore = getUserStore();
       const refreshToken = userStore.getRefreshToken;
+      console.log('[Request] 401错误, refreshToken存在:', !!refreshToken);
 
       if (!refreshToken) {
         // no refresh token, go to login
+        console.log('[Request] 没有refreshToken, 跳转登录页');
         userStore.removeToken();
         router.replace({ path: '/login' });
         return Promise.reject(error);
@@ -177,15 +181,18 @@ const transform: AxiosTransform = {
 
       // 避免对 /auth/refresh 接口进行重试，防止无限循环
       if (config.url?.includes('/auth/refresh')) {
+        console.log('[Request] refresh接口401, 跳转登录页');
         userStore.removeToken();
         router.replace({ path: '/login' });
         return Promise.reject(error);
       }
 
       if (isRefreshing) {
+        console.log('[Request] 正在刷新token, 请求进入队列:', config.url);
         // push request to queue
         return new Promise((resolve) => {
           subscribeTokenRefresh((token: string) => {
+            console.log('[Request] 队列请求使用新token重试:', config.url);
             // set header and retry
             config.headers = config.headers || {};
             // ensure Authorization has scheme (Bearer)
@@ -195,6 +202,7 @@ const transform: AxiosTransform = {
         });
       }
 
+      console.log('[Request] 开始刷新token...');
       isRefreshing = true;
 
       // perform refresh with raw axios to avoid interceptors
@@ -214,42 +222,61 @@ const transform: AxiosTransform = {
         })
         .then(async (res) => {
           const data = res.data;
+          console.log('[Request] 刷新token响应:', { code: data?.code, hasData: !!data?.data });
           if (data && data.code === 200 && data.data) {
             const newToken = data.data.accessToken || data.data.token || '';
             const newRefresh = data.data.refreshToken || data.data.refresh_token || '';
+            console.log('[Request] 新token获取成功, 长度:', newToken?.length);
             userStore.setToken(newToken, newRefresh);
 
             // 🔥 关键修复：刷新token后，重新获取用户信息和路由
             try {
+              console.log('[Request] 开始获取用户信息...');
               // 重新获取用户信息
               await userStore.getUserInfo();
+              console.log('[Request] 获取用户信息成功, roles:', userStore.roles);
 
               // 重新初始化路由
               const permissionStore = getPermissionStore();
               const roles = userStore.roles;
               if (roles && roles.length > 0) {
                 await permissionStore.initRoutes(roles);
+                console.log('[Request] 初始化路由成功');
+              } else {
+                console.warn('[Request] 用户roles为空, 跳过初始化路由');
               }
             } catch (userInfoError) {
-              console.error('刷新token后获取用户信息失败:', userInfoError);
+              console.error('[Request] 刷新token后获取用户信息失败:', userInfoError);
             }
 
             onRrefreshed(newToken);
             // retry original request
             config.headers = config.headers || {};
             config.headers.Authorization = newToken.startsWith('Bearer ') ? newToken : `Bearer ${newToken}`;
-            return instance.request(config);
+            console.log('[Request] 重试原始请求:', config.url);
+            // 重试的请求失败不应该清除token，只是返回错误
+            return instance.request(config).catch((retryErr) => {
+              console.error('[Request] 重试请求失败:', retryErr);
+              return Promise.reject(retryErr);
+            });
           }
           // refresh failed
+          console.log('[Request] 刷新token失败, 跳转登录页');
           userStore.removeToken();
           // 跳转到登录页，使用 replace 避免历史污染
           router.replace({ path: '/login' });
           return Promise.reject(error);
         })
         .catch((err) => {
-          userStore.removeToken();
-          // 跳转到登录页，使用 replace 避免历史污染
-          router.replace({ path: '/login' });
+          // 只有refresh请求本身失败才清除token，重试请求失败不清除
+          if (err.config?.url?.includes('/auth/refresh')) {
+            console.error('[Request] 刷新token请求失败:', err);
+            userStore.removeToken();
+            // 跳转到登录页，使用 replace 避免历史污染
+            router.replace({ path: '/login' });
+          } else {
+            console.error('[Request] 请求失败:', err);
+          }
           return Promise.reject(err);
         })
         .finally(() => {

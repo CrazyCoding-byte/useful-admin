@@ -35,7 +35,7 @@ spring:
             - Path=/gateway/scan/**
 
 AES:
-  key: yangzhixuan944166810@qq.com1150614966@qq.com13735713859
+  key: 1234567890123456
 management:
   endpoint:
     gateway:

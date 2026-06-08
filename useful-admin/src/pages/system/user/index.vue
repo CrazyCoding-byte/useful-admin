@@ -1,53 +1,183 @@
 <template>
   <div class="user-page">
-    <t-card class="user-card-container">
-      <t-row justify="space-between" align="middle">
-        <div class="left-operation-container">
-          <t-button theme="primary" @click="handleAddUser"> 新增用户 </t-button>
-          <t-button variant="base" theme="default" :disabled="!selectedRowKeys.length"> 批量删除 </t-button>
-          <p v-if="!!selectedRowKeys.length" class="selected-count">已选{{ selectedRowKeys.length }}项</p>
-        </div>
-        <div class="search-container">
-          <t-input
-            v-model="searchForm.userName"
-            placeholder="用户名"
-            style="width: 200px; margin-right: 10px;"
-            clearable
-          />
-          <t-input
-            v-model="searchForm.phonenumber"
-            placeholder="手机号码"
-            style="width: 200px; margin-right: 10px;"
-            clearable
-          />
-          <t-button theme="primary" @click="getUserList">查询</t-button>
-          <t-button @click="resetSearch">重置</t-button>
-        </div>
-      </t-row>
-
-      <t-table
-        :data="userList"
-        :loading="loading"
-        :columns="columns"
-        :row-key="rowKey"
-        bordered
-        stripe
-        :pagination="pagination"
-        :selected-row-keys="selectedRowKeys"
-        @page-change="onPageChange"
-        @select-change="onSelectChange"
+    <!-- 左侧部门树 -->
+    <div class="dept-tree-container">
+      <t-input
+        v-model="deptSearchText"
+        placeholder="请输入部门名称"
+        clearable
+        class="dept-search"
       >
-        <template #status="{ row }">
-          <t-tag v-if="row.status === '0'" theme="success" variant="light"> 正常 </t-tag>
-          <t-tag v-else theme="danger" variant="light"> 禁用 </t-tag>
+        <template #prefix-icon>
+          <t-icon name="search"/>
         </template>
-        <template #op="{ row }">
-          <a class="t-button-link" @click="editUser(row)">编辑</a>
-          <a class="t-button-link" @click="deleteUser(row.userId!)">删除</a>
-          <a class="t-button-link" @click="resetUserPassword(row.userId!)">重置密码</a>
-        </template>
-      </t-table>
-    </t-card>
+      </t-input>
+      <t-tree
+        :data="filteredDeptItems"
+        activable
+        hover
+        transition
+        :expand-all="true"
+        :keys="{ label: 'label', value: 'id', children: 'children' }"
+      />
+    </div>
+
+    <!-- 右侧内容区 -->
+    <div class="user-content">
+      <!-- 搜索区域 -->
+      <t-card class="search-card" :bordered="false">
+        <div class="search-form">
+          <div class="search-row">
+            <div class="search-item">
+              <span class="search-label">用户名称</span>
+              <t-input
+                v-model="searchForm.userName"
+                placeholder="请输入用户名称"
+                clearable
+                class="search-input"
+              />
+            </div>
+            <div class="search-item">
+              <span class="search-label">用户昵称</span>
+              <t-input
+                v-model="searchForm.nickName"
+                placeholder="请输入用户昵称"
+                clearable
+                class="search-input"
+              />
+            </div>
+            <div class="search-item">
+              <span class="search-label">手机号码</span>
+              <t-input
+                v-model="searchForm.phonenumber"
+                placeholder="请输入手机号码"
+                clearable
+                class="search-input"
+              />
+            </div>
+            <div class="search-item">
+              <span class="search-label">状态</span>
+              <t-select
+                v-model="searchForm.status"
+                placeholder="用户状态"
+                clearable
+                class="search-input"
+              >
+                <t-option label="正常" value="0"/>
+                <t-option label="禁用" value="1"/>
+              </t-select>
+            </div>
+          </div>
+          <div class="search-row">
+            <div class="search-item">
+              <span class="search-label">创建时间</span>
+              <t-date-range-picker
+                v-model="searchForm.createTime"
+                placeholder="开始日期 - 结束日期"
+                class="search-input"
+              />
+            </div>
+            <div class="search-buttons">
+              <t-button theme="primary" @click="getUserList">
+                <template #icon>
+                  <t-icon name="search"/>
+                </template>
+                搜索
+              </t-button>
+              <t-button variant="outline" @click="resetSearch">
+                <template #icon>
+                  <t-icon name="refresh"/>
+                </template>
+                重置
+              </t-button>
+            </div>
+          </div>
+        </div>
+      </t-card>
+
+      <!-- 操作按钮区域 -->
+      <t-card class="operation-card" :bordered="false">
+        <div class="operation-bar">
+          <div class="left-operations">
+            <t-button theme="primary" @click="handleAddUser">
+              <template #icon>
+                <t-icon name="add"/>
+              </template>
+              新增
+            </t-button>
+            <t-button theme="warning" :disabled="!selectedRowKeys.length" @click="handleBatchEdit">
+              <template #icon>
+                <t-icon name="edit"/>
+              </template>
+              修改
+            </t-button>
+            <t-button theme="danger" :disabled="!selectedRowKeys.length" @click="handleBatchDelete">
+              <template #icon>
+                <t-icon name="delete"/>
+              </template>
+              删除
+            </t-button>
+            <t-button variant="outline">
+              更多
+              <template #suffix-icon>
+                <t-icon name="chevron-down"/>
+              </template>
+            </t-button>
+          </div>
+          <div class="right-operations">
+            <t-button variant="text" shape="circle" @click="getUserList">
+              <t-icon name="search"/>
+            </t-button>
+            <t-button variant="text" shape="circle" @click="getUserList">
+              <t-icon name="refresh"/>
+            </t-button>
+            <t-button variant="text" shape="circle">
+              <t-icon name="setting"/>
+            </t-button>
+          </div>
+        </div>
+      </t-card>
+
+      <!-- 表格区域 -->
+      <t-card class="table-card" :bordered="false">
+        <t-table
+          :data="userList"
+          :loading="loading"
+          :columns="columns"
+          :row-key="rowKey"
+          bordered
+          stripe
+          :pagination="pagination"
+          :selected-row-keys="selectedRowKeys"
+          @page-change="onPageChange"
+          @select-change="onSelectChange"
+        >
+          <template #status="{ row }">
+            <t-switch
+              v-model="row.status"
+              :custom-value="['0', '1']"
+              size="small"
+            />
+          </template>
+          <template #op="{ row }">
+            <div class="operation-icons">
+              <t-button variant="text" shape="square" @click="editUser(row)">
+                <t-icon name="edit"/>
+              </t-button>
+              <t-button variant="text" shape="square" @click="deleteUser(row.userId!)">
+                <t-icon name="delete"/>
+              </t-button>
+              <t-button variant="text" shape="square" @click="resetUserPassword(row.userId!)">
+                <t-icon name="lock-on"/>
+              </t-button>
+              <t-button variant="text" shape="square">
+                <t-icon name="more"/>
+              </t-button>
+            </div>
+          </template>
+        </t-table>
+      </t-card>
+    </div>
 
     <!-- 新增/修改用户对话框 -->
     <t-dialog
@@ -62,19 +192,19 @@
         label-width="100px"
       >
         <t-form-item label="账号" name="userName">
-          <t-input v-model="addForm.userName" placeholder="请输入账号" />
+          <t-input v-model="addForm.userName" placeholder="请输入账号"/>
         </t-form-item>
         <t-form-item label="昵称" name="nickName">
-          <t-input v-model="addForm.nickName" placeholder="请输入昵称" />
+          <t-input v-model="addForm.nickName" placeholder="请输入昵称"/>
         </t-form-item>
         <t-form-item label="手机号码" name="phonenumber">
-          <t-input v-model="addForm.phonenumber" placeholder="请输入手机号码" />
+          <t-input v-model="addForm.phonenumber" placeholder="请输入手机号码"/>
         </t-form-item>
         <t-form-item label="邮箱" name="email">
-          <t-input v-model="addForm.email" placeholder="请输入邮箱" />
+          <t-input v-model="addForm.email" placeholder="请输入邮箱"/>
         </t-form-item>
         <t-form-item label="密码" name="password">
-          <t-input v-model="addForm.password" type="password" placeholder="请输入密码" />
+          <t-input v-model="addForm.password" type="password" placeholder="请输入密码"/>
         </t-form-item>
         <t-form-item label="状态" name="status">
           <t-radio-group v-model="addForm.status">
@@ -89,6 +219,7 @@
       </template>
     </t-dialog>
 
+    <!-- 确认删除对话框 -->
     <t-dialog
       v-model:visible="confirmVisible"
       header="确认删除"
@@ -103,16 +234,71 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { userApi } from '@/api/system/user';
-import type { SysUser } from '@/api/model/userModel';
-import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next';
-import type { PaginationProps, TableProps } from 'tdesign-vue-next';
+import {ref, onMounted, computed} from 'vue';
+import {userApi} from '@/api/system/user';
+import {DeptApi} from '@/api/system/dept'
+import type {SysUser} from '@/api/model/userModel';
+import {MessagePlugin} from 'tdesign-vue-next';
+import type {PaginationProps, TableProps} from 'tdesign-vue-next';
+
+// 部门搜索文本
+const deptSearchText = ref('');
+
+// 部门树数据
+const deptItems = ref([
+  {
+    id: '1',
+    label: 'XXX科技',
+    children: [
+      {id: '11', label: 'fgh'},
+      {id: '12', label: 'fgn'},
+      {id: '13', label: 'fghgf'},
+    ],
+  },
+  {
+    id: '2',
+    label: '深圳总公司',
+    children: [
+      {id: '21', label: '研发部门'},
+      {id: '22', label: '市场部门'},
+      {id: '23', label: '测试部门'},
+      {id: '24', label: '财务部门'},
+      {id: '25', label: '运维部门'},
+    ],
+  },
+  {
+    id: '3',
+    label: '长沙分公司',
+    children: [
+      {id: '31', label: '市场部门'},
+      {id: '32', label: '财务部门'},
+    ],
+  },
+]);
+
+// 过滤后的部门树
+const filteredDeptItems = computed(() => {
+  if (!deptSearchText.value) return deptItems.value;
+  const filter = (items: any[]) => {
+    return items.filter(item => {
+      if (item.label.includes(deptSearchText.value)) return true;
+      if (item.children) {
+        item.children = filter(item.children);
+        return item.children.length > 0;
+      }
+      return false;
+    });
+  };
+  return filter([...deptItems.value]);
+});
 
 // 搜索表单
-const searchForm = ref<Partial<SysUser>>({
+const searchForm = ref<Partial<SysUser> & { createTime?: any }>({
   userName: '',
+  nickName: '',
   phonenumber: '',
+  status: '',
+  createTime: [],
 });
 
 // 用户列表
@@ -128,56 +314,42 @@ const columns: TableProps['columns'] = [
     width: 46,
   },
   {
-    colKey: 'userId',
-    title: '用户ID',
-  },
-  {
     colKey: 'userName',
-    title: '账号',
+    title: '用户名称',
+    width: 120,
   },
   {
     colKey: 'nickName',
-    title: '昵称',
+    title: '用户昵称',
+    width: 150,
+  },
+  {
+    colKey: 'deptName',
+    title: '部门',
+    width: 120,
   },
   {
     colKey: 'phonenumber',
     title: '手机号码',
-  },
-  {
-    colKey: 'email',
-    title: '邮箱',
-    ellipsis: true,
+    width: 140,
   },
   {
     colKey: 'status',
     title: '状态',
-    render: (h: any, { row }: { row: SysUser }) => {
-      if (row.status === '0') {
-        return h('t-tag', { props: { theme: 'success', variant: 'light' } }, ' 正常 ');
-      } else {
-        return h('t-tag', { props: { theme: 'danger', variant: 'light' } }, ' 禁用 ');
-      }
-    },
+    width: 80,
+    align: 'center',
+  },
+  {
+    colKey: 'createTime',
+    title: '创建时间',
+    width: 180,
   },
   {
     colKey: 'op',
     title: '操作',
-    render: (h: any, { row }: { row: SysUser }) => {
-      return h('div', [
-        h('a', {
-          class: 't-button-link',
-          on: { click: () => editUser(row) }
-        }, '编辑'),
-        h('a', {
-          class: 't-button-link',
-          on: { click: () => deleteUser(row.userId!) }
-        }, '删除'),
-        h('a', {
-          class: 't-button-link',
-          on: { click: () => resetUserPassword(row.userId!) }
-        }, '重置密码')
-      ]);
-    },
+    width: 160,
+    align: 'center',
+    fixed: 'right',
   },
 ];
 
@@ -204,22 +376,15 @@ const getUserList = async (pageInfo?: PaginationProps) => {
     const requestParams = {
       ...searchForm.value,
       pageNum: current,
-      pageSize: pageSize
+      pageSize: pageSize,
     };
-    console.log('请求参数:', requestParams);
-
-    // 使用原始的userApi请求
+    console.log("拿到的数据", requestParams)
     const response = await userApi.getUserList(requestParams);
-    console.log('响应数据:', response);
-
-    // 直接使用响应数据
-    userList.value = response.records || [];
-    console.log('用户列表:', userList.value);
-    console.log('用户列表长度:', userList.value.length);
-
-    pagination.value.total = response.total || 0;
-    console.log('总记录数:', pagination.value.total);
-
+    console.log("获取响应的数据111", response)
+    // 适配后端返回格式：{ code: 200, data: { records: [], total: 0 } }
+    const data = response.data || response;
+    userList.value = data.records || [];
+    pagination.value.total = data.total || 0;
   } catch (error) {
     MessagePlugin.error('获取用户列表失败');
     console.error('获取用户列表失败:', error);
@@ -230,18 +395,44 @@ const getUserList = async (pageInfo?: PaginationProps) => {
   }
 };
 
+//获取部门列表
+const getDeptList = async () => {
+  try {
+    const response = await DeptApi.getDeptList();
+    console.log("获取部门响应数据", response);
+    // 后端已返回带children的树结构，只需做字段名映射
+    const deptTree = convertToTree(response || []);
+    deptItems.value = deptTree;
+  } catch (error) {
+    console.error('获取部门列表失败:', error);
+    deptItems.value = [];
+  }
+};
+
+// 递归转换部门树结构字段名
+const convertToTree = (data: any[]): any[] => {
+  if (!data || data.length === 0) return [];
+  return data.map(item => ({
+    id: item.deptId,
+    label: item.deptName,
+    parentId: item.parentId,
+    children: item.children && item.children.length > 0 ? convertToTree(item.children) : []
+  }));
+};
 // 重置搜索
 const resetSearch = () => {
   searchForm.value = {
     userName: '',
+    nickName: '',
     phonenumber: '',
+    status: '',
+    createTime: [],
   };
   getUserList();
 };
 
 // 处理分页变化
 const onPageChange: TableProps['onPageChange'] = async (pageInfo) => {
-  console.log('page-change', pageInfo);
   pagination.value.current = pageInfo.current;
   pagination.value.pageSize = pageInfo.pageSize;
   await getUserList(pageInfo);
@@ -249,53 +440,68 @@ const onPageChange: TableProps['onPageChange'] = async (pageInfo) => {
 
 // 处理选择变化
 const onSelectChange: TableProps['onSelectChange'] = (value, params) => {
-  selectedRowKeys.value = value;
+  selectedRowKeys.value = value as number[];
   console.log(value, params);
+};
+
+// 批量修改
+const handleBatchEdit = () => {
+  if (selectedRowKeys.value.length === 1) {
+    const user = userList.value.find(u => u.userId === selectedRowKeys.value[0]);
+    if (user) editUser(user);
+  } else {
+    MessagePlugin.warning('请选择一条记录进行修改');
+  }
+};
+
+// 批量删除
+const handleBatchDelete = () => {
+  if (selectedRowKeys.value.length > 0) {
+    confirmVisible.value = true;
+  }
 };
 
 // 新增用户对话框
 const addDialogVisible = ref(false);
 const addFormRef = ref<any>();
 const addForm = ref({
-  userId: null,
+  userId: null as number | null,
   userName: '',
   nickName: '',
   phonenumber: '',
   email: '',
   password: '',
-  status: '0'
+  status: '0',
 });
 
 const addFormRules = ref({
   userName: [
-    { required: true, message: '请输入用户名', trigger: ['blur', 'change'] },
-    { min: 2, max: 30, message: '用户名长度应在2-30个字符之间', trigger: ['blur', 'change'] }
+    {required: true, message: '请输入用户名', trigger: ['blur', 'change']},
+    {min: 2, max: 30, message: '用户名长度应在2-30个字符之间', trigger: ['blur', 'change']}
   ],
   nickName: [
-    { required: true, message: '请输入昵称', trigger: ['blur', 'change'] },
-    { min: 2, max: 30, message: '昵称长度应在2-30个字符之间', trigger: ['blur', 'change'] }
+    {required: true, message: '请输入昵称', trigger: ['blur', 'change']},
+    {min: 2, max: 30, message: '昵称长度应在2-30个字符之间', trigger: ['blur', 'change']}
   ],
   phonenumber: [
-    { required: true, message: '请输入手机号码', trigger: ['blur', 'change'] },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: ['blur', 'change'] }
+    {required: true, message: '请输入手机号码', trigger: ['blur', 'change']},
+    {pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: ['blur', 'change']}
   ],
   email: [
-    { required: true, message: '请输入邮箱', trigger: ['blur', 'change'] },
-    { type: 'email', message: '请输入正确的邮箱地址', trigger: ['blur', 'change'] }
+    {required: true, message: '请输入邮箱', trigger: ['blur', 'change']},
+    {type: 'email', message: '请输入正确的邮箱地址', trigger: ['blur', 'change']}
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: ['blur', 'change'] },
-    { min: 6, max: 20, message: '密码长度应在6-20个字符之间', trigger: ['blur', 'change'] }
+    {required: true, message: '请输入密码', trigger: ['blur', 'change']},
+    {min: 6, max: 20, message: '密码长度应在6-20个字符之间', trigger: ['blur', 'change']}
   ],
   status: [
-    { required: true, message: '请选择状态', trigger: ['blur', 'change'] }
+    {required: true, message: '请选择状态', trigger: ['blur', 'change']}
   ]
 });
 
 // 新增用户
 const handleAddUser = () => {
-  console.log('新增用户');
-  // 重置表单
   addForm.value = {
     userId: null,
     userName: '',
@@ -303,9 +509,8 @@ const handleAddUser = () => {
     phonenumber: '',
     email: '',
     password: '',
-    status: '0'
+    status: '0',
   };
-  // 打开对话框
   addDialogVisible.value = true;
 };
 
@@ -319,24 +524,13 @@ const submitAddForm = async () => {
   if (!addFormRef.value) return;
   try {
     await addFormRef.value.validate();
-    
-    // 准备提交数据
-    const submitData = { ...addForm.value };
-    
-    // 对于编辑用户，如果密码为空，不发送password字段
+    const submitData = {...addForm.value};
     if (submitData.userId && !submitData.password) {
       delete submitData.password;
     }
-    
-    console.log('提交表单:', submitData);
-    
-    // 使用同一个API接口处理新增和修改
     await userApi.saveUser(submitData);
     MessagePlugin.success(addForm.value.userId ? '修改用户成功' : '新增用户成功');
-    
-    // 关闭对话框
     addDialogVisible.value = false;
-    // 刷新用户列表
     getUserList();
   } catch (error) {
     console.error('表单验证失败:', error);
@@ -345,25 +539,16 @@ const submitAddForm = async () => {
 
 // 编辑用户
 const editUser = (user: SysUser) => {
-  console.log('编辑用户:', user);
-  try {
-    // 直接使用传入的用户数据填充表单
-    addForm.value = {
-      userId: user.userId || null,
-      userName: user.userName || '',
-      nickName: user.nickName || '',
-      phonenumber: user.phonenumber || '',
-      email: user.email || '',
-      password: '', // 编辑时密码为空，不修改密码
-      status: user.status || '0'
-    };
-    console.log('填充表单数据:', addForm.value);
-    // 打开对话框
-    addDialogVisible.value = true;
-  } catch (error) {
-    MessagePlugin.error('编辑用户失败');
-    console.error('编辑用户失败:', error);
-  }
+  addForm.value = {
+    userId: user.userId || null,
+    userName: user.userName || '',
+    nickName: user.nickName || '',
+    phonenumber: user.phonenumber || '',
+    email: user.email || '',
+    password: '',
+    status: user.status || '0',
+  };
+  addDialogVisible.value = true;
 };
 
 // 删除用户
@@ -375,7 +560,7 @@ const deleteUser = (userId: number) => {
 // 重置用户密码
 const resetUserPassword = async (userId: number) => {
   try {
-    await userApi.resetPassword({ userId, password: '123456' });
+    await userApi.resetPassword({userId, password: '123456'});
     MessagePlugin.success('密码重置成功，新密码为：123456');
   } catch (error) {
     MessagePlugin.error('密码重置失败');
@@ -408,6 +593,7 @@ const onConfirmDelete = async () => {
 
 // 取消删除
 const onCancel = () => {
+  confirmVisible.value = false;
   deleteIdx.value = -1;
 };
 
@@ -416,33 +602,120 @@ onMounted(async () => {
   await getUserList({
     current: pagination.value.current || 1,
     pageSize: pagination.value.pageSize || 10,
-  });
+  })
+  await getDeptList()
 });
 </script>
 
 <style lang="less" scoped>
-.user-card-container {
-  margin: 20px;
-}
-
-.left-operation-container {
-  padding: 6px 0;
-  margin-bottom: 16px;
-
-  .selected-count {
-    display: inline-block;
-    margin-left: 8px;
-    color: var(--td-text-color-secondary);
-  }
-}
-
-.search-container {
+.user-page {
   display: flex;
-  align-items: center;
-}
+  height: calc(100vh - 100px);
+  background-color: var(--td-bg-color-container);
 
-.t-button-link {
-  margin-right: 10px;
-  cursor: pointer;
+  .dept-tree-container {
+    width: 260px;
+    padding: 16px;
+    border-right: 1px solid var(--td-border-level-1-color);
+    background-color: var(--td-bg-color-container);
+
+    .dept-search {
+      margin-bottom: 12px;
+    }
+  }
+
+  .user-content {
+    flex: 1;
+    padding: 16px;
+    overflow: auto;
+    background-color: var(--td-bg-color-page);
+
+    .search-card {
+      margin-bottom: 16px;
+
+      :deep(.t-card__body) {
+        padding: 16px;
+      }
+
+      .search-form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+
+        .search-row {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          flex-wrap: wrap;
+
+          .search-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            .search-label {
+              font-size: 14px;
+              color: var(--td-text-color-primary);
+              white-space: nowrap;
+            }
+
+            .search-input {
+              width: 200px;
+            }
+          }
+
+          .search-buttons {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+          }
+        }
+      }
+    }
+
+    .operation-card {
+      margin-bottom: 16px;
+
+      :deep(.t-card__body) {
+        padding: 12px 16px;
+      }
+
+      .operation-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        .left-operations {
+          display: flex;
+          gap: 8px;
+        }
+
+        .right-operations {
+          display: flex;
+          gap: 4px;
+        }
+      }
+    }
+
+    .table-card {
+      :deep(.t-card__body) {
+        padding: 0;
+      }
+
+      .operation-icons {
+        display: flex;
+        justify-content: center;
+        gap: 4px;
+
+        :deep(.t-button) {
+          color: var(--td-text-color-secondary);
+
+          &:hover {
+            color: var(--td-brand-color);
+          }
+        }
+      }
+    }
+  }
 }
 </style>
