@@ -5,13 +5,20 @@ import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yzx.model.RouterVo;
 import com.yzx.model.TreeSelect;
-import com.yzx.model.constant.UserConstants;
 import com.yzx.model.exception.ServiceException;
 import com.yzx.model.system.SysMenu;
+import com.yzx.model.system.SysTenant;
+import com.yzx.model.system.SysUser;
 import com.yzx.model.system.response.SysMenuDto;
 import com.yzx.model.MetaVo;
+import com.yzx.model.ucenter.BaseUserDetail;
+import com.yzx.model.utils.SecurityUtils;
 import com.yzx.system.mapper.SysMenuMapper;
 import com.yzx.system.service.ISysMenuService;
+import com.yzx.system.service.ISysTenantPackageService;
+import com.yzx.system.service.ISysTenantService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -19,11 +26,16 @@ import java.util.stream.Collectors;
 
 /**
  * 菜单 业务层处理
- *
- * @author ruoyi
  */
+@Slf4j
 @Service
 public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> implements ISysMenuService {
+
+    @Autowired(required = false)
+    private ISysTenantService tenantService;
+
+    @Autowired(required = false)
+    private ISysTenantPackageService tenantPackageService;
     
     /**
      * 根据用户查询系统菜单列表
@@ -91,6 +103,8 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
 
     /**
      * 根据用户ID查询菜单树信息
+     * 超级管理员：返回所有菜单
+     * 普通租户用户：套餐菜单 ∩ 用户角色菜单（取交集）
      *
      * @param userId 用户ID
      * @return 菜单列表
@@ -98,13 +112,92 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     @Override
     public List<SysMenuDto> selectMenuTreeByUserId(Long userId) {
         List<SysMenu> menus;
-        // 如果是超级管理员，返回所有菜单
-        if (userId != null && com.yzx.model.system.SysUser.isAdmin(userId)) {
+        // 超级管理员看所有菜单
+        if (SysUser.isAdmin(userId)) {
             menus = baseMapper.selectList(null);
         } else {
-            menus = baseMapper.selectMenuTreeByUserId(userId);
+            // 1. 获取用户角色对应的菜单
+            List<SysMenu> roleMenus = baseMapper.selectMenuTreeByUserId(userId);
+
+            // 2. 获取租户套餐允许的菜单ID集合
+            Set<Long> packageMenuIds = getPackageMenuIdsForUser(userId);
+
+            // 3. 取交集：角色菜单 ⊆ 套餐菜单
+            if (!packageMenuIds.isEmpty()) {
+                menus = filterMenusByPackage(roleMenus, packageMenuIds);
+            } else {
+                menus = roleMenus;
+            }
         }
         return buildMenuDtoTree(menus);
+    }
+
+    /**
+     * 获取用户所属租户套餐包含的菜单ID集合
+     */
+    private Set<Long> getPackageMenuIdsForUser(Long userId) {
+        if (tenantService == null || tenantPackageService == null) {
+            return Collections.emptySet();
+        }
+        try {
+            // 从 SecurityContext 获取当前登录用户信息
+            BaseUserDetail loginUser = SecurityUtils.getLoginUser();
+            if (loginUser == null || loginUser.getBaseUser() == null) {
+                return Collections.emptySet();
+            }
+            String tenantId = loginUser.getBaseUser().getTenantId();
+            if (StringUtils.isBlank(tenantId)) {
+                return Collections.emptySet();
+            }
+            // 查租户信息获取套餐ID
+            SysTenant tenant = tenantService.selectByTenantId(tenantId);
+            if (tenant == null || tenant.getPackageId() == null) {
+                return Collections.emptySet();
+            }
+            // 查套餐获取菜单ID列表
+            List<Long> menuIds = tenantPackageService.getMenuIdsByPackageId(tenant.getPackageId());
+            return new HashSet<>(menuIds);
+        } catch (Exception e) {
+            log.warn("获取租户套餐菜单失败: {}", e.getMessage());
+            return Collections.emptySet();
+        }
+    }
+
+    /**
+     * 用套餐菜单ID过滤菜单列表（只保留套餐允许的菜单及其父菜单）
+     */
+    private List<SysMenu> filterMenusByPackage(List<SysMenu> roleMenus, Set<Long> packageMenuIds) {
+        // 先找出所有在套餐中的菜单ID
+        Set<Long> allowedIds = roleMenus.stream()
+                .map(SysMenu::getMenuId)
+                .filter(packageMenuIds::contains)
+                .collect(Collectors.toSet());
+
+        // 也需要包含这些菜单的父菜单（确保菜单树完整）
+        Set<Long> parentIds = new HashSet<>();
+        for (SysMenu menu : roleMenus) {
+            if (allowedIds.contains(menu.getMenuId())) {
+                // 追溯父菜单
+                SysMenu parent = findInList(roleMenus, menu.getParentId());
+                while (parent != null) {
+                    parentIds.add(parent.getMenuId());
+                    parent = findInList(roleMenus, parent.getParentId());
+                }
+            }
+        }
+        allowedIds.addAll(parentIds);
+
+        return roleMenus.stream()
+                .filter(m -> allowedIds.contains(m.getMenuId()))
+                .collect(Collectors.toList());
+    }
+
+    private SysMenu findInList(List<SysMenu> list, Long menuId) {
+        if (menuId == null || menuId == 0L) return null;
+        for (SysMenu m : list) {
+            if (m.getMenuId().equals(menuId)) return m;
+        }
+        return null;
     }
 
     /**
@@ -156,11 +249,14 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     @Override
     public List<SysMenu> buildMenuTree(List<SysMenu> menus) {
         List<SysMenu> menuTree = new ArrayList<>();
+        List<SysMenu> rootMenus = new ArrayList<>();
         for (SysMenu menu : menus) {
-            if (menu.getParentId() == 0L) {
+            if (menu.getParentId() == null || menu.getParentId() == 0L) {
+                rootMenus.add(menu);
                 menuTree.add(buildMenuTree(menus, menu));
             }
         }
+        log.info("buildMenuTree: 总菜单数={}, 根节点数={}, 树节点数={}", menus.size(), rootMenus.size(), menuTree.size());
         return menuTree;
     }
 

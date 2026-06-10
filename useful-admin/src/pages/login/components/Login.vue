@@ -15,6 +15,7 @@
           size="large"
           placeholder="请选择租户"
           clearable
+          @visible-change="handleTenantSelectVisible"
         >
           <template #prefix-icon>
             <t-icon name="home" />
@@ -126,20 +127,29 @@ const tenantList = ref<Array<{ tenantId: string; tenantName: string; logo?: stri
 // 加载租户列表
 const loadTenantList = async () => {
   try {
-    const res = await userAuthApi.getTenantList();
-    if (res && Array.isArray(res)) {
-      tenantList.value = res;
-      // 如果有默认租户，自动选中
-      if (res.length > 0 && !formData.value.tenantId) {
-        formData.value.tenantId = res[0].tenantId;
+    console.log('开始加载租户列表...');
+    const tenantData = await userAuthApi.getTenantList();
+    console.log('租户列表响应:', tenantData);
+
+    if (Array.isArray(tenantData) && tenantData.length > 0) {
+      tenantList.value = tenantData;
+      console.log('设置租户列表:', tenantList.value);
+      // 如果有默认租户，自动选中第一个
+      if (!formData.value.tenantId) {
+        formData.value.tenantId = tenantData[0].tenantId;
+        console.log('自动选中租户:', formData.value.tenantId);
       }
+    } else {
+      console.warn('租户列表为空或格式不正确');
+      // 使用默认租户
+      tenantList.value = [{ tenantId: '000000', tenantName: '默认租户' }];
+      formData.value.tenantId = '000000';
     }
   } catch (error) {
     console.error('加载租户列表失败:', error);
     // 使用默认租户数据（当后端接口不可用时）
-    tenantList.value = [
-      { tenantId: '000000', tenantName: '默认租户' },
-    ];
+    tenantList.value = [{ tenantId: '000000', tenantName: '默认租户' }];
+    formData.value.tenantId = '000000';
   }
 };
 
@@ -147,6 +157,14 @@ const loadTenantList = async () => {
 onMounted(() => {
   loadTenantList();
 });
+
+// 处理租户选择下拉框显示/隐藏
+const handleTenantSelectVisible = (visible: boolean) => {
+  if (visible) {
+    console.log('租户选择下拉框打开，重新加载租户列表');
+    loadTenantList();
+  }
+};
 
 const FORM_RULES: Record<string, FormRule[]> = {
   phone: [{ required: true, message: '手机号必填', type: 'error' }],

@@ -3,10 +3,10 @@ package com.yzx.system.config;
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import com.yzx.common.permission.aspect.DataPermissionPointcutAdvisor;
 import com.yzx.system.interceptor.PlusDataPermissionInterceptor;
 import com.yzx.system.tenant.CustomTenantLineHandler;
+import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -44,8 +44,9 @@ public class MyBatisPlusConfig {
 
         if (tenantEnable) {
             // 1. 先添加租户插件（先执行，修改JOIN的ON条件）
+            CustomTenantLineHandler tenantLineHandler = new CustomTenantLineHandler(tenantExcludes);
             TenantLineInnerInterceptor tenantInterceptor = new TenantLineInnerInterceptor();
-            tenantInterceptor.setTenantLineHandler(new CustomTenantLineHandler(tenantExcludes));
+            tenantInterceptor.setTenantLineHandler(tenantLineHandler);
             interceptor.addInnerInterceptor(tenantInterceptor);
         }
 

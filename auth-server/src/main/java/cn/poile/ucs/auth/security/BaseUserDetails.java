@@ -89,6 +89,13 @@ public abstract class BaseUserDetails implements UserDetailsService {
             throw new UsernameNotFoundException("用户不存在");
         }
         BaseUser baseUser = baseUserMapper.selectOne(new LambdaQueryWrapper<BaseUser>().eq(BaseUser::getUserId, baseAuth.getUserId()));
+
+        // 检查是否为超级管理员（userId = 1）
+        boolean isSuperAdmin = baseUser != null && baseUser.getUserId() != null && baseUser.getUserId() == 1;
+        if (isSuperAdmin) {
+            log.info("超级管理员登录: {}", decryptedUsername);
+        }
+
         // 注意：登录时暂时不获取权限，等登录成功后再通过令牌获取
         StringBuilder userPermissStr = new StringBuilder();
         Set<String> menuPermissionByUserId1 = new HashSet<>();

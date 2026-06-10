@@ -27,8 +27,9 @@ public class TenantOAuth2Interceptor implements HandlerInterceptor {
             BaseUserDetail userDetail = SecurityUtils.getBaseUserDetail();
 
             if (userDetail != null && userDetail.getBaseUser() != null) {
+                Long userId = userDetail.getBaseUser().getUserId();
                 // 检查是否为超级管理员（userId = 1）
-                boolean isSuperAdmin = userDetail.getBaseUser().isAdmin();
+                boolean isSuperAdmin = userId != null && userId == 1;
 
                 if (isSuperAdmin) {
                     // 超级管理员可以跨租户访问
@@ -36,19 +37,19 @@ public class TenantOAuth2Interceptor implements HandlerInterceptor {
                     String targetTenantId = request.getHeader("X-Tenant-Id");
                     if (targetTenantId != null && !targetTenantId.isEmpty()) {
                         TenantContext.setCurrentTenantId(targetTenantId);
-                        log.debug("超级管理员切换到租户ID: {}, URI: {}", targetTenantId, request.getRequestURI());
+                        log.info("超级管理员 [{}] 切换到租户ID: {}, URI: {}", userId, targetTenantId, request.getRequestURI());
                     } else {
                         // 不设置租户上下文，超级管理员可以看到所有租户数据
-                        log.debug("超级管理员访问所有租户数据，URI: {}", request.getRequestURI());
+                        log.info("超级管理员 [{}] 访问所有租户数据，URI: {}", userId, request.getRequestURI());
                     }
                 } else {
                     // 普通用户只能访问自己租户的数据
                     String tenantId = userDetail.getBaseUser().getTenantId();
                     if (tenantId != null && !tenantId.isEmpty()) {
                         TenantContext.setCurrentTenantId(tenantId);
-                        log.debug("从 OAuth2 Token 中提取租户ID: {}, URI: {}", tenantId, request.getRequestURI());
+                        log.debug("用户 [{}] 访问租户ID: {}, URI: {}", userId, tenantId, request.getRequestURI());
                     } else {
-                        log.warn("用户 [{}] 的租户ID为空，URI: {}", userDetail.getUsername(), request.getRequestURI());
+                        log.warn("用户 [{}] 的租户ID为空，URI: {}", userId, request.getRequestURI());
                     }
                 }
             } else {

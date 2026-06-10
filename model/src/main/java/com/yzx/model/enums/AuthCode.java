@@ -29,7 +29,8 @@ public enum AuthCode implements ResultCode {
     AUTH_GRANT_TYPE_ERROR(23013, "授权类型错误！"),
     Auth_MOBILE_NOT_REGISTER(23014, "手机号未注册！"),
     AUTH_TENANT_NOT_AVAILABLE(23015, "租户不存在或已过期！"),
-    AUTH_TENANT_REQUIRED(23016, "请选择租户！");
+    AUTH_TENANT_REQUIRED(23016, "请选择租户！"),
+    AUTH_TENANT_NO_ALLOWD_OPERATION(23017, "不允许操作");
     /**
      * 操作代码
      */

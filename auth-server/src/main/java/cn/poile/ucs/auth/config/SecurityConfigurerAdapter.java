@@ -91,6 +91,7 @@ public class SecurityConfigurerAdapter extends WebSecurityConfigurerAdapter {
                 "/wx/*",
                 "/wx/*/*",
                 "/auth/refresh/*",
+                "/auth/tenant/**",
                 "/user/jwt",
                 "/ucenter/getVerifyCode/**",
                 "/captchaImage",
@@ -113,6 +114,7 @@ public class SecurityConfigurerAdapter extends WebSecurityConfigurerAdapter {
                 // 放行：登录、验证码、短信、微信、静态资源等
                 .antMatchers(
                         "/auth/user/**",
+                        "/auth/tenant/**",
                         "/auth/refresh",
                         "/captchaImage",
                         "/sendSms",

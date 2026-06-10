@@ -100,12 +100,22 @@ public class JwtAccessToken extends JwtAccessTokenConverter {
             // 添加额外的字段
             map.put("u_id", encryptedUid);
 
+            // 检查是否为超级管理员（userId = 1）
+            boolean isSuperAdmin = baseUserDetail.getBaseUser() != null 
+                && baseUserDetail.getBaseUser().getUserId() != null 
+                && baseUserDetail.getBaseUser().getUserId() == 1;
+            if (isSuperAdmin) {
+                map.put("is_super_admin", true);
+                log.info("超级管理员 [{}] 登录，JWT中添加超级管理员标志", baseUserDetail.getUsername());
+            }
+
             // 添加租户ID到Token（多租户支持）
+            // 超级管理员可以不设置租户ID，这样可以查看所有租户数据
             String tenantId = baseUserDetail.getBaseUser().getTenantId();
             if (tenantId != null && !tenantId.isEmpty()) {
                 map.put("tenant_id", tenantId);
                 log.debug("JWT Token 中添加租户ID: {}", tenantId);
-            } else {
+            } else if (!isSuperAdmin) {
                 log.warn("用户 [{}] 的租户ID为空，可能导致多租户功能异常", baseUserDetail.getUsername());
             }
         } catch (Exception e) {

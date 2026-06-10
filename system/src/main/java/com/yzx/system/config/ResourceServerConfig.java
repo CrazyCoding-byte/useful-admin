@@ -68,6 +68,9 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
     public void configure(HttpSecurity http) throws Exception {
         http.csrf().disable()
             .authorizeRequests()
+                // 放行租户相关接口（登录前需要获取租户列表）
+                .antMatchers("/system/tenant/availableList").permitAll()
+                .antMatchers("/system/tenant/checkAvailable/**").permitAll()
                 .antMatchers("/system/user/register").permitAll()
                 .anyRequest().authenticated();
     }

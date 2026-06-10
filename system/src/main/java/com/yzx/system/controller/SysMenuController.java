@@ -34,7 +34,7 @@ public class SysMenuController {
     @GetMapping("/list")
     public AjaxResult list(SysMenu menu) {
         List<SysMenu> menus = menuService.selectMenuList(menu, SecurityUtils.getUserId());
-        return AjaxResult.success(menus);
+        return AjaxResult.success(menuService.buildMenuTree(menus));
     }
 
     /**

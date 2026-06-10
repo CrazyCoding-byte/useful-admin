@@ -36,11 +36,12 @@ router.beforeEach(async (to, from, next) => {
   if (!routesInitialized) {
     console.log('[Router] 路由未初始化,开始初始化...');
     try {
-      const routes = await permissionStore.initRoutes(userStore.roles || ['admin']);
+      await permissionStore.initRoutes(userStore.roles || ['admin']);
       routesInitialized = true;
-      console.log('[Router] 路由初始化成功,路由数:', routes?.length);
-
-      next({ path: to.fullPath, replace: true });
+      console.log('[Router] 路由初始化完成,重新导航到:', to.path);
+      // addRoute 后必须重新指定路径触发路由重新匹配，否则 Vue Router 不会识别新注册的路由
+      // 第二次进入 beforeEach 时 routesInitialized 已为 true，直接放行
+      next({ path: to.path, query: to.query, replace: true });
     } catch (error) {
       console.error('[Router] 路由初始化失败:', error);
       MessagePlugin.error('权限加载失败');
