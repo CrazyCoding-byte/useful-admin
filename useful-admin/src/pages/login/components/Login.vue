@@ -8,6 +8,26 @@
     @submit="onSubmit"
   >
     <template v-if="type == 'password'">
+      <!-- 租户选择 -->
+      <t-form-item name="tenantId">
+        <t-select
+          v-model="formData.tenantId"
+          size="large"
+          placeholder="请选择租户"
+          clearable
+        >
+          <template #prefix-icon>
+            <t-icon name="home" />
+          </template>
+          <t-option
+            v-for="item in tenantList"
+            :key="item.tenantId"
+            :label="item.tenantName"
+            :value="item.tenantId"
+          />
+        </t-select>
+      </t-form-item>
+
       <t-form-item name="account">
         <t-input v-model="formData.account" size="large" placeholder="请输入账号：admin">
           <template #prefix-icon>
@@ -79,13 +99,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import QrcodeVue from 'qrcode.vue';
 import { MessagePlugin } from 'tdesign-vue-next';
 import type { FormInstanceFunctions, FormRule } from 'tdesign-vue-next';
 import { useCounter } from '@/hooks';
 import { useUserStore, usePermissionStore } from '@/store';
+import { userAuthApi } from '@/api/user/user';
 
 const userStore = useUserStore();
 const permissionStore = usePermissionStore();
@@ -96,7 +117,36 @@ const INITIAL_DATA = {
   password: 'admin',
   verifyCode: '',
   checked: false,
+  tenantId: undefined as string | undefined,
 };
+
+// 租户列表
+const tenantList = ref<Array<{ tenantId: string; tenantName: string; logo?: string }>>([]);
+
+// 加载租户列表
+const loadTenantList = async () => {
+  try {
+    const res = await userAuthApi.getTenantList();
+    if (res && Array.isArray(res)) {
+      tenantList.value = res;
+      // 如果有默认租户，自动选中
+      if (res.length > 0 && !formData.value.tenantId) {
+        formData.value.tenantId = res[0].tenantId;
+      }
+    }
+  } catch (error) {
+    console.error('加载租户列表失败:', error);
+    // 使用默认租户数据（当后端接口不可用时）
+    tenantList.value = [
+      { tenantId: '000000', tenantName: '默认租户' },
+    ];
+  }
+};
+
+// 组件挂载时加载租户列表
+onMounted(() => {
+  loadTenantList();
+});
 
 const FORM_RULES: Record<string, FormRule[]> = {
   phone: [{ required: true, message: '手机号必填', type: 'error' }],

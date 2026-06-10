@@ -2,12 +2,14 @@ package cn.poile.ucs.auth.controller;
 
 import cn.poile.ucs.auth.service.AuthService;
 import com.yzx.apiclient.api.SystemApi;
+import com.yzx.common.tenant.TenantContext;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.LoginRequest;
 import com.yzx.model.constant.Constants;
 import com.yzx.model.enums.AuthCode;
 import com.yzx.model.exception.CustomException;
 import com.yzx.model.exception.ExceptionCast;
+import com.yzx.model.system.SysTenant;
 import com.yzx.model.ucenter.ext.AuthToken;
 import com.yzx.model.utils.Oauth2Util;
 import com.yzx.model.utils.ServletUtils;
@@ -18,6 +20,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -41,57 +44,103 @@ public class AuthenticationController {
     @Autowired
     private Oauth2Util oauth2Util;
 
+    /**
+     * 获取可用租户列表（供登录选择）
+     */
+    @GetMapping("/tenant/list")
+    public AjaxResult getTenantList() {
+        List<SysTenant> tenantList = systemApi.getAvailableTenantList();
+        return AjaxResult.success(tenantList);
+    }
+
+    /**
+     * 验证租户是否可用
+     */
+    @GetMapping("/tenant/check/{tenantId}")
+    public AjaxResult checkTenant(@PathVariable String tenantId) {
+        boolean available = systemApi.checkTenantAvailable(tenantId);
+        return AjaxResult.success(available);
+    }
+
     @PostMapping("/user/login")
     public AjaxResult login(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
         System.out.println(loginRequest);
         if (loginRequest == null) {
             ExceptionCast.cast(AuthCode.AUTH_LOGIN_ERROR);
         }
-        LinkedMultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("client_id", loginRequest.getClientId());
-        switch (loginRequest.getGrantType()) {
-            case Constants.LOGIN_TYPE_PWD:
-                if (StringUtils.isEmpty(loginRequest.getMobile())) {
-                    ExceptionCast.cast(AuthCode.AUTH_MOBILE_NONE);
-                }
-                if (StringUtils.isEmpty(loginRequest.getPassword())) {
-                    ExceptionCast.cast(AuthCode.AUTH_PASSWORD_NONE);
-                }
-                body.add("mobile", loginRequest.getMobile());
-                body.add("password", loginRequest.getPassword());
-                break;
-            case Constants.LOGIN_TYPE_PASSWORD:
-                if (StringUtils.isEmpty(loginRequest.getUsername())) {
-                    ExceptionCast.cast(AuthCode.AUTH_USERNAME_NONE);
-                }
-                if (StringUtils.isEmpty(loginRequest.getPassword())) {
-                    ExceptionCast.cast(AuthCode.AUTH_PASSWORD_NONE);
-                }
-                body.add("username", loginRequest.getUsername());
-                body.add("password", loginRequest.getPassword());
-                break;
-            case Constants.LOGIN_TYPE_SMS:
-                if (StringUtils.isEmpty(loginRequest.getMobile())) {
-                    ExceptionCast.cast(AuthCode.AUTH_MOBILE_NONE);
-                }
-                if (StringUtils.isEmpty(loginRequest.getVerifyCode())) {
-                    ExceptionCast.cast(AuthCode.AUTH_VERIFYCODE_NONE);
-                }
-                body.add("mobile", loginRequest.getMobile());
-                body.add("verifyCode", loginRequest.getVerifyCode());
-                break;
-            default:
-                ExceptionCast.cast(AuthCode.AUTH_LOGIN_ERROR);
+
+        // 验证租户
+        String tenantId = loginRequest.getTenantId();
+        if (StringUtils.isNotEmpty(tenantId)) {
+            // 检查租户是否存在且可用
+            boolean tenantAvailable = systemApi.checkTenantAvailable(tenantId);
+            if (!tenantAvailable) {
+                ExceptionCast.cast(AuthCode.AUTH_TENANT_NOT_AVAILABLE);
+            }
+            // 设置租户上下文
+            TenantContext.setCurrentTenantId(tenantId);
+            log.info("用户登录，租户ID: {}", tenantId);
+        } else {
+            // 未选择租户，使用默认租户
+            tenantId = "000000";
+            TenantContext.setCurrentTenantId(tenantId);
+            log.info("用户登录，使用默认租户ID: {}", tenantId);
         }
-        //body还可以加上需要携带的数据过去，比如菜单列表，menu列表，用于页面权限校验，或者也可以拿着身份令牌从别的接口中获取菜单列表，按钮列表等
-        body.add("grant_type", loginRequest.getGrantType());
-        //申请令牌
-        AuthToken authToken = authService.login(body, request);
-        AjaxResult result = new AjaxResult();
-        result.put("code", 200);
-        result.put("message", "操作成功");
-        result.put("token", authToken);
-        return result;
+
+        try {
+            LinkedMultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("client_id", loginRequest.getClientId());
+            // 传递租户ID到认证服务
+            body.add("tenant_id", tenantId);
+
+            switch (loginRequest.getGrantType()) {
+                case Constants.LOGIN_TYPE_PWD:
+                    if (StringUtils.isEmpty(loginRequest.getMobile())) {
+                        ExceptionCast.cast(AuthCode.AUTH_MOBILE_NONE);
+                    }
+                    if (StringUtils.isEmpty(loginRequest.getPassword())) {
+                        ExceptionCast.cast(AuthCode.AUTH_PASSWORD_NONE);
+                    }
+                    body.add("mobile", loginRequest.getMobile());
+                    body.add("password", loginRequest.getPassword());
+                    break;
+                case Constants.LOGIN_TYPE_PASSWORD:
+                    if (StringUtils.isEmpty(loginRequest.getUsername())) {
+                        ExceptionCast.cast(AuthCode.AUTH_USERNAME_NONE);
+                    }
+                    if (StringUtils.isEmpty(loginRequest.getPassword())) {
+                        ExceptionCast.cast(AuthCode.AUTH_PASSWORD_NONE);
+                    }
+                    body.add("username", loginRequest.getUsername());
+                    body.add("password", loginRequest.getPassword());
+                    break;
+                case Constants.LOGIN_TYPE_SMS:
+                    if (StringUtils.isEmpty(loginRequest.getMobile())) {
+                        ExceptionCast.cast(AuthCode.AUTH_MOBILE_NONE);
+                    }
+                    if (StringUtils.isEmpty(loginRequest.getVerifyCode())) {
+                        ExceptionCast.cast(AuthCode.AUTH_VERIFYCODE_NONE);
+                    }
+                    body.add("mobile", loginRequest.getMobile());
+                    body.add("verifyCode", loginRequest.getVerifyCode());
+                    break;
+                default:
+                    ExceptionCast.cast(AuthCode.AUTH_LOGIN_ERROR);
+            }
+            //body还可以加上需要携带的数据过去，比如菜单列表，menu列表，用于页面权限校验，或者也可以拿着身份令牌从别的接口中获取菜单列表，按钮列表等
+            body.add("grant_type", loginRequest.getGrantType());
+            //申请令牌
+            AuthToken authToken = authService.login(body, request);
+            AjaxResult result = new AjaxResult();
+            result.put("code", 200);
+            result.put("message", "操作成功");
+            result.put("token", authToken);
+            result.put("tenantId", tenantId);
+            return result;
+        } finally {
+            // 清理租户上下文
+            TenantContext.clear();
+        }
     }
     /**
      * token刷新

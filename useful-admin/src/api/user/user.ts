@@ -5,11 +5,21 @@ import { request } from '@/utils/request';
  */
 export const userAuthApi = {
   /**
+   * 获取租户列表
+   * @returns 租户列表
+   */
+  getTenantList: () => {
+    return request.get({
+      url: '/auth/tenant/list',
+    });
+  },
+
+  /**
    * 用户登录
    * @param userInfo 登录信息
    * @returns 登录结果
    */
-  login: (userInfo: { account: string; password: string }) => {
+  login: (userInfo: { account: string; password: string; tenantId?: string }) => {
     return request.post({
       url: '/auth/user/login',
       data: {
@@ -17,6 +27,7 @@ export const userAuthApi = {
         grantType: 'password',
         username: userInfo.account,
         password: userInfo.password,
+        tenantId: userInfo.tenantId,
       },
     });
   },

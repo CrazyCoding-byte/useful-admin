@@ -17,4 +17,6 @@ public class LoginRequest {
     String uuid;
     String grantType;
     String clientId;
+    /** 租户ID */
+    String tenantId;
 }

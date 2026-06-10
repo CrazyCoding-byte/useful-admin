@@ -32,11 +32,23 @@ public class CustomTenantLineHandler implements TenantLineHandler {
         String tenantId = TenantContext.getCurrentTenantId();
 
         if (StringUtils.isBlank(tenantId)) {
-            log.warn("无法获取有效的租户ID，将不添加租户条件");
+            // 租户ID为空，可能是超级管理员访问所有租户数据
+            log.debug("租户ID为空，跳过租户过滤（可能是超级管理员）");
             return new NullValue();
         }
 
         return new StringValue(tenantId);
+    }
+
+    /**
+     * 是否忽略租户过滤
+     * 当租户ID为空时，忽略租户过滤（超级管理员场景）
+     */
+    @Override
+    public boolean ignoreTenantLine() {
+        String tenantId = TenantContext.getCurrentTenantId();
+        // 租户ID为空时，忽略租户行过滤（超级管理员可以查看所有租户数据）
+        return StringUtils.isBlank(tenantId);
     }
 
     /**

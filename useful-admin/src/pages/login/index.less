@@ -1,14 +1,12 @@
 .light {
   &.login-wrapper {
-    background-color: white;
-    background-image: url('@/assets/assets-login-bg-white.png');
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   }
 }
 
 .dark {
   &.login-wrapper {
-    background-color: var(--td-bg-color-page);
-    background-image: url('@/assets/assets-login-bg-black.png');
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   }
 }
 
@@ -23,18 +21,27 @@
 
 .login-container {
   position: absolute;
-  top: 22%;
-  left: 5%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   min-height: 500px;
   line-height: 22px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .title-container {
+  text-align: center;
+  margin-bottom: 32px;
+
   .title {
-    font-size: 36px;
-    line-height: 44px;
-    color: var(--td-text-color-primary);
+    font-size: 28px;
+    line-height: 40px;
+    color: #333;
     margin-top: 4px;
+    font-weight: 600;
 
     &.margin-no {
       margin-top: 0;
@@ -50,12 +57,16 @@
       font-size: 14px;
 
       &:first-child {
-        color: var(--td-text-color-secondary);
+        color: #666;
       }
 
       &:last-child {
-        color: var(--td-text-color-primary);
+        color: #667eea;
         cursor: pointer;
+
+        &:hover {
+          color: #764ba2;
+        }
       }
     }
   }
@@ -143,7 +154,16 @@
   }
 
   .btn-container {
-    margin-top: 48px;
+    margin-top: 32px;
+
+    :deep(.t-button) {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+
+      &:hover {
+        opacity: 0.9;
+      }
+    }
   }
 }
 
@@ -189,9 +209,10 @@
 .copyright {
   font-size: 14px;
   position: absolute;
-  left: 5%;
-  bottom: 64px;
-  color: var(--td-text-color-secondary);
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 32px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 @media screen and (max-height: 700px) {

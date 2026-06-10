@@ -26,14 +26,18 @@ export const useUserStore = defineStore('user', {
   },
   actions: {
     async login(userInfo: Record<string, unknown>) {
-    const { account, password } = userInfo as { account: string; password: string };
+    const { account, password, tenantId } = userInfo as { account: string; password: string; tenantId?: string };
     try{
       // 实际的 OAuth2 登录逻辑
-        const data = await userAuthApi.login({ account, password });
+        const data = await userAuthApi.login({ account, password, tenantId });
         if (data.code === 200) {
           console.log("获取登录的信息",data)
           this.setToken(data.token.accessToken,data.token.refreshToken);
           localStorage.setItem(CLIENT_ID_NAME, this.clientId);
+          // 保存租户ID到本地存储
+          if (data.tenantId) {
+            localStorage.setItem('tenantId', data.tenantId);
+          }
           await this.getUserInfo();
           // 登录成功，返回成功信息
           return Promise.resolve(data);

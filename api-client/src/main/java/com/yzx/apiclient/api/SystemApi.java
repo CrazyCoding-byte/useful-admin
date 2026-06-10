@@ -1,11 +1,13 @@
 package com.yzx.apiclient.api;
 
 import com.yzx.model.AjaxResult;
+import com.yzx.model.system.SysTenant;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -51,4 +53,16 @@ public interface SystemApi {
 
     @GetMapping("/system/getUserInfoByQrCode/{code}")
     public AjaxResult getUserInfoByQrCode(@PathVariable String code);
+
+    /**
+     * 获取可用租户列表（供登录选择）
+     */
+    @GetMapping("/system/tenant/availableList")
+    List<SysTenant> getAvailableTenantList();
+
+    /**
+     * 检查租户是否可用
+     */
+    @GetMapping("/system/tenant/checkAvailable/{tenantId}")
+    boolean checkTenantAvailable(@PathVariable("tenantId") String tenantId);
 }

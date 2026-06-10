@@ -27,7 +27,9 @@ public enum AuthCode implements ResultCode {
     AUTH_REFRESH_TOKEN_ERROR(23010, "刷新令牌失败！"),
     AUTH_ACCOUNT_FORBIDDEN(23012, "账号已被禁用！"),
     AUTH_GRANT_TYPE_ERROR(23013, "授权类型错误！"),
-    Auth_MOBILE_NOT_REGISTER(23014, "手机号未注册！");
+    Auth_MOBILE_NOT_REGISTER(23014, "手机号未注册！"),
+    AUTH_TENANT_NOT_AVAILABLE(23015, "租户不存在或已过期！"),
+    AUTH_TENANT_REQUIRED(23016, "请选择租户！");
     /**
      * 操作代码
      */

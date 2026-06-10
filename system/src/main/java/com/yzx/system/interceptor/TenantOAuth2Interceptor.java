@@ -27,14 +27,29 @@ public class TenantOAuth2Interceptor implements HandlerInterceptor {
             BaseUserDetail userDetail = SecurityUtils.getBaseUserDetail();
 
             if (userDetail != null && userDetail.getBaseUser() != null) {
-                String tenantId = userDetail.getBaseUser().getTenantId();
+                // 检查是否为超级管理员（userId = 1）
+                boolean isSuperAdmin = userDetail.getBaseUser().isAdmin();
 
-                if (tenantId != null && !tenantId.isEmpty()) {
-                    // 设置租户上下文
-                    TenantContext.setCurrentTenantId(tenantId);
-                    log.debug("从 OAuth2 Token 中提取租户ID: {}, URI: {}", tenantId, request.getRequestURI());
+                if (isSuperAdmin) {
+                    // 超级管理员可以跨租户访问
+                    // 检查请求头中是否有指定的租户ID（用于切换租户视图）
+                    String targetTenantId = request.getHeader("X-Tenant-Id");
+                    if (targetTenantId != null && !targetTenantId.isEmpty()) {
+                        TenantContext.setCurrentTenantId(targetTenantId);
+                        log.debug("超级管理员切换到租户ID: {}, URI: {}", targetTenantId, request.getRequestURI());
+                    } else {
+                        // 不设置租户上下文，超级管理员可以看到所有租户数据
+                        log.debug("超级管理员访问所有租户数据，URI: {}", request.getRequestURI());
+                    }
                 } else {
-                    log.warn("用户 [{}] 的租户ID为空，URI: {}", userDetail.getUsername(), request.getRequestURI());
+                    // 普通用户只能访问自己租户的数据
+                    String tenantId = userDetail.getBaseUser().getTenantId();
+                    if (tenantId != null && !tenantId.isEmpty()) {
+                        TenantContext.setCurrentTenantId(tenantId);
+                        log.debug("从 OAuth2 Token 中提取租户ID: {}, URI: {}", tenantId, request.getRequestURI());
+                    } else {
+                        log.warn("用户 [{}] 的租户ID为空，URI: {}", userDetail.getUsername(), request.getRequestURI());
+                    }
                 }
             } else {
                 log.debug("未检测到 OAuth2 用户信息，URI: {}", request.getRequestURI());
