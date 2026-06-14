@@ -35,7 +35,7 @@ export interface SysMenu {
   /**
    * 路由参数
    */
-  query?: string;
+  queryParam?: string;
   
   /**
    * 是否为外链

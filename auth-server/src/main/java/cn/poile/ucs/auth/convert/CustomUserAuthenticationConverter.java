@@ -61,13 +61,7 @@ public class CustomUserAuthenticationConverter extends DefaultUserAuthentication
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        response.put("isServant", baseUserDetail.getBaseUser().getIsServant());
         response.put("avatar", baseUserDetail.getBaseUser().getAvatar());
-        try {
-            response.put("ID", aesEncryptUtil.encrypt(JSON.toJSONString(baseUserDetail.getBaseUser().getIdNumber())));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
         try {
             response.put("permissions", aesEncryptUtil.encrypt(JSON.toJSONString(baseUserDetail.getPermissions())));
         } catch (Exception e) {

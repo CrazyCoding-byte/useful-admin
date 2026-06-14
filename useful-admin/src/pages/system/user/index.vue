@@ -361,7 +361,8 @@ const getUserList = async (pageInfo?: PaginationProps) => {
       pageSize: pageSize,
     };
     const response = await userApi.getUserList(requestParams);
-    const data = response?.data || response || {};
+    // 经过请求拦截器处理，response 已经是 Page 对象（包含 records, total 等）
+    const data = response || {};
     userList.value = Array.isArray(data.records) ? data.records : [];
     pagination.value.total = data.total || 0;
     tableKey.value++;

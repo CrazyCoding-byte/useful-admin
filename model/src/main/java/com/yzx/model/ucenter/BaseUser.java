@@ -36,12 +36,6 @@ public class BaseUser {
     @TableField(exist = false)
     private String clientId;
 
-    /**
-     * 部门ID（表中无此字段）
-     */
-    @TableField(exist = false)
-    private Long deptId;
-
     /** 用户类型（表中存在user_type） */
     private String userType;
 
@@ -55,15 +49,14 @@ public class BaseUser {
     private String nickName;
 
     /**
-     * 用户账号（表中无此字段，表中是password而非userName）
+     * 用户账号（表中存在user_name）
      */
-    @TableField(exist = false)
     private String userName;
 
     /**
-     * 手机号码（表中存在phone_number）
+     * 手机号码（表中存在phonenumber）
      */
-    private String phoneNumber;
+    private String phonenumber;
 
     /**
      * 微信用户唯一id（表中无unionId字段）
@@ -76,15 +69,9 @@ public class BaseUser {
      */
     private String email;
 
-    /** 生日（表中存在birthday） */
-    @DateTimeFormat(pattern = "yyyy-MM-dd")
-    private Date birthday;
-
-    /** 身份证号码（表中存在id_number） */
-    private String idNumber;
-
-    /** 推广码（表中存在qr_code） */
-    private String qrCode;
+    /** 密码（表中存在password） */
+    @TableField(exist = false)
+    private String password;
 
     /** 角色组（表中无roleIds字段） */
     @TableField(exist = false)
@@ -95,8 +82,8 @@ public class BaseUser {
     @TableField(exist = false)
     private Long[] postIds;
 
-    /** 真实姓名（表中存在real_name） */
-    private String realName;
+    /** 部门ID（表中存在dept_id） */
+    private Long deptId;
 
     /** 帐号状态（0正常 1停用）（表中存在status） */
     private String status;

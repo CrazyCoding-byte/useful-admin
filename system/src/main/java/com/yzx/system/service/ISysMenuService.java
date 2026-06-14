@@ -1,7 +1,7 @@
 package com.yzx.system.service;
 
 
-import com.yzx.model.TreeSelect;
+import com.yzx.system.domain.TreeSelect;
 import com.yzx.model.system.SysMenu;
 import com.yzx.model.system.response.SysMenuDto;
 import com.yzx.system.domain.bo.SysMenuBo;

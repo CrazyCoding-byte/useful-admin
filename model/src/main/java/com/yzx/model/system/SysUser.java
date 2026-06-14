@@ -26,6 +26,9 @@ public class SysUser extends BaseEntity {
     @Excel(name = "用户序号", type = Excel.Type.EXPORT, cellType = Excel.ColumnType.NUMERIC, prompt = "用户编号")
     private Long userId;
 
+    /** 租户编号 */
+    private String tenantId;
+
     /** 部门ID */
     @Excel(name = "部门编号", type = Excel.Type.IMPORT)
     private Long deptId;
@@ -46,6 +49,7 @@ public class SysUser extends BaseEntity {
     /** 是否是服务者（1：是，0：不是） */
     @Excel(name = "是否服务者", readConverterExp = "1=是,0=不是")
     @Size(min = 0, max = 1, message = "是否服务者标识长度不能超过1个字符")
+    @TableField(exist = false)
     private String isServant;
 
     /** 用户类型（00系统用户） */
@@ -62,7 +66,6 @@ public class SysUser extends BaseEntity {
     /** 手机号码 */
     @Excel(name = "手机号码", cellType = Excel.ColumnType.TEXT)
     @Size(min = 0, max = 11, message = "手机号码长度不能超过11个字符")
-    @TableField(value = "phone_number")
     private String phonenumber;
 
     /** 用户性别（0男 1女 2未知） */
@@ -152,6 +155,14 @@ public class SysUser extends BaseEntity {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
     public boolean isAdmin() {

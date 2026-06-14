@@ -32,8 +32,9 @@ public class SysProfileController {
         // 这里暂时返回空，实际应该从 SecurityContext 中获取当前用户
         BaseUser loginUser = new BaseUser();
         loginUser.setUserName("admin");
+        loginUser.setUserId(1L); // 临时设置用户ID
         AjaxResult ajax = AjaxResult.success(loginUser);
-        ajax.put("roleGroup", userService.selectUserRoleGroup(loginUser.getUserName()));
+        ajax.put("roleGroup", userService.selectUserRoleGroup(loginUser.getUserId()));
         return ajax;
     }
 

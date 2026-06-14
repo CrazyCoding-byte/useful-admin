@@ -1,5 +1,7 @@
 package com.yzx.model.ucenter;
 
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,22 +17,22 @@ import lombok.ToString;
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
+@TableName("sys_user")
 public class BaseAuth {
     /**
-     * id
+     * 用户id（主键）
      */
-    private Long id;
-    /**
-     * 用户id
-     */
+    @TableField("user_id")
     private Long userId;
     /**
      * 用户账号
      */
+    @TableField("user_name")
     private String userName;
     /**
      * 手机号码
      */
+    @TableField("phonenumber")
     private String phoneNumber;
     /**
      * 用户邮箱

@@ -18,11 +18,13 @@ async function fetchRoutesFromBackend(token: string): Promise<Array<RouteRecordR
     const result = await request.get({ url: '/auth/user/getRouters' });
 
     // 检查后端返回的数据结构
+    // 经过请求拦截器处理，result 已经是路由数据（data 字段的内容）
     let routesData;
-    if (result && result.data) {
-      routesData = result.data;
-    } else if (result && Array.isArray(result)) {
+    if (Array.isArray(result)) {
       routesData = result;
+    } else if (result && Array.isArray(result.data)) {
+      // 兼容处理：如果拦截器配置改变，可能仍有 data 包装
+      routesData = result.data;
     } else {
       return [];
     }

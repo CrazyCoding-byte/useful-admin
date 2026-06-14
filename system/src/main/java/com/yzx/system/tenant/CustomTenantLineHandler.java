@@ -5,7 +5,6 @@ import com.yzx.common.tenant.TenantContext;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.NullValue;
 import net.sf.jsqlparser.expression.StringValue;
 import org.apache.commons.lang3.StringUtils;
 
@@ -26,32 +25,20 @@ public class CustomTenantLineHandler implements TenantLineHandler {
 
     /**
      * 获取租户ID值
+     * 注意：当返回 null 时，MyBatis-Plus 不会添加租户过滤条件
      */
     @Override
     public Expression getTenantId() {
         String tenantId = TenantContext.getCurrentTenantId();
 
         if (StringUtils.isBlank(tenantId)) {
-            // 租户ID为空，可能是超级管理员访问所有租户数据
-            log.debug("租户ID为空，返回空值（超级管理员跳过租户过滤）");
-            return new NullValue();
+            // 租户ID为空，超级管理员访问所有租户数据
+            // 返回 null 表示不添加租户过滤条件
+            log.info("超级管理员模式：跳过租户过滤");
+            return null;
         }
 
         return new StringValue(tenantId);
-    }
-
-    /**
-     * 是否忽略租户过滤
-     * 当租户ID为空时，忽略租户过滤（超级管理员场景）
-     */
-    public boolean ignoreTenantLine() {
-        String tenantId = TenantContext.getCurrentTenantId();
-        boolean ignore = StringUtils.isBlank(tenantId);
-        if (ignore) {
-            log.info("超级管理员模式：跳过租户行过滤");
-        }
-        // 租户ID为空时，忽略租户行过滤（超级管理员可以查看所有租户数据）
-        return ignore;
     }
 
     /**

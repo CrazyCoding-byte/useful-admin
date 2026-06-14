@@ -2,7 +2,7 @@ package com.yzx.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
-import com.yzx.model.TreeSelect;
+import com.yzx.system.domain.TreeSelect;
 import com.yzx.model.exception.ServiceException;
 import com.yzx.model.system.SysMenu;
 import com.yzx.model.system.SysTenant;
@@ -412,7 +412,7 @@ public class SysMenuServiceImpl implements ISysMenuService {
         menuDto.setMenuName(parentMenu.getMenuName());
         menuDto.setPath(parentMenu.getPath());
         menuDto.setComponent(parentMenu.getComponent());
-        menuDto.setQuery(parentMenu.getQuery());
+        menuDto.setQuery(parentMenu.getQueryParam());
         menuDto.setIsFrame(parentMenu.getIsFrame());
         menuDto.setIsCache(parentMenu.getIsCache());
         menuDto.setMenuType(parentMenu.getMenuType());
@@ -425,6 +425,17 @@ public class SysMenuServiceImpl implements ISysMenuService {
         menuDto.setCreateTime(parentMenu.getCreateTime());
         menuDto.setUpdateBy(parentMenu.getUpdateBy());
         menuDto.setUpdateTime(parentMenu.getUpdateTime());
+
+        // 设置前端路由需要的字段
+        menuDto.setName(parentMenu.getPath() != null ? parentMenu.getPath().replace("/", "_") : null);
+        menuDto.setHidden("1".equals(parentMenu.getVisible())); // visible=1表示隐藏
+
+        // 构建 Meta 对象
+        SysMenuDto.Meta meta = new SysMenuDto.Meta();
+        meta.setTitle(parentMenu.getMenuName());
+        meta.setIcon(parentMenu.getIcon());
+        meta.setHidden("1".equals(parentMenu.getVisible()));
+        menuDto.setMeta(meta);
 
         List<SysMenuDto> children = new ArrayList<>();
         for (SysMenu menu : menus) {

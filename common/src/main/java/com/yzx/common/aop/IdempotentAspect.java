@@ -1,5 +1,6 @@
 package com.yzx.common.aop;
 
+import com.yzx.common.aop.Idempotent;
 import com.yzx.model.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,7 +8,6 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.aspectj.lang.reflect.SourceLocation;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.expression.ExpressionParser;
@@ -30,15 +30,21 @@ import java.util.concurrent.TimeUnit;
 @Aspect
 @Component
 @Slf4j
-@RequiredArgsConstructor
 public class IdempotentAspect {
     private final StringRedisTemplate redisTemplate;
+
+    public IdempotentAspect(StringRedisTemplate redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
+
     private final ExpressionParser expressionParser = new SpelExpressionParser();
     private final DefaultParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
+
     @PostConstruct
     public void init() {
         System.out.println("====== IdempotentAspect 已加载 ======");
     }
+
     @Around("@annotation(idempotent)")
     public Object around(ProceedingJoinPoint joinPoint, Idempotent idempotent) throws Throwable {
         // 1. 获取注解属性
@@ -59,10 +65,10 @@ public class IdempotentAspect {
         // 4. 生成分布式锁唯一Value（防误删）
         String lockValue = UUID.randomUUID().toString();
         Boolean isFirstExecute = false;
-        try{
+        try {
 
-             isFirstExecute = redisTemplate.opsForValue().setIfAbsent(idempotentKey, "1", expireTime, timeUnit);
-        }catch (Exception e){
+            isFirstExecute = redisTemplate.opsForValue().setIfAbsent(idempotentKey, "1", expireTime, timeUnit);
+        } catch (Exception e) {
             // Redis异常降级：打印告警，放行业务（避免Redis宕机导致业务不可用）
             log.error("Redis操作异常，幂等校验降级，key：{}", idempotentKey, e);
             return joinPoint.proceed();
