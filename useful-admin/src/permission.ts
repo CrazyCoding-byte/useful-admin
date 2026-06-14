@@ -41,6 +41,7 @@ router.beforeEach(async (to, from, next) => {
       console.log('[Router] 路由初始化完成,重新导航到:', to.path);
       // addRoute 后必须重新指定路径触发路由重新匹配，否则 Vue Router 不会识别新注册的路由
       // 第二次进入 beforeEach 时 routesInitialized 已为 true，直接放行
+      // 使用 path + query 的方式重新导航，确保路由能正确匹配
       next({ path: to.path, query: to.query, replace: true });
     } catch (error) {
       console.error('[Router] 路由初始化失败:', error);

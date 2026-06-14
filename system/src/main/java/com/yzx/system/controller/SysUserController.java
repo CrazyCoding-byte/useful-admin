@@ -15,6 +15,7 @@ import com.yzx.model.utils.SecurityUtils;
 
 
 import com.yzx.system.annotation.RequiresPermission;
+import com.yzx.system.domain.vo.SysRoleVo;
 import com.yzx.system.service.ISysRoleService;
 import com.yzx.system.service.ISysUserService;
 import org.apache.commons.lang3.ArrayUtils;
@@ -247,7 +248,7 @@ public class SysUserController {
     public AjaxResult authRole(@PathVariable("userId") Long userId) {
         AjaxResult ajax = AjaxResult.success();
         SysUser user = userService.selectUserById(userId);
-        List<SysRole> roles = roleService.selectRolesByUserId(userId);
+        List<SysRoleVo> roles = roleService.selectRolesByUserId(userId);
         ajax.put("user", user);
         ajax.put("roles", SysUser.isAdmin(userId) ? roles : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()));
         return ajax;
@@ -260,7 +261,7 @@ public class SysUserController {
     @PutMapping("/authRole")
     public AjaxResult insertAuthRole(Long userId, Long[] roleIds) {
         userService.checkUserDataScope(userId);
-        roleService.checkRoleDataScope(roleIds);
+        roleService.checkRoleDataScope(Arrays.asList(roleIds));
         userService.insertUserAuth(userId, roleIds);
         return AjaxResult.success();
     }

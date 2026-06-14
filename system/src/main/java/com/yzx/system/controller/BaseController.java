@@ -74,8 +74,8 @@ public class BaseController {
      * 响应请求分页数据
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    protected TableDataInfo getDataTable(List<?> list) {
-        TableDataInfo rspData = new TableDataInfo();
+    protected <T> TableDataInfo<T> getDataTable(List<T> list) {
+        TableDataInfo<T> rspData = new TableDataInfo<>();
         rspData.setCode(HttpStatus.SUCCESS);
         rspData.setMsg("查询成功");
         rspData.setRows(list);

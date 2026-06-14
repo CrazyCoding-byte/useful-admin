@@ -1,17 +1,24 @@
 package com.yzx.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.annotation.DataScope;
 import com.yzx.model.exception.ServiceException;
 import com.yzx.model.system.*;
+import com.yzx.model.system.PageQuery;
+import com.yzx.model.system.TableDataInfo;
 import com.yzx.model.ucenter.BaseAuth;
 import com.yzx.model.utils.BeanValidators;
 import com.yzx.model.utils.SecurityUtils;
 import com.yzx.model.utils.SpringUtils;
 import com.yzx.system.config.UserRabbitMQConfig;
+import com.yzx.system.domain.bo.SysUserBo;
+import com.yzx.system.domain.convert.SysUserConvert;
+import com.yzx.system.domain.vo.SysRoleVo;
+import com.yzx.system.domain.vo.SysUserVo;
 import com.yzx.system.mapper.SysRoleMapper;
 import com.yzx.system.mapper.SysUserMapper;
 import com.yzx.system.mapper.SysUserRoleMapper;
@@ -42,6 +49,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements ISysUserService {
+
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
@@ -64,13 +72,576 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Autowired
     protected Validator validator;
+
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
+
+    @Autowired
+    private SysUserConvert userConvert;
+
+    // ==================== 新的基于 Bo/Vo 的方法实现 ====================
 
     /**
      * 根据条件分页查询用户列表
      *
+     * @param user      用户信息
+     * @param pageQuery 分页查询参数
+     * @return 用户信息集合信息
+     */
+    @Override
+    @DataScope(deptAlias = "d", userAlias = "u")
+    public TableDataInfo<SysUserVo> selectPageUserList(SysUserBo user, PageQuery pageQuery) {
+        Page<SysUser> page = pageQuery.build();
+        LambdaQueryWrapper<SysUser> queryWrapper = buildQueryWrapper(user);
+
+        long total = baseMapper.selectCount(queryWrapper);
+        List<SysUser> records = baseMapper.selectList(queryWrapper
+                .last("LIMIT " + (page.getCurrent() - 1) * page.getSize() + "," + page.getSize()));
+
+        List<SysUserVo> voList = userConvert.entityListToVoList(records);
+        TableDataInfo<SysUserVo> tableDataInfo = new TableDataInfo<>();
+        tableDataInfo.setTotal((int) total);
+        tableDataInfo.setRows(voList);
+        tableDataInfo.setCode(200);
+        tableDataInfo.setMsg("查询成功");
+        return tableDataInfo;
+    }
+
+    /**
+     * 构建查询条件
+     */
+    private LambdaQueryWrapper<SysUser> buildQueryWrapper(SysUserBo user) {
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+
+        if (!StringUtils.isEmpty(user.getUserName())) {
+            queryWrapper.like(SysUser::getUserName, user.getUserName());
+        }
+        if (!StringUtils.isEmpty(user.getNickName())) {
+            queryWrapper.like(SysUser::getNickName, user.getNickName());
+        }
+        if (!StringUtils.isEmpty(user.getPhonenumber())) {
+            queryWrapper.like(SysUser::getPhonenumber, user.getPhonenumber());
+        }
+        if (!StringUtils.isEmpty(user.getStatus())) {
+            queryWrapper.eq(SysUser::getStatus, user.getStatus());
+        }
+        if (user.getDeptId() != null) {
+            queryWrapper.eq(SysUser::getDeptId, user.getDeptId());
+        }
+        queryWrapper.eq(SysUser::getDelFlag, "0");
+
+        return queryWrapper;
+    }
+
+    /**
+     * 根据条件分页查询已分配用户角色列表
+     *
+     * @param user      用户信息
+     * @param pageQuery 分页查询参数
+     * @return 用户信息集合信息
+     */
+    @Override
+    @DataScope(deptAlias = "d", userAlias = "u")
+    public TableDataInfo<SysUserVo> selectAllocatedList(SysUserBo user, PageQuery pageQuery) {
+        Page<SysUser> page = pageQuery.build();
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+
+        if (!StringUtils.isEmpty(user.getUserName())) {
+            queryWrapper.like(SysUser::getUserName, user.getUserName());
+        }
+        if (!StringUtils.isEmpty(user.getStatus())) {
+            queryWrapper.eq(SysUser::getStatus, user.getStatus());
+        }
+        if (!StringUtils.isEmpty(user.getPhonenumber())) {
+            queryWrapper.like(SysUser::getPhonenumber, user.getPhonenumber());
+        }
+        queryWrapper.eq(SysUser::getDelFlag, "0");
+
+        long total = baseMapper.selectCount(queryWrapper);
+        List<SysUser> records = baseMapper.selectList(queryWrapper
+                .last("LIMIT " + (page.getCurrent() - 1) * page.getSize() + "," + page.getSize()));
+
+        List<SysUserVo> voList = userConvert.entityListToVoList(records);
+        TableDataInfo<SysUserVo> tableDataInfo = new TableDataInfo<>();
+        tableDataInfo.setTotal((int) total);
+        tableDataInfo.setRows(voList);
+        tableDataInfo.setCode(200);
+        tableDataInfo.setMsg("查询成功");
+        return tableDataInfo;
+    }
+
+    /**
+     * 根据条件分页查询未分配用户角色列表
+     *
+     * @param user      用户信息
+     * @param pageQuery 分页查询参数
+     * @return 用户信息集合信息
+     */
+    @Override
+    @DataScope(deptAlias = "d", userAlias = "u")
+    public TableDataInfo<SysUserVo> selectUnallocatedList(SysUserBo user, PageQuery pageQuery) {
+        Page<SysUser> page = pageQuery.build();
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+
+        if (!StringUtils.isEmpty(user.getUserName())) {
+            queryWrapper.like(SysUser::getUserName, user.getUserName());
+        }
+        if (!StringUtils.isEmpty(user.getPhonenumber())) {
+            queryWrapper.like(SysUser::getPhonenumber, user.getPhonenumber());
+        }
+        queryWrapper.eq(SysUser::getDelFlag, "0");
+
+        long total = baseMapper.selectCount(queryWrapper);
+        List<SysUser> records = baseMapper.selectList(queryWrapper
+                .last("LIMIT " + (page.getCurrent() - 1) * page.getSize() + "," + page.getSize()));
+
+        List<SysUserVo> voList = userConvert.entityListToVoList(records);
+        TableDataInfo<SysUserVo> tableDataInfo = new TableDataInfo<>();
+        tableDataInfo.setTotal((int) total);
+        tableDataInfo.setRows(voList);
+        tableDataInfo.setCode(200);
+        tableDataInfo.setMsg("查询成功");
+        return tableDataInfo;
+    }
+
+    /**
+     * 通过用户名查询用户
+     *
+     * @param userName 用户名
+     * @return 用户对象信息
+     */
+    @Override
+    public SysUserVo selectUserByUserName(String userName) {
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUser::getUserName, userName);
+        SysUser user = baseMapper.selectOne(queryWrapper);
+        return userConvert.entityToVo(user);
+    }
+
+    /**
+     * 通过手机号查询用户
+     *
+     * @param phonenumber 手机号
+     * @return 用户对象信息
+     */
+    @Override
+    public SysUserVo selectUserByPhonenumber(String phonenumber) {
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUser::getPhonenumber, phonenumber);
+        SysUser user = baseMapper.selectOne(queryWrapper);
+        return userConvert.entityToVo(user);
+    }
+
+    /**
+     * 通过用户ID查询用户
+     *
+     * @param userId 用户ID
+     * @return 用户对象信息
+     */
+    @Override
+    public SysUserVo selectUserById(Long userId) {
+        SysUser user = baseMapper.selectById(userId);
+        if (user == null) {
+            return null;
+        }
+        SysUserVo vo = userConvert.entityToVo(user);
+        // 查询角色信息
+        List<SysRole> roles = roleMapper.selectRolesByUserId(userId);
+        vo.setRoles(roles != null ? roles.stream()
+                .map(role -> {
+                    SysRoleVo roleVo = new SysRoleVo();
+                    roleVo.setRoleId(role.getRoleId());
+                    roleVo.setRoleName(role.getRoleName());
+                    roleVo.setRoleKey(role.getRoleKey());
+                    roleVo.setRoleSort(role.getRoleSort());
+                    roleVo.setStatus(role.getStatus());
+                    return roleVo;
+                }).collect(Collectors.toList()) : null);
+        return vo;
+    }
+
+    /**
+     * 通过用户ID串查询用户
+     *
+     * @param userIds 用户ID串
+     * @param deptId  部门id
+     * @return 用户列表信息
+     */
+    @Override
+    public List<SysUserVo> selectUserByIds(List<Long> userIds, Long deptId) {
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.select(SysUser::getUserId, SysUser::getUserName, SysUser::getNickName,
+                        SysUser::getEmail, SysUser::getPhonenumber)
+                .eq(SysUser::getStatus, "0")
+                .eq(SysUser::getDelFlag, "0");
+        if (deptId != null) {
+            queryWrapper.eq(SysUser::getDeptId, deptId);
+        }
+        if (userIds != null && !userIds.isEmpty()) {
+            queryWrapper.in(SysUser::getUserId, userIds);
+        }
+        List<SysUser> list = baseMapper.selectList(queryWrapper);
+        return userConvert.entityListToVoList(list);
+    }
+
+    /**
+     * 根据用户ID查询用户所属角色组
+     *
+     * @param userId 用户ID
+     * @return 结果
+     */
+    @Override
+    public String selectUserRoleGroup(Long userId) {
+        List<SysRole> list = roleMapper.selectRolesByUserId(userId);
+        if (CollectionUtils.isEmpty(list)) {
+            return "";
+        }
+        return list.stream().map(SysRole::getRoleName).collect(Collectors.joining(","));
+    }
+
+    /**
+     * 根据用户ID查询用户所属岗位组
+     *
+     * @param userId 用户ID
+     * @return 结果
+     */
+    @Override
+    public String selectUserPostGroup(Long userId) {
+        // 当前系统没有岗位表，返回空字符串
+        return "";
+    }
+
+    /**
+     * 校验用户账号是否唯一
+     *
      * @param user 用户信息
+     * @return 结果
+     */
+    @Override
+    public boolean checkUserNameUnique(SysUserBo user) {
+        Long userId = user.getUserId() == null ? -1L : user.getUserId();
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUser::getUserName, user.getUserName());
+        queryWrapper.ne(SysUser::getUserId, userId);
+        SysUser info = baseMapper.selectOne(queryWrapper);
+        return info == null;
+    }
+
+    /**
+     * 校验手机号码是否唯一
+     *
+     * @param user 用户信息
+     * @return 结果
+     */
+    @Override
+    public boolean checkPhoneUnique(SysUserBo user) {
+        Long userId = user.getUserId() == null ? -1L : user.getUserId();
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUser::getPhonenumber, user.getPhonenumber());
+        queryWrapper.ne(SysUser::getUserId, userId);
+        SysUser info = baseMapper.selectOne(queryWrapper);
+        return info == null;
+    }
+
+    /**
+     * 校验email是否唯一
+     *
+     * @param user 用户信息
+     * @return 结果
+     */
+    @Override
+    public boolean checkEmailUnique(SysUserBo user) {
+        Long userId = user.getUserId() == null ? -1L : user.getUserId();
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUser::getEmail, user.getEmail());
+        queryWrapper.ne(SysUser::getUserId, userId);
+        SysUser info = baseMapper.selectOne(queryWrapper);
+        return info == null;
+    }
+
+    /**
+     * 校验用户是否允许操作
+     *
+     * @param userId 用户ID
+     */
+    @Override
+    public void checkUserAllowed(Long userId) {
+        if (userId != null && (1L == userId || 222L == userId)) {
+            throw new ServiceException("不允许操作超级管理员用户");
+        }
+    }
+
+    /**
+     * 校验用户是否有数据权限
+     *
+     * @param userId 用户id
+     */
+    @Override
+    public void checkUserDataScope(Long userId) {
+        if (!SysUser.isAdmin(SecurityUtils.getUserId())) {
+            SysUser user = new SysUser();
+            user.setUserId(userId);
+            Page<SysUser> page = new Page<>(1, 1);
+            Page<SysUser> result = SpringUtils.getAopProxy(this).selectUserList(user, page);
+            if (result.getRecords().isEmpty()) {
+                throw new ServiceException("没有权限访问用户数据！");
+            }
+        }
+    }
+
+    /**
+     * 新增用户信息
+     *
+     * @param user 用户信息
+     * @return 结果
+     */
+    @Override
+    @Transactional
+    public int insertUser(SysUserBo user) {
+        SysUser sysUser = userConvert.boToEntity(user);
+        // 新增用户信息
+        int rows = baseMapper.insert(sysUser) > 0 ? 1 : 0;
+        user.setUserId(sysUser.getUserId());
+        // 新增用户与角色管理
+        if (rows > 0 && user.getRoleIds() != null) {
+            insertUserRole(user.getUserId(), user.getRoleIds());
+        }
+        return rows;
+    }
+
+    /**
+     * 注册用户信息
+     *
+     * @param user 用户信息
+     * @return 结果
+     */
+    @Override
+    @Transactional
+    public boolean registerUser(SysUserBo user) {
+        SysUser sysUser = userConvert.boToEntity(user);
+        int rows = baseMapper.insert(sysUser);
+        if (rows > 0) {
+            BaseAuth baseAuth = new BaseAuth();
+            baseAuth.setUserId(sysUser.getUserId());
+            baseAuth.setUserName(sysUser.getUserName());
+            baseAuth.setPhoneNumber(sysUser.getPhonenumber());
+            baseAuth.setEmail(sysUser.getEmail());
+            baseAuth.setPassword(new BCryptPasswordEncoder().encode(sysUser.getPassword()));
+            baseAuthService.save(baseAuth);
+        }
+        return rows > 0;
+    }
+
+    /**
+     * 修改用户信息
+     *
+     * @param user 用户信息
+     * @return 结果
+     */
+    @Override
+    @Transactional
+    public int updateUser(SysUserBo user) {
+        Long userId = user.getUserId();
+        // 如果提供了角色信息，才更新角色关联
+        if (user.getRoleIds() != null) {
+            // 删除用户与角色关联
+            userRoleMapper.deleteUserRoleByUserId(userId);
+            // 新增用户与角色管理
+            insertUserRole(userId, user.getRoleIds());
+        }
+        // 修改用户信息
+        SysUser sysUser = userConvert.boToEntity(user);
+        return baseMapper.update(sysUser, new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserId, user.getUserId())) > 0 ? 1 : 0;
+    }
+
+    /**
+     * 用户授权角色
+     *
+     * @param userId  用户ID
+     * @param roleIds 角色组
+     */
+    @Override
+    @Transactional
+    public void insertUserAuth(Long userId, Long[] roleIds) {
+        userRoleMapper.deleteUserRoleByUserId(userId);
+        insertUserRole(userId, roleIds);
+    }
+
+    /**
+     * 修改用户状态
+     *
+     * @param userId 用户ID
+     * @param status 账号状态
+     * @return 结果
+     */
+    @Override
+    public int updateUserStatus(Long userId, String status) {
+        SysUser user = new SysUser();
+        user.setStatus(status);
+        return baseMapper.update(user, new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserId, userId)) > 0 ? 1 : 0;
+    }
+
+    /**
+     * 修改用户基本信息
+     *
+     * @param user 用户信息
+     * @return 结果
+     */
+    @Override
+    public int updateUserProfile(SysUserBo user) {
+        SysUser sysUser = userConvert.boToEntity(user);
+        return baseMapper.updateById(sysUser) > 0 ? 1 : 0;
+    }
+
+    /**
+     * 修改用户头像
+     *
+     * @param userId 用户ID
+     * @param avatar 头像地址
+     * @return 结果
+     */
+    @Override
+    public boolean updateUserAvatar(Long userId, String avatar) {
+        SysUser user = new SysUser();
+        user.setAvatar(avatar);
+        return baseMapper.update(user, new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserId, userId)) > 0;
+    }
+
+    /**
+     * 重置用户密码
+     *
+     * @param userId   用户ID
+     * @param password 密码
+     * @return 结果
+     */
+    @Override
+    public int resetUserPwd(Long userId, String password) {
+        SysUser user = new SysUser();
+        user.setPassword(password);
+        return baseMapper.update(user, new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserId, userId)) > 0 ? 1 : 0;
+    }
+
+    /**
+     * 通过用户ID删除用户
+     *
+     * @param userId 用户ID
+     * @return 结果
+     */
+    @Override
+    @Transactional
+    public int deleteUserById(Long userId) {
+        // 删除用户与角色关联
+        userRoleMapper.deleteUserRoleByUserId(userId);
+        // 删除用户
+        return baseMapper.deleteById(userId) > 0 ? 1 : 0;
+    }
+
+    /**
+     * 批量删除用户信息
+     *
+     * @param userIds 需要删除的用户ID
+     * @return 结果
+     */
+    @Override
+    @Transactional
+    public int deleteUserByIds(Long[] userIds) {
+        for (Long userId : userIds) {
+            checkUserAllowed(userId);
+            checkUserDataScope(userId);
+        }
+        // 删除用户与角色关联
+        LambdaQueryWrapper<SysUserRole> sysUserRoleLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        sysUserRoleLambdaQueryWrapper.in(SysUserRole::getUserId, userIds);
+        userRoleMapper.delete(sysUserRoleLambdaQueryWrapper);
+        // 批量删除用户
+        return baseMapper.delete(new LambdaQueryWrapper<SysUser>().in(SysUser::getUserId, Arrays.asList(userIds))) > 0 ? 1 : 0;
+    }
+
+    /**
+     * 通过用户ID查询用户账户
+     *
+     * @param userId 用户ID
+     * @return 用户账户
+     */
+    @Override
+    public String selectUserNameById(Long userId) {
+        SysUser user = baseMapper.selectById(userId);
+        return user != null ? user.getUserName() : null;
+    }
+
+    /**
+     * 通过用户ID查询用户昵称
+     *
+     * @param userId 用户ID
+     * @return 用户昵称
+     */
+    @Override
+    public String selectNicknameById(Long userId) {
+        SysUser user = baseMapper.selectById(userId);
+        return user != null ? user.getNickName() : null;
+    }
+
+    /**
+     * 通过用户ID查询用户手机号
+     *
+     * @param userId 用户id
+     * @return 用户手机号
+     */
+    @Override
+    public String selectPhonenumberById(Long userId) {
+        SysUser user = baseMapper.selectById(userId);
+        return user != null ? user.getPhonenumber() : null;
+    }
+
+    /**
+     * 通过用户ID查询用户邮箱
+     *
+     * @param userId 用户id
+     * @return 用户邮箱
+     */
+    @Override
+    public String selectEmailById(Long userId) {
+        SysUser user = baseMapper.selectById(userId);
+        return user != null ? user.getEmail() : null;
+    }
+
+    /**
+     * 通过部门id查询当前部门所有用户
+     *
+     * @param deptId 部门id
+     * @return 结果
+     */
+    @Override
+    public List<SysUserVo> selectUserListByDept(Long deptId) {
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysUser::getDeptId, deptId);
+        queryWrapper.eq(SysUser::getDelFlag, "0");
+        queryWrapper.orderByAsc(SysUser::getUserId);
+        List<SysUser> list = baseMapper.selectList(queryWrapper);
+        return userConvert.entityListToVoList(list);
+    }
+
+    /**
+     * 通过角色ID查询用户ID
+     *
+     * @param roleIds 角色ids
+     * @return 用户ids
+     */
+    @Override
+    public List<Long> selectUserIdsByRoleIds(List<Long> roleIds) {
+        LambdaQueryWrapper<SysUserRole> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(SysUserRole::getRoleId, roleIds);
+        List<SysUserRole> userRoles = userRoleMapper.selectList(queryWrapper);
+        return userRoles.stream().map(SysUserRole::getUserId).distinct().collect(Collectors.toList());
+    }
+
+    // ==================== 兼容旧接口的方法实现 ====================
+
+    /**
+     * 根据条件分页查询用户列表（兼容旧方法）
+     *
+     * @param user 用户信息
+     * @param page 分页信息
      * @return 用户信息集合信息
      */
     @DataScope(deptAlias = "d", userAlias = "u")
@@ -105,7 +676,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
 
         // 执行分页查询
-        // 使用selectCount方法明确指定计数列，避免MyBatis-Plus生成错误的COUNT()查询
         long total = baseMapper.selectCount(queryWrapper);
         List<SysUser> records = baseMapper.selectList(queryWrapper
                 .last("LIMIT " + (page.getCurrent() - 1) * page.getSize() + "," + page.getSize()));
@@ -115,14 +685,12 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 根据条件分页查询用户列表（支持日期范围）
+     * 根据条件分页查询用户列表（支持日期范围，兼容旧方法）
      */
     @DataScope(deptAlias = "d", userAlias = "u")
     @Override
     public Page<SysUser> selectUserList(SysUser user, Page<SysUser> page, Map<String, Object> params) {
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
-
-        System.out.println("[SysUserServiceImpl] 查询条件 - deptId: " + user.getDeptId());
 
         // 构建查询条件
         if (!StringUtils.isEmpty(user.getUserName())) {
@@ -141,7 +709,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             queryWrapper.eq(SysUser::getStatus, user.getStatus());
         }
         if (user.getDeptId() != null) {
-            System.out.println("[SysUserServiceImpl] 添加deptId过滤条件: " + user.getDeptId());
             queryWrapper.eq(SysUser::getDeptId, user.getDeptId());
         }
         if (!StringUtils.isEmpty(user.getDelFlag())) {
@@ -177,18 +744,13 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 根据条件分页查询已分配用户角色列表
-     *
-     * @param user 用户信息
-     * @return 用户信息集合信息
+     * 根据条件分页查询已分配用户角色列表（兼容旧方法）
      */
     @DataScope(deptAlias = "d", userAlias = "u")
     @Override
     public List<SysUser> selectAllocatedList(SysUser user) {
-        // 使用MyBatis-Plus的查询方式
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
 
-        // 构建查询条件
         if (!StringUtils.isEmpty(user.getUserName())) {
             queryWrapper.like(SysUser::getUserName, user.getUserName());
         }
@@ -203,23 +765,17 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
         queryWrapper.eq(SysUser::getDelFlag, "0");
 
-        // 这里简化处理，实际应该关联角色表查询已分配角色的用户
         return baseMapper.selectList(queryWrapper);
     }
 
     /**
-     * 根据条件分页查询未分配用户角色列表
-     *
-     * @param user 用户信息
-     * @return 用户信息集合信息
+     * 根据条件分页查询未分配用户角色列表（兼容旧方法）
      */
     @DataScope(deptAlias = "d", userAlias = "u")
     @Override
     public List<SysUser> selectUnallocatedList(SysUser user) {
-        // 使用MyBatis-Plus的查询方式
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
 
-        // 构建查询条件
         if (!StringUtils.isEmpty(user.getUserName())) {
             queryWrapper.like(SysUser::getUserName, user.getUserName());
         }
@@ -234,54 +790,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
         queryWrapper.eq(SysUser::getDelFlag, "0");
 
-        // 这里简化处理，实际应该关联角色表查询未分配角色的用户
         return baseMapper.selectList(queryWrapper);
     }
 
     /**
-     * 通过用户名查询用户
-     *
-     * @param userName 用户名
-     * @return 用户对象信息
-     */
-    @Override
-    public SysUser selectUserByUserName(String userName) {
-        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysUser::getUserName, userName);
-        return baseMapper.selectOne(queryWrapper);
-    }
-
-    /**
-     * 通过用户ID查询用户
-     *
-     * @param userId 用户ID
-     * @return 用户对象信息
-     */
-    @Override
-    public SysUser selectUserById(Long userId) {
-        return baseMapper.selectById(userId);
-    }
-
-    /**
-     * 查询用户所属角色组
-     *
-     * @param userName 用户名
-     * @return 结果
-     */
-    @Override
-    public String selectUserRoleGroup(String userName) {
-        List<SysRole> list = roleMapper.selectRolesByUserName(userName);
-        if (CollectionUtils.isEmpty(list)) {
-            return "";
-        }
-        return list.stream().map(SysRole::getRoleName).collect(Collectors.joining(","));
-    }
-
-    /**
-     * 校验用户名称是否唯一
-     *
-     * @param user 用户信息
-     * @return 结果
+     * 校验用户名称是否唯一（兼容旧方法）
      */
     @Override
     public boolean checkUserNameUnique(SysUser user) {
@@ -294,10 +807,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 校验手机号码是否唯一
-     *
-     * @param user 用户信息
-     * @return
+     * 校验手机号码是否唯一（兼容旧方法）
      */
     @Override
     public boolean checkPhoneUnique(SysUser user) {
@@ -310,10 +820,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 校验email是否唯一
-     *
-     * @param user 用户信息
-     * @return
+     * 校验email是否唯一（兼容旧方法）
      */
     @Override
     public boolean checkEmailUnique(SysUser user) {
@@ -326,9 +833,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 校验用户是否允许操作
-     *
-     * @param user 用户信息
+     * 校验用户是否允许操作（兼容旧方法）
      */
     @Override
     public void checkUserAllowed(SysUser user) {
@@ -338,37 +843,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 校验用户是否有数据权限
-     *
-     * @param userId 用户id
-     */
-    @Override
-    public void checkUserDataScope(Long userId) {
-        if (!SysUser.isAdmin(SecurityUtils.getUserId())) {
-            SysUser user = new SysUser();
-            user.setUserId(userId);
-            Page<SysUser> page = new Page<>(1, 1);
-            Page<SysUser> result = SpringUtils.getAopProxy(this).selectUserList(user, page);
-            if (result.getRecords().isEmpty()) {
-                throw new ServiceException("没有权限访问用户数据！");
-            }
-        }
-    }
-
-    /**
-     * 检查当前用户是否为超级管理员
-     *
-     * @return 是否为超级管理员
-     */
-    private boolean isAdmin() {
-        return SysUser.isAdmin(SecurityUtils.getUserId());
-    }
-
-    /**
-     * 新增保存用户信息
-     *
-     * @param user 用户信息
-     * @return 结果
+     * 新增用户信息（兼容旧方法）
      */
     @Transactional
     @Override
@@ -383,10 +858,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 注册用户信息
-     *
-     * @param user 用户信息
-     * @return 结果
+     * 注册用户信息（兼容旧方法）
      */
     @Override
     public boolean registerUser(SysUser user) {
@@ -403,10 +875,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 修改保存用户信息
-     *
-     * @param user 用户信息
-     * @return 结果
+     * 修改用户信息（兼容旧方法）
      */
     @Transactional
     @Override
@@ -424,23 +893,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 用户授权角色
-     *
-     * @param userId 用户ID
-     * @param roleIds 角色组
-     */
-    @Override
-    @Transactional
-    public void insertUserAuth(Long userId, Long[] roleIds) {
-        userRoleMapper.deleteUserRoleByUserId(userId);
-        insertUserRole(userId, roleIds);
-    }
-
-    /**
-     * 修改用户状态
-     *
-     * @param user 用户信息
-     * @return 结果
+     * 修改用户状态（兼容旧方法）
      */
     @Override
     public int updateUserStatus(SysUser user) {
@@ -448,10 +901,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 修改用户基本信息
-     *
-     * @param user 用户信息
-     * @return 结果
+     * 修改用户基本信息（兼容旧方法）
      */
     @Override
     public int updateUserProfile(SysUser user) {
@@ -459,11 +909,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 修改用户头像
-     *
-     * @param userName 用户名
-     * @param avatar 头像地址
-     * @return 结果
+     * 修改用户头像（兼容旧方法）
      */
     @Override
     public boolean updateUserAvatar(String userName, String avatar) {
@@ -475,10 +921,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 重置用户密码
-     *
-     * @param user 用户信息
-     * @return 结果
+     * 重置用户密码（兼容旧方法）
      */
     @Override
     public int resetPwd(SysUser user) {
@@ -486,11 +929,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 重置用户密码
-     *
-     * @param userName 用户名
-     * @param password 密码
-     * @return 结果
+     * 重置用户密码（兼容旧方法）
      */
     @Override
     public int resetUserPwd(String userName, String password) {
@@ -502,77 +941,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 新增用户角色信息
-     *
-     * @param user 用户对象
-     */
-    public void insertUserRole(SysUser user) {
-        this.insertUserRole(user.getUserId(), user.getRoleIds());
-    }
-
-    /**
-     * 新增用户角色信息
-     *
-     * @param userId 用户ID
-     * @param roleIds 角色组
-     */
-    public void insertUserRole(Long userId, Long[] roleIds) {
-        if (roleIds != null && roleIds.length > 0) {
-            // 新增用户与角色管理
-            List<SysUserRole> list = new ArrayList<SysUserRole>(roleIds.length);
-            for (Long roleId : roleIds) {
-                SysUserRole ur = new SysUserRole();
-                ur.setUserId(userId);
-                ur.setRoleId(roleId);
-                list.add(ur);
-            }
-            userRoleMapper.batchUserRole(list);
-        }
-    }
-
-    /**
-     * 通过用户ID删除用户
-     *
-     * @param userId 用户ID
-     * @return 结果
-     */
-    @Override
-    @Transactional
-    public int deleteUserById(Long userId) {
-        // 删除用户与角色关联
-        userRoleMapper.deleteUserRoleByUserId(userId);
-        // 删除用户
-        return baseMapper.deleteById(userId) > 0 ? 1 : 0;
-    }
-
-    /**
-     * 批量删除用户信息
-     *
-     * @param userIds 需要删除的用户ID
-     * @return 结果
-     */
-    @Override
-    @Transactional
-    public int deleteUserByIds(Long[] userIds) {
-        for (Long userId : userIds) {
-            checkUserAllowed(new SysUser(userId));
-            checkUserDataScope(userId);
-        }
-        // 删除用户与角色关联
-        LambdaQueryWrapper<SysUserRole> sysUserRoleLambdaQueryWrapper = new LambdaQueryWrapper<>();
-        sysUserRoleLambdaQueryWrapper.in(SysUserRole::getUserId, userIds);
-        userRoleMapper.delete(sysUserRoleLambdaQueryWrapper);
-        // 批量删除用户
-        return baseMapper.delete(new LambdaQueryWrapper<SysUser>().in(SysUser::getUserId, Arrays.asList(userIds))) > 0 ? 1 : 0;
-    }
-
-    /**
-     * 导入用户数据
-     *
-     * @param userList 用户数据列表
-     * @param isUpdateSupport 是否更新支持，如果已存在，则进行更新数据
-     * @param operName 操作用户
-     * @return 结果
+     * 导入用户数据（兼容旧方法）
      */
     @Override
     public String importUser(List<SysUser> userList, Boolean isUpdateSupport, String operName) {
@@ -627,9 +996,51 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         return successMsg.toString();
     }
 
+    /**
+     * 注册（兼容旧方法）
+     */
     @Override
     public AjaxResult register(RegisterUserTo user) {
         return registInfo(user, null) ? AjaxResult.success("注冊成功") : AjaxResult.error("注册失败");
+    }
+
+    /**
+     * H5注册（兼容旧方法）
+     */
+    @Override
+    public AjaxResult registerByH5(RegisterUserTo user, String qrcode) {
+        return registInfo(user, qrcode) ? AjaxResult.success("注冊成功") : AjaxResult.error("注册失败");
+    }
+
+    // ==================== 私有辅助方法 ====================
+
+    /**
+     * 新增用户角色信息
+     *
+     * @param user 用户对象
+     */
+    private void insertUserRole(SysUser user) {
+        this.insertUserRole(user.getUserId(), user.getRoleIds());
+    }
+
+    /**
+     * 新增用户角色信息
+     *
+     * @param userId  用户ID
+     * @param roleIds 角色组
+     */
+    private void insertUserRole(Long userId, Long[] roleIds) {
+        if (roleIds != null && roleIds.length > 0) {
+            // 新增用户与角色管理
+            List<SysUserRole> list = new ArrayList<SysUserRole>(roleIds.length);
+            for (Long roleId : roleIds) {
+                SysUserRole ur = new SysUserRole();
+                ur.setUserId(userId);
+                ur.setRoleId(roleId);
+                list.add(ur);
+            }
+            userRoleMapper.batchUserRole(list);
+        }
     }
 
     @Transactional
@@ -692,12 +1103,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             log.error("发送用户注册消息失败：{}", e.getMessage());
             //todo 记录日志
         }
-
-    }
-
-    @Override
-    public AjaxResult registerByH5(RegisterUserTo user, String qrcode) {
-        return registInfo(user, qrcode) ? AjaxResult.success("注冊成功") : AjaxResult.error("注册失败");
     }
 
     private boolean isExist(String phone, String username) {
@@ -732,6 +1137,4 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         // 组合返回结果
         return randomCode.toString() + datePart;
     }
-
-
 }

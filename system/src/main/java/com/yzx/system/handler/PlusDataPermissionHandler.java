@@ -10,6 +10,7 @@ import com.yzx.model.annotation.DataPermission;
 import com.yzx.model.enums.DataScopeType;
 import com.yzx.model.system.SysRole;
 import com.yzx.model.system.SysUser;
+import com.yzx.system.domain.vo.SysRoleVo;
 import com.yzx.system.service.ISysRoleService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +51,7 @@ public class PlusDataPermissionHandler implements ApplicationContextAware {
     @Autowired
     private ISysRoleService roleService;
 
-    private List<SysRole> getUserRoles(SysUser user) {
+    private List<SysRoleVo> getUserRoles(SysUser user) {
         return roleService.selectRolesByUserId(user.getUserId());
     }
 
@@ -109,8 +110,8 @@ public class PlusDataPermissionHandler implements ApplicationContextAware {
         }
 
         //获取用户角色
-        List<SysRole> roles = getUserRoles(user);
-        for (SysRole role : roles) {
+        List<SysRoleVo> roles = getUserRoles(user);
+        for (SysRoleVo role : roles) {
             DataScopeType type = DataScopeType.getByCode(role.getDataScope());
             if (ObjectUtil.isNull(type)) continue;
             //全部数据权限直接返回

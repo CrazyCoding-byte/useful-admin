@@ -176,6 +176,20 @@ function addRoutes(routes: Array<RouteRecordRaw>) {
 
   // 开始递归添加所有路由
   routes.forEach(route => addRouteRecursive(route));
+
+  // 重新添加404路由，确保它始终在最后匹配
+  // 先移除旧的404路由（如果存在）
+  try {
+    router.removeRoute('404Page');
+  } catch (e) {
+    // 忽略移除失败的错误
+  }
+  // 添加新的404路由到最后
+  router.addRoute({
+    path: '/:pathMatch(.*)*',
+    name: '404Page',
+    component: () => import('../../pages/result/404/index.vue'),
+  });
 }
 
 export const usePermissionStore = defineStore('permission', {

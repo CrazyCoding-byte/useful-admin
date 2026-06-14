@@ -2,17 +2,17 @@ package com.yzx.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.yzx.model.RouterVo;
 import com.yzx.model.TreeSelect;
 import com.yzx.model.exception.ServiceException;
 import com.yzx.model.system.SysMenu;
 import com.yzx.model.system.SysTenant;
 import com.yzx.model.system.SysUser;
 import com.yzx.model.system.response.SysMenuDto;
-import com.yzx.model.MetaVo;
 import com.yzx.model.ucenter.BaseUserDetail;
 import com.yzx.model.utils.SecurityUtils;
+import com.yzx.system.domain.bo.SysMenuBo;
+import com.yzx.system.domain.convert.SysMenuConvert;
+import com.yzx.system.domain.vo.SysMenuVo;
 import com.yzx.system.mapper.SysMenuMapper;
 import com.yzx.system.service.ISysMenuService;
 import com.yzx.system.service.ISysTenantPackageService;
@@ -29,14 +29,20 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> implements ISysMenuService {
+public class SysMenuServiceImpl implements ISysMenuService {
+
+    @Autowired
+    private SysMenuMapper baseMapper;
+
+    @Autowired
+    private SysMenuConvert menuConvert;
 
     @Autowired(required = false)
     private ISysTenantService tenantService;
 
     @Autowired(required = false)
     private ISysTenantPackageService tenantPackageService;
-    
+
     /**
      * 根据用户查询系统菜单列表
      *
@@ -44,21 +50,21 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 菜单列表
      */
     @Override
-    public List<SysMenu> selectMenuList(Long userId) {
-        return selectMenuList(new SysMenu(), userId);
+    public List<SysMenuVo> selectMenuList(Long userId) {
+        return selectMenuList(new SysMenuBo(), userId);
     }
 
     /**
      * 根据用户查询系统菜单列表
      *
-     * @param menu 菜单信息
+     * @param menu   菜单信息
      * @param userId 用户ID
      * @return 菜单列表
      */
     @Override
-    public List<SysMenu> selectMenuList(SysMenu menu, Long userId) {
+    public List<SysMenuVo> selectMenuList(SysMenuBo menu, Long userId) {
         LambdaQueryWrapper<SysMenu> queryWrapper = new LambdaQueryWrapper<>();
-        
+
         if (StringUtils.isNotBlank(menu.getMenuName())) {
             queryWrapper.like(SysMenu::getMenuName, menu.getMenuName());
         }
@@ -68,9 +74,10 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         if (menu.getParentId() != null) {
             queryWrapper.eq(SysMenu::getParentId, menu.getParentId());
         }
-        
+
         queryWrapper.orderByAsc(SysMenu::getOrderNum);
-        return baseMapper.selectList(queryWrapper);
+        List<SysMenu> menuList = baseMapper.selectList(queryWrapper);
+        return menuConvert.entityListToVoList(menuList);
     }
 
     /**
@@ -93,8 +100,6 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      */
     @Override
     public Set<String> selectMenuPermsByRoleId(Long roleId) {
-        // 先查询角色对应的菜单ID列表
-        List<Long> menuIds = new ArrayList<>();
         // 这里简化处理，实际应该从角色菜单关联表中查询
         // 假设我们有一个方法可以查询角色对应的菜单ID
         // 暂时返回空集合
@@ -221,23 +226,10 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 路由列表
      */
     @Override
-    public List<RouterVo> buildMenus(List<SysMenuDto> menus) {
-        List<RouterVo> routers = new ArrayList<>();
-        for (SysMenuDto menu : menus) {
-            RouterVo router = new RouterVo();
-            router.setName(menu.getMenuName());
-            router.setPath(menu.getPath());
-            router.setComponent(menu.getComponent());
-            MetaVo meta = new MetaVo();
-            meta.setTitle(menu.getMenuName());
-            meta.setIcon(menu.getIcon());
-            router.setMeta(meta);
-            if (!menu.getChildren().isEmpty()) {
-                router.setChildren(buildMenus(menu.getChildren()));
-            }
-            routers.add(router);
-        }
-        return routers;
+    public List<SysMenuDto> buildMenus(List<SysMenuDto> menus) {
+        // 这里直接返回传入的菜单列表，因为前端路由构建已经在selectMenuTreeByUserId中完成
+        // 如果需要额外的路由处理，可以在这里添加
+        return menus;
     }
 
     /**
@@ -247,16 +239,13 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 树结构列表
      */
     @Override
-    public List<SysMenu> buildMenuTree(List<SysMenu> menus) {
-        List<SysMenu> menuTree = new ArrayList<>();
-        List<SysMenu> rootMenus = new ArrayList<>();
-        for (SysMenu menu : menus) {
+    public List<SysMenuVo> buildMenuTree(List<SysMenuVo> menus) {
+        List<SysMenuVo> menuTree = new ArrayList<>();
+        for (SysMenuVo menu : menus) {
             if (menu.getParentId() == null || menu.getParentId() == 0L) {
-                rootMenus.add(menu);
                 menuTree.add(buildMenuTree(menus, menu));
             }
         }
-        log.info("buildMenuTree: 总菜单数={}, 根节点数={}, 树节点数={}", menus.size(), rootMenus.size(), menuTree.size());
         return menuTree;
     }
 
@@ -267,8 +256,8 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 下拉树结构列表
      */
     @Override
-    public List<TreeSelect> buildMenuTreeSelect(List<SysMenu> menus) {
-        List<SysMenu> menuTree = buildMenuTree(menus);
+    public List<TreeSelect> buildMenuTreeSelect(List<SysMenuVo> menus) {
+        List<SysMenuVo> menuTree = buildMenuTree(menus);
         return menuTree.stream().map(TreeSelect::new).collect(Collectors.toList());
     }
 
@@ -279,8 +268,9 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 菜单信息
      */
     @Override
-    public SysMenu selectMenuById(Long menuId) {
-        return baseMapper.selectById(menuId);
+    public SysMenuVo selectMenuById(Long menuId) {
+        SysMenu menu = baseMapper.selectById(menuId);
+        return menuConvert.entityToVo(menu);
     }
 
     /**
@@ -311,37 +301,39 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     }
 
     /**
-     * 新增菜单
+     * 新增保存菜单信息
      *
-     * @param menu 菜单信息
+     * @param bo 菜单信息
      * @return 结果
      */
     @Override
-    public int insertMenu(SysMenu menu) {
+    public int insertMenu(SysMenuBo bo) {
         // 校验菜单名称是否唯一
-        if (!checkMenuNameUnique(menu)) {
-            throw new ServiceException("新增菜单" + menu.getMenuName() + "失败，菜单名称已存在");
+        if (!checkMenuNameUnique(bo)) {
+            throw new ServiceException("新增菜单" + bo.getMenuName() + "失败，菜单名称已存在");
         }
+        SysMenu menu = menuConvert.boToEntity(bo);
         return baseMapper.insert(menu) > 0 ? 1 : 0;
     }
 
     /**
-     * 修改菜单
+     * 修改保存菜单信息
      *
-     * @param menu 菜单信息
+     * @param bo 菜单信息
      * @return 结果
      */
     @Override
-    public int updateMenu(SysMenu menu) {
+    public int updateMenu(SysMenuBo bo) {
         // 校验菜单名称是否唯一
-        if (!checkMenuNameUnique(menu)) {
-            throw new ServiceException("修改菜单" + menu.getMenuName() + "失败，菜单名称已存在");
+        if (!checkMenuNameUnique(bo)) {
+            throw new ServiceException("修改菜单" + bo.getMenuName() + "失败，菜单名称已存在");
         }
+        SysMenu menu = menuConvert.boToEntity(bo);
         return baseMapper.updateById(menu) > 0 ? 1 : 0;
     }
 
     /**
-     * 删除菜单
+     * 删除菜单管理信息
      *
      * @param menuId 菜单ID
      * @return 结果
@@ -362,7 +354,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 结果
      */
     @Override
-    public boolean checkMenuNameUnique(SysMenu menu) {
+    public boolean checkMenuNameUnique(SysMenuBo menu) {
         Long menuId = menu.getMenuId() == null ? -1L : menu.getMenuId();
         LambdaQueryWrapper<SysMenu> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysMenu::getMenuName, menu.getMenuName());
@@ -374,18 +366,18 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     /**
      * 构建菜单树
      *
-     * @param menus 菜单列表
+     * @param menus      菜单列表
      * @param parentMenu 父菜单
      * @return 菜单树
      */
-    private SysMenu buildMenuTree(List<SysMenu> menus, SysMenu parentMenu) {
-        List<SysMenu> children = new ArrayList<>();
-        for (SysMenu menu : menus) {
+    private SysMenuVo buildMenuTree(List<SysMenuVo> menus, SysMenuVo parentMenu) {
+        List<SysMenuVo> children = new ArrayList<>();
+        for (SysMenuVo menu : menus) {
             if (menu.getParentId().equals(parentMenu.getMenuId())) {
                 children.add(buildMenuTree(menus, menu));
             }
         }
-        parentMenu.setChild(children);
+        parentMenu.setChildren(children);
         return parentMenu;
     }
 
@@ -408,7 +400,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     /**
      * 构建菜单DTO树
      *
-     * @param menus 菜单列表
+     * @param menus      菜单列表
      * @param parentMenu 父菜单
      * @return 菜单DTO树
      */

@@ -1,7 +1,8 @@
 package com.yzx.system.controller;
 
 import com.yzx.model.AjaxResult;
-import com.yzx.model.system.SysDept;
+import com.yzx.system.domain.bo.SysDeptBo;
+import com.yzx.system.domain.vo.SysDeptVo;
 import com.yzx.system.service.ISysDeptService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,8 +27,8 @@ public class SysDeptController extends BaseController {
      * 查询部门列表
      */
     @GetMapping("/list")
-    public AjaxResult list(SysDept dept) {
-        List<SysDept> depts = deptService.selectDeptTreeList(dept);
+    public AjaxResult list(SysDeptBo dept) {
+        List<SysDeptVo> depts = deptService.selectDeptTreeList(dept);
         return AjaxResult.success(depts);
     }
 
@@ -44,7 +45,7 @@ public class SysDeptController extends BaseController {
      * 新增部门
      */
     @PostMapping
-    public AjaxResult add(@RequestBody SysDept dept) {
+    public AjaxResult add(@RequestBody SysDeptBo dept) {
         if (!deptService.checkDeptNameUnique(dept)) {
             return AjaxResult.error("新增部门'" + dept.getDeptName() + "'失败，部门名称已存在");
         }
@@ -55,7 +56,7 @@ public class SysDeptController extends BaseController {
      * 修改部门
      */
     @PutMapping
-    public AjaxResult edit(@RequestBody SysDept dept) {
+    public AjaxResult edit(@RequestBody SysDeptBo dept) {
         if (!deptService.checkDeptNameUnique(dept)) {
             return AjaxResult.error("修改部门'" + dept.getDeptName() + "'失败，部门名称已存在");
         }
@@ -77,7 +78,7 @@ public class SysDeptController extends BaseController {
      */
     @GetMapping("/optionselect")
     public AjaxResult optionselect() {
-        List<SysDept> depts = deptService.selectDeptTreeList(new SysDept());
+        List<SysDeptVo> depts = deptService.selectDeptTreeList(new SysDeptBo());
         return AjaxResult.success(depts);
     }
 
@@ -86,8 +87,10 @@ public class SysDeptController extends BaseController {
      */
     @GetMapping("/list/exclude/{deptId}")
     public AjaxResult excludeChild(@PathVariable(value = "deptId", required = false) Long deptId) {
-        List<SysDept> depts = deptService.selectDeptTreeList(new SysDept());
-        depts.removeIf(d -> d.getDeptId().equals(deptId) || d.getAncestors().contains(String.valueOf(deptId)));
+        List<SysDeptVo> depts = deptService.selectDeptTreeList(new SysDeptBo());
+        depts.removeIf(d -> d.getDeptId().equals(deptId) || 
+            (d.getAncestors() != null && d.getAncestors().contains(String.valueOf(deptId))));
         return AjaxResult.success(depts);
     }
+
 }

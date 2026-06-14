@@ -6,9 +6,10 @@ import com.yzx.model.StringUtils;
 import com.yzx.model.annotation.Log;
 import com.yzx.model.constant.UserConstants;
 import com.yzx.model.enums.BusinessType;
-import com.yzx.model.system.SysMenu;
 import com.yzx.model.system.response.SysMenuDto;
 import com.yzx.model.utils.SecurityUtils;
+import com.yzx.system.domain.bo.SysMenuBo;
+import com.yzx.system.domain.vo.SysMenuVo;
 import com.yzx.system.service.ISysMenuService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,8 +33,8 @@ public class SysMenuController {
      * 获取菜单列表
      */
     @GetMapping("/list")
-    public AjaxResult list(SysMenu menu) {
-        List<SysMenu> menus = menuService.selectMenuList(menu, SecurityUtils.getUserId());
+    public AjaxResult list(SysMenuBo menu) {
+        List<SysMenuVo> menus = menuService.selectMenuList(menu, SecurityUtils.getUserId());
         return AjaxResult.success(menuService.buildMenuTree(menus));
     }
 
@@ -49,8 +50,8 @@ public class SysMenuController {
      * 获取菜单下拉树列表
      */
     @GetMapping("/treeselect")
-    public AjaxResult treeselect(SysMenu menu) {
-        List<SysMenu> menus = menuService.selectMenuList(menu, SecurityUtils.getUserId());
+    public AjaxResult treeselect(SysMenuBo menu) {
+        List<SysMenuVo> menus = menuService.selectMenuList(menu, SecurityUtils.getUserId());
         return AjaxResult.success(menuService.buildMenuTreeSelect(menus));
     }
 
@@ -59,7 +60,7 @@ public class SysMenuController {
      */
     @GetMapping(value = "/roleMenuTreeselect/{roleId}")
     public AjaxResult roleMenuTreeselect(@PathVariable("roleId") Long roleId) {
-        List<SysMenu> menus = menuService.selectMenuList(SecurityUtils.getUserId());
+        List<SysMenuVo> menus = menuService.selectMenuList(SecurityUtils.getUserId());
         AjaxResult ajax = AjaxResult.success();
         ajax.put("checkedKeys", menuService.selectMenuListByRoleId(roleId));
         ajax.put("menus", menuService.buildMenuTreeSelect(menus));
@@ -77,7 +78,7 @@ public class SysMenuController {
      */
     @Log(title = "菜单管理", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody SysMenu menu) {
+    public AjaxResult add(@Validated @RequestBody SysMenuBo menu) {
         if (!menuService.checkMenuNameUnique(menu)) {
             return AjaxResult.error("新增菜单'" + menu.getMenuName() + "'失败，菜单名称已存在");
         } else if (UserConstants.YES_FRAME.equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
@@ -92,7 +93,7 @@ public class SysMenuController {
      */
     @Log(title = "菜单管理", businessType = BusinessType.UPDATE)
     @PutMapping
-    public AjaxResult edit(@Validated @RequestBody SysMenu menu) {
+    public AjaxResult edit(@Validated @RequestBody SysMenuBo menu) {
         if (!menuService.checkMenuNameUnique(menu)) {
             return AjaxResult.error("修改菜单'" + menu.getMenuName() + "'失败，菜单名称已存在");
         } else if (UserConstants.YES_FRAME.equals(menu.getIsFrame()) && !StringUtils.ishttp(menu.getPath())) {
