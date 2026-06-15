@@ -238,7 +238,7 @@
 <script setup lang="ts">
 import {ref, onMounted, computed, watch} from 'vue';
 import {userApi} from '@/api/system/user';
-import {DeptApi} from '@/api/system/dept'
+import {deptApi} from '@/api/system/dept'
 import type {SysUser} from '@/api/model/userModel';
 import {MessagePlugin} from 'tdesign-vue-next';
 import type {PaginationProps, TableProps} from 'tdesign-vue-next';
@@ -385,7 +385,7 @@ const handleDeptClick = (context: any) => {
 //获取部门列表
 const getDeptList = async () => {
   try {
-    const response = await DeptApi.getDeptList();
+    const response = await deptApi.getDeptList();
     console.log("获取部门响应数据", response);
     // 后端已返回带children的树结构，只需做字段名映射
     const deptTree = convertToTree(response || []);

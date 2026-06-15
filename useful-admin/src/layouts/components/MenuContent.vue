@@ -22,7 +22,7 @@
           <t-icon v-if="beIcon(item)" :name="item.icon" />
           <component :is="beRender(item).render" v-else-if="beRender(item).can" class="t-icon" />
         </template>
-        <menu-content v-if="item.children" :nav-data="item.children" />
+        <menu-content v-if="item.children" :nav-data="item.children" :base-path="item.path" />
       </t-submenu>
     </template>
   </div>
@@ -40,12 +40,16 @@ const props = defineProps({
     type: Array as PropType<MenuRoute[]>,
     default: () => [],
   },
+  basePath: {
+    type: String,
+    default: '',
+  },
 });
 
 const active = computed(() => getActive());
 const list = computed(() => {
-  const { navData } = props;
-  return getMenuList(navData);
+  const { navData, basePath } = props;
+  return getMenuList(navData, basePath);
 });
 
 type ListItemType = MenuRoute & { icon?: string };
@@ -54,6 +58,7 @@ const getMenuList = (list: MenuRoute[], basePath?: string): ListItemType[] => {
   if (!list) {
     return [];
   }
+  console.log('[Menu] getMenuList called, basePath:', basePath, 'list count:', list.length);
   // 如果meta中有orderNo则按照从小到大排序
   list.sort((a, b) => {
     return (a.meta?.orderNo || 0) - (b.meta?.orderNo || 0);
@@ -65,6 +70,7 @@ const getMenuList = (list: MenuRoute[], basePath?: string): ListItemType[] => {
         // 确保路径拼接时不会出现双斜杠
         path = `${basePath.replace(/\/$/, '')}/${item.path.replace(/^\//, '')}`;
       }
+      console.log('[Menu] 处理菜单项:', item.meta?.title, '原始path:', item.path, 'basePath:', basePath, '最终path:', path);
       return {
         path,
         title: item.meta?.title,

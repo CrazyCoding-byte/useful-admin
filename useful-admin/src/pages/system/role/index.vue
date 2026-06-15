@@ -162,29 +162,13 @@
             <div class="menu-permission-header">
               <t-checkbox v-model="expandAll">展开/折叠</t-checkbox>
               <t-checkbox v-model="selectAll">全选/全不选</t-checkbox>
-              <t-checkbox v-model="menuCheckStrictly">父子联动</t-checkbox>
             </div>
             <div class="menu-tree-wrapper">
               <t-tree
-                v-if="menuCheckStrictly"
-                key="linked"
                 ref="menuTreeRef"
                 v-model="roleForm.menuIds"
                 :data="menuTreeData"
                 checkable
-                value-mode="all"
-                :expand-all="expandAll"
-                :keys="{ label: 'label', value: 'id', children: 'children' }"
-              />
-              <t-tree
-                v-else
-                key="strict"
-                ref="menuTreeRefStrict"
-                v-model="roleForm.menuIds"
-                :data="menuTreeData"
-                checkable
-                value-mode="all"
-                check-strictly
                 :expand-all="expandAll"
                 :keys="{ label: 'label', value: 'id', children: 'children' }"
               />
@@ -473,10 +457,8 @@ const roleFormRules = ref({
 
 // 菜单树数据
 const expandAll = ref(true);
-const menuCheckStrictly = ref(false);
 const selectAll = ref(false);
 const menuTreeRef = ref<any>(null);
-const menuTreeRefStrict = ref<any>(null);
 const menuTreeData = ref([
   {
     id: 1,
