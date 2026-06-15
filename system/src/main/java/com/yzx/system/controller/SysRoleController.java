@@ -6,8 +6,6 @@ import com.yzx.model.enums.BusinessType;
 import com.yzx.model.system.SysRole;
 import com.yzx.model.system.SysUser;
 import com.yzx.model.system.SysUserRole;
-import com.yzx.model.system.TableDataInfo;
-import com.yzx.model.utils.SecurityUtils;
 import com.yzx.system.domain.bo.SysRoleBo;
 import com.yzx.system.domain.convert.SysRoleConvert;
 import com.yzx.system.service.ISysRoleService;

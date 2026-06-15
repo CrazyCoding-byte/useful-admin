@@ -60,7 +60,7 @@
         :loading="loading"
         row-key="menuId"
         default-expand-all
-        :tree="{ childrenKey: 'child', treeNodeColumnIndex: 0 }"
+        :tree="{ childrenKey: 'children', treeNodeColumnIndex: 0 }"
         hover
         stripe
       >
@@ -115,7 +115,7 @@
           <t-tree-select
             v-model="form.parentId"
             :data="menuTreeOptions"
-            :keys="{ label: 'menuName', value: 'menuId', children: 'child' }"
+            :keys="{ label: 'menuName', value: 'menuId', children: 'children' }"
             placeholder="选择上级菜单"
             clearable
           />
@@ -450,7 +450,7 @@ const rules = {
 
 // 菜单树选项
 const menuTreeOptions = computed(() => {
-  return [{menuId: 0, menuName: '主类目', child: menuList.value}];
+  return [{menuId: 0, menuName: '主类目', children: menuList.value}];
 });
 
 // 删除
@@ -458,7 +458,7 @@ const deleteVisible = ref(false);
 const deleteRow = ref<SysMenu | null>(null);
 const deleteTip = computed(() => {
   const name = deleteRow.value?.menuName || '';
-  const childCount = deleteRow.value?.child?.length || 0;
+  const childCount = deleteRow.value?.children?.length || 0;
   return childCount > 0
     ? `确定要删除菜单【${name}】吗？其下 ${childCount} 个子菜单将一并删除！`
     : `确定要删除菜单【${name}】吗？`;

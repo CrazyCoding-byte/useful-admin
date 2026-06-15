@@ -58,12 +58,15 @@ public class SysRole extends BaseEntity {
 
 
     /** 角色菜单权限 */
+    @TableField(exist = false)
     private Set<String> permissions;
 
     /** 菜单组 */
+    @TableField(exist = false)
     private Long[] menuIds;
 
     /** 部门组（数据权限） */
+    @TableField(exist = false)
     private Long[] deptIds;
 
     /** 备注 */

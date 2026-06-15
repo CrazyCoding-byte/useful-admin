@@ -76,6 +76,7 @@ public class SysUser extends BaseEntity {
     private String avatar;
 
     /** 推广码 */
+    @TableField(exist = false)
     private String qrCode;
 
     /** 密码 */
@@ -101,20 +102,24 @@ public class SysUser extends BaseEntity {
     @Excel(name = "身份证号码", cellType = Excel.ColumnType.TEXT) // 文本类型避免0开头丢失
     @Xss(message = "身份证号码不能包含脚本字符")
     @Size(min = 0, max = 100, message = "身份证号码长度不能超过100个字符")
+    @TableField(exist = false)
     private String idNumber;
 
     /** 生日 */
     @Excel(name = "生日", width = 20, dateFormat = "yyyy-MM-dd", type = Excel.Type.EXPORT)
+    @TableField(exist = false)
     private Date birthday;
 
     /** 真实姓名 */
     @Excel(name = "真实姓名")
     @Xss(message = "真实姓名不能包含脚本字符")
     @Size(min = 0, max = 30, message = "真实姓名长度不能超过30个字符")
+    @TableField(exist = false)
     private String realName;
 
     /** 登陆时保存的用户手机appid */
     @Size(min = 0, max = 200, message = "用户手机APPID长度不能超过200个字符")
+    @TableField(exist = false)
     private String clientId;
 
     /** 部门对象 */

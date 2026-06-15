@@ -157,18 +157,39 @@
             <t-radio value="1">停用</t-radio>
           </t-radio-group>
         </t-form-item>
-        <t-form-item label="菜单权限">
-          <div class="menu-permission-header">
-            <t-checkbox>展开/折叠</t-checkbox>
-            <t-checkbox>全选/全不选</t-checkbox>
-            <t-checkbox>父子联动</t-checkbox>
+        <t-form-item label="菜单权限" class="menu-permission-item">
+          <div class="menu-permission-container">
+            <div class="menu-permission-header">
+              <t-checkbox v-model="expandAll">展开/折叠</t-checkbox>
+              <t-checkbox v-model="selectAll">全选/全不选</t-checkbox>
+              <t-checkbox v-model="menuCheckStrictly">父子联动</t-checkbox>
+            </div>
+            <div class="menu-tree-wrapper">
+              <t-tree
+                v-if="menuCheckStrictly"
+                key="linked"
+                ref="menuTreeRef"
+                v-model="roleForm.menuIds"
+                :data="menuTreeData"
+                checkable
+                value-mode="all"
+                :expand-all="expandAll"
+                :keys="{ label: 'label', value: 'id', children: 'children' }"
+              />
+              <t-tree
+                v-else
+                key="strict"
+                ref="menuTreeRefStrict"
+                v-model="roleForm.menuIds"
+                :data="menuTreeData"
+                checkable
+                value-mode="all"
+                check-strictly
+                :expand-all="expandAll"
+                :keys="{ label: 'label', value: 'id', children: 'children' }"
+              />
+            </div>
           </div>
-          <t-tree
-            :data="menuTreeData"
-            checkable
-            :expand-all="true"
-            :keys="{ label: 'label', value: 'id', children: 'children' }"
-          />
         </t-form-item>
       </t-form>
       <template #footer>
@@ -296,7 +317,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { roleApi } from '@/api/system/role';
 import type { SysRole } from '@/api/model/roleModel';
 import { MessagePlugin } from 'tdesign-vue-next';
@@ -383,10 +404,15 @@ const getRoleList = async () => {
       pageNum: currentPage.value,
       pageSize: pageSize.value,
     });
-    // 适配后端返回格式：{ code: 200, data: { records: [], total: 0 } }
-    const data = response.data || response;
-    roleList.value = data.records || [];
-    total.value = data.total || 0;
+    // 经过请求拦截器处理，response 已经是 data 字段的内容
+    // 角色列表接口返回的是数组，不是分页对象
+    if (Array.isArray(response)) {
+      roleList.value = response;
+      total.value = response.length;
+    } else {
+      roleList.value = [];
+      total.value = 0;
+    }
   } catch (error) {
     MessagePlugin.error('获取角色列表失败');
     console.error('获取角色列表失败:', error);
@@ -446,6 +472,11 @@ const roleFormRules = ref({
 });
 
 // 菜单树数据
+const expandAll = ref(true);
+const menuCheckStrictly = ref(false);
+const selectAll = ref(false);
+const menuTreeRef = ref<any>(null);
+const menuTreeRefStrict = ref<any>(null);
 const menuTreeData = ref([
   {
     id: 1,
@@ -510,6 +541,27 @@ const handleBatchEdit = () => {
 // 关闭角色对话框
 const closeRoleDialog = () => {
   roleDialogVisible.value = false;
+};
+
+// 监听全选变化
+watch(selectAll, (val) => {
+  if (val) {
+    roleForm.value.menuIds = getAllNodeIds(menuTreeData.value);
+  } else {
+    roleForm.value.menuIds = [];
+  }
+});
+
+// 递归获取所有节点ID
+const getAllNodeIds = (nodes: any[]): number[] => {
+  const ids: number[] = [];
+  nodes.forEach(node => {
+    ids.push(node.id);
+    if (node.children && node.children.length > 0) {
+      ids.push(...getAllNodeIds(node.children));
+    }
+  });
+  return ids;
 };
 
 // 提交角色表单
@@ -821,9 +873,31 @@ onMounted(() => {
 }
 
 // 菜单权限样式
+.menu-permission-item {
+  :deep(.t-form__controls) {
+    width: 100%;
+  }
+}
+
+.menu-permission-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .menu-permission-header {
   display: flex;
   gap: 16px;
   margin-bottom: 8px;
+  align-items: center;
+}
+
+.menu-tree-wrapper {
+  border: 1px solid var(--td-border-level-1-color);
+  border-radius: 4px;
+  padding: 8px 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: var(--td-bg-color-container);
 }
 </style>

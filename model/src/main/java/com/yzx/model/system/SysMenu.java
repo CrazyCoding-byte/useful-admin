@@ -63,7 +63,4 @@ public class SysMenu extends BaseEntity{
     /** 菜单图标 */
     private String icon;
 
-    @TableField(exist = false)
-    private List<SysMenu> child;
-
 }
