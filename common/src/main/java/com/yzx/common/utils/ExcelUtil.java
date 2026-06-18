@@ -1,7 +1,10 @@
 package com.yzx.common.utils;
 
 import cn.idev.excel.FastExcel;
+import cn.idev.excel.write.builder.ExcelWriterBuilder;
+import cn.idev.excel.write.style.column.LongestMatchColumnWidthStyleStrategy;
 import com.yzx.common.excel.core.DefaultExcelListener;
+import com.yzx.common.excel.core.DropDownOptions;
 import com.yzx.common.excel.core.ExcelListener;
 import com.yzx.common.excel.core.ExcelResult;
 import lombok.AccessLevel;
@@ -68,8 +71,20 @@ public class ExcelUtil {
         }
     }
 
+    /**
+     * 导出excel
+     *
+     * @param list      导出数据集合
+     * @param sheetName 工作表的名称
+     * @param clazz     实体类
+     * @param os        输出流
+     */
     public static <T> void exportExcel(List<T> list, String sheetName, Class<T> clazz, boolean merge, OutputStream os, List<DropDownOptions> options) {
-
+        ExcelWriterBuilder builder = FastExcel.write(os, clazz)
+                .autoCloseStream(false)
+                .registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
+                .registerConverter(new ExcelBigNumberConvert())
     }
+
 
 }
