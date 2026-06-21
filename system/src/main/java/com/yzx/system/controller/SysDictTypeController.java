@@ -6,6 +6,7 @@ import com.yzx.model.enums.BusinessType;
 import com.yzx.model.system.PageQuery;
 import com.yzx.model.system.TableDataInfo;
 import com.yzx.system.domain.bo.SysDictTypeBo;
+import com.yzx.system.domain.vo.SysDictDataVo;
 import com.yzx.system.domain.vo.SysDictTypeVo;
 import com.yzx.system.service.ISysDictTypeService;
 import lombok.RequiredArgsConstructor;
@@ -109,5 +110,22 @@ public class SysDictTypeController {
     public AjaxResult optionselect() {
         List<SysDictTypeVo> dictTypes = dictTypeService.selectDictTypeAll();
         return AjaxResult.success(dictTypes);
+    }
+
+    /**
+     * 根据字典类型查询信息
+     * @param dictType
+     * @return
+     */
+    @GetMapping("/getDictTypeByType/{dictType}")
+    public AjaxResult selectDictTypeByType(@PathVariable String dictType) {
+        SysDictTypeVo sysDictTypeVo = dictTypeService.selectDictTypeByType(dictType);
+        return AjaxResult.success(sysDictTypeVo);
+    }
+
+    @GetMapping("/getDictDataByType{dictType}")
+    public AjaxResult getDictDataByType(@PathVariable String dictType) {
+        List<SysDictDataVo> sysDictDataVos = dictTypeService.selectDictDataByType(dictType);
+        return AjaxResult.success(sysDictDataVos);
     }
 }
