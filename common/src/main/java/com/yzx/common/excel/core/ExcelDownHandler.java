@@ -5,7 +5,10 @@ import com.yzx.common.service.DictService;
 import com.yzx.model.utils.SpringUtils;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @className: ExcelDownHandler
@@ -16,6 +19,21 @@ import java.util.List;
  */
 @Slf4j
 public class ExcelDownHandler implements SheetWriteHandler {
+    public static void main(String args[]) {
+        Set<Integer> set = new HashSet<Integer>();
+        set.add(1);
+        set.add(100);
+        set.add(1000);
+        set.add(2);
+        set.add(4);
+        Iterator<Integer> iterator = set.iterator();
+        while (iterator.hasNext()) {
+            if (iterator.hasNext()) {
+                System.out.println(iterator.next());
+            }
+        }
+    }
+
     /**
      * Excel表格中的列名英文
      * 仅为了解析列英文，禁止修改
