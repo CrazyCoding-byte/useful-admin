@@ -38,6 +38,28 @@ function onRrefreshed(token: string) {
   refreshSubscribers = [];
 }
 
+/**
+ * 从后端错误响应中提取错误信息，构造一个带有 code/data/message 的 Error 对象
+ */
+function extractBackendError(error: any): any {
+  const { response } = error;
+  if (!response?.data) return error;
+
+  // 后端错误信息可能在 response.data.msg / message / error / error_description 中
+  const errMsg =
+    response.data.msg ||
+    response.data.message ||
+    response.data.error_description ||
+    response.data.error ||
+    (typeof response.data === 'string' ? response.data : '服务器异常');
+
+  const bizError = new Error(errMsg) as any;
+  bizError.code = response.status;           // HTTP 状态码，比如 500
+  bizError.response = response;              // 保留原始响应对象
+  bizError.data = response.data;             // 后端返回的完整 data
+  return bizError;
+}
+
 const transform: AxiosTransform = {
   // 处理请求数据。如果数据不是预期格式，可直接抛出错误
   transformRequestHook: (res, options) => {
@@ -77,7 +99,9 @@ const transform: AxiosTransform = {
       return data.data !== undefined ? data.data : data;
     }
 
-    throw createAuthError(res, `请求接口错误, 错误码: ${code}`);
+    // 业务错误：优先用后端返回的 msg，其次用 message/error_description
+    const errMsg = data.msg || data.message || data.error_description || `请求接口错误, 错误码: ${code}`;
+    throw createAuthError(res, errMsg);
   },
 
   // 请求前处理配置
@@ -138,8 +162,8 @@ const transform: AxiosTransform = {
   // 请求拦截器处理
   requestInterceptors: (config, options) => {
     // 请求之前处理config
-      const userStore = getUserStore();
-      const { token } = userStore;
+    const userStore = getUserStore();
+    const { token } = userStore;
     if (token && (config as Recordable)?.requestOptions?.withToken !== false) {
       // 如果调用时显式传了 Authorization，则不要覆盖（例如某些接口手动设置了 Bearer）
       const headers = (config as Recordable).headers || {};
@@ -162,7 +186,7 @@ const transform: AxiosTransform = {
 
     // If response indicates unauthorized, try refresh token flow
     const status = response?.status || response?.data?.code;
-    console.log('[Request] 响应错误:', { url: config?.url, status, isRefreshing });
+    console.log('[Request] 响应错误:', { url: config?.url, status, errorData: response?.data, message: error?.message });
 
     if (status === 401) {
       const userStore = getUserStore();
@@ -170,21 +194,19 @@ const transform: AxiosTransform = {
       console.log('[Request] 401错误, refreshToken存在:', !!refreshToken);
 
       if (!refreshToken) {
-        // no refresh token, go to login
-        console.log('[Request] 没有refreshToken, 跳转登录页');
-        userStore.removeToken();
-        router.replace({ path: '/login' });
-        return Promise.reject(error);
+        // 没有 refreshToken（比如登录场景），不做刷新，直接返回后端错误消息
+        console.log('[Request] 没有refreshToken, 返回后端错误消息');
+        return Promise.reject(extractBackendError(error));
       }
 
-      if (!config) return Promise.reject(error);
+      if (!config) return Promise.reject(extractBackendError(error));
 
       // 避免对 /auth/refresh 接口进行重试，防止无限循环
       if (config.url?.includes('/auth/refresh')) {
         console.log('[Request] refresh接口401, 跳转登录页');
         userStore.removeToken();
         router.replace({ path: '/login' });
-        return Promise.reject(error);
+        return Promise.reject(extractBackendError(error));
       }
 
       if (isRefreshing) {
@@ -218,7 +240,7 @@ const transform: AxiosTransform = {
         .post(`${host}/auth/refresh`, params.toString(), {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           // 设置超时时间为5秒
-          timeout: 5000
+          timeout: 5000,
         })
         .then(async (res) => {
           const data = res.data;
@@ -284,17 +306,20 @@ const transform: AxiosTransform = {
         });
     }
 
+    // 🔥 非401错误：把后端返回的 msg/message 提取出来，业务代码才能拿到真正的错误信息
+    const bizError = extractBackendError(error);
+
     // retry logic for transient errors
-    if (!config || !config.requestOptions?.retry) return Promise.reject(error);
+    if (!config || !config.requestOptions?.retry) return Promise.reject(bizError);
 
     // 避免对 /auth/refresh 接口进行重试，防止无限循环
     if (config.url?.includes('/auth/refresh')) {
-      return Promise.reject(error);
+      return Promise.reject(bizError);
     }
 
     config.retryCount = config.retryCount || 0;
 
-    if (config.retryCount >= config.requestOptions.retry.count) return Promise.reject(error);
+    if (config.retryCount >= config.requestOptions.retry.count) return Promise.reject(bizError);
 
     config.retryCount += 1;
 

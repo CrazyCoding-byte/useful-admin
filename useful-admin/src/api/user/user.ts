@@ -29,6 +29,9 @@ export const userAuthApi = {
         password: userInfo.password,
         tenantId: userInfo.tenantId,
       },
+    }, {
+      // 登录失败不需要重试，避免不必要的延迟
+      retry: { count: 0, delay: 0 },
     });
   },
 

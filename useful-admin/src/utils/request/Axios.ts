@@ -275,7 +275,8 @@ export class VAxios {
             } catch (err) {
               const error = err as any;
               if (error?.response && responseInterceptorsCatch && isFunction(responseInterceptorsCatch)) {
-                reject(responseInterceptorsCatch(error, this.instance));
+                // 🔥 responseInterceptorsCatch 返回 Promise，需要用 .catch 正确传递 rejection reason
+                responseInterceptorsCatch(error, this.instance).then(reject, reject);
                 return;
               }
               reject(err || new Error('请求错误!'));
@@ -286,7 +287,7 @@ export class VAxios {
         })
         .catch((e: Error | AxiosError) => {
           if (responseInterceptorsCatch && isFunction(responseInterceptorsCatch) && (e as any)?.response) {
-            reject(responseInterceptorsCatch(e, this.instance));
+            responseInterceptorsCatch(e, this.instance).then(reject, reject);
             return;
           }
           if (requestCatchHook && isFunction(requestCatchHook)) {

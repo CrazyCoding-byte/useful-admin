@@ -1,6 +1,7 @@
 package com.yzx.product.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.yzx.model.product.PmsAttrGroup;
 
 /**
  * @className: PmsAttrGroup
@@ -9,5 +10,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
  * @Version: 1.0
  * @description:
  */
-public interface PmsAttrGroupService extends IService<com.yzx.model.product.PmsAttrGroup> {
+public interface PmsAttrGroupService extends IService<PmsAttrGroup> {
 }

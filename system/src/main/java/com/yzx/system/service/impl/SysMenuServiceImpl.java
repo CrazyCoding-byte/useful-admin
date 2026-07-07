@@ -2,6 +2,7 @@ package com.yzx.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yzx.system.domain.TreeSelect;
 import com.yzx.model.exception.ServiceException;
 import com.yzx.model.system.SysMenu;
@@ -29,10 +30,8 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-public class SysMenuServiceImpl implements ISysMenuService {
+public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> implements ISysMenuService {
 
-    @Autowired
-    private SysMenuMapper baseMapper;
 
     @Autowired
     private SysMenuConvert menuConvert;

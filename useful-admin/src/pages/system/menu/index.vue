@@ -132,11 +132,42 @@
 
         <!-- 菜单图标 - 整行 -->
         <t-form-item label="菜单图标" name="icon" v-if="form.menuType !== 'F'">
-          <t-input v-model="form.icon" placeholder="点击选择图标">
-            <template #prefix-icon>
-              <t-icon v-if="form.icon" :name="form.icon"/>
-            </template>
-          </t-input>
+          <div class="icon-picker">
+            <t-popup
+              v-model="iconPopupVisible"
+              placement="bottom-left"
+              trigger="click"
+              :overlay-inner-style="{ width: '480px', padding: '12px', maxHeight: '360px', overflow: 'auto' }"
+              destroy-on-close
+            >
+              <div class="icon-trigger">
+                <t-icon v-if="form.icon" :name="form.icon" style="font-size: 18px" />
+                <span v-if="form.icon" style="margin-left: 8px">{{ form.icon }}</span>
+                <span v-else class="icon-placeholder">请选择图标</span>
+                <t-icon name="chevron-down" class="icon-arrow" />
+              </div>
+              <template #content>
+                <t-input
+                  v-model="iconSearch"
+                  placeholder="搜索图标..."
+                  clearable
+                  style="margin-bottom: 12px"
+                />
+                <div v-if="filteredIconOptions.length === 0" class="icon-empty">无匹配图标</div>
+                <div v-else class="icon-grid">
+                  <div
+                    v-for="item in filteredIconOptions"
+                    :key="item"
+                    class="icon-grid-item"
+                    :class="{ 'icon-grid-item--active': form.icon === item }"
+                    @click="selectIcon(item)"
+                  >
+                    <t-icon :name="item" style="font-size: 22px" />
+                  </div>
+                </div>
+              </template>
+            </t-popup>
+          </div>
         </t-form-item>
 
         <!-- 菜单名称 + 显示排序 - 双列 -->
@@ -383,10 +414,29 @@ import {menuApi} from '@/api/system/menu';
 import type {SysMenu} from '@/api/model/menuModel';
 import {MessagePlugin} from 'tdesign-vue-next';
 import type {FormInstanceFunctions, PrimaryTableCol} from 'tdesign-vue-next';
+import {manifest} from 'tdesign-icons-vue-next';
 
 const tableKey = ref(0);
 const loading = ref(false);
 const menuList = ref<SysMenu[]>([]);
+
+// 图标列表
+const iconOptions = manifest.map((item: { stem: string }) => item.stem);
+// 图标弹出面板
+const iconPopupVisible = ref(false);
+const iconSearch = ref('');
+
+const filteredIconOptions = computed(() => {
+  if (!iconSearch.value) return iconOptions;
+  const keyword = iconSearch.value.toLowerCase();
+  return iconOptions.filter((name: string) => name.toLowerCase().includes(keyword));
+});
+
+const selectIcon = (name: string) => {
+  form.icon = name;
+  iconPopupVisible.value = false;
+  iconSearch.value = '';
+};
 
 // 搜索
 const searchForm = ref({menuName: '', status: ''});
@@ -599,6 +649,68 @@ onMounted(() => {
 
 .operation-area {
   margin-bottom: 16px;
+}
+
+// 图标选择器样式
+.icon-picker {
+  width: 100%;
+
+  .icon-trigger {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--td-border-level-1-color);
+    border-radius: 3px;
+    cursor: pointer;
+    user-select: none;
+
+    &:hover {
+      border-color: var(--td-brand-color);
+    }
+
+    .icon-placeholder {
+      color: var(--td-text-color-placeholder);
+    }
+
+    .icon-arrow {
+      margin-left: auto;
+      color: var(--td-text-color-placeholder);
+    }
+  }
+}
+
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+}
+
+.icon-grid-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--td-text-color-secondary);
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: var(--td-brand-color-light);
+    color: var(--td-brand-color);
+  }
+
+  &--active {
+    background-color: var(--td-brand-color-light);
+    color: var(--td-brand-color);
+  }
+}
+
+.icon-empty {
+  text-align: center;
+  color: var(--td-text-color-placeholder);
+  padding: 24px 0;
 }
 
 // 表单双列布局样式

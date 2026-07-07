@@ -1,6 +1,7 @@
 package com.yzx.model.system;
 
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -17,6 +18,7 @@ import java.util.*;
 @Accessors(chain = true)
 public class SysMenu extends BaseEntity{
     /** 菜单ID */
+    @TableId
     private Long menuId;
 
     /** 菜单名称 */
