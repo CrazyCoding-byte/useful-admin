@@ -1,6 +1,7 @@
 package com.yzx.system.controller;
 
 import cn.hutool.core.util.ObjectUtil;
+import com.yzx.common.utils.ExcelUtil;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.annotation.Log;
 import com.yzx.model.constant.SystemConstants;
@@ -30,6 +31,7 @@ import java.util.List;
  */
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/system/post")
 public class SysUserPostController {
     private final ISysPostService sysPostService;
     private final ISysDeptService sysDeptService;
@@ -50,7 +52,7 @@ public class SysUserPostController {
      * 导出岗位列表
      */
     @Log(title = "岗位管理", businessType = BusinessType.EXPORT)
-    @PostMapping("export")
+    @PostMapping("/export")
     public void export(SysPostBo sysPostBo, HttpServletResponse response) {
         List<SysPostVo> list = sysPostService.selectPostList(sysPostBo);
         ExcelUtil.exportExcel(list, "岗位数据", SysPostVo.class, response);
@@ -73,7 +75,8 @@ public class SysUserPostController {
     /**
      * 修改岗位
      */
-    @PostMapping()
+    @Log(title = "岗位管理", businessType = BusinessType.UPDATE)
+    @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysPostBo sysPostBo) {
         if (!sysPostService.checkPostNameUnique(sysPostBo)) {
             return AjaxResult.error("修改岗位'" + sysPostBo.getPostName() + "'失败，岗位名称已存在");
@@ -91,7 +94,7 @@ public class SysUserPostController {
      * 删除岗位
      */
     @Log(title = "岗位管理", businessType = BusinessType.DELETE)
-    @PostMapping("{/postIds}")
+    @DeleteMapping("/{postIds}")
     public AjaxResult remove(@PathVariable Long[] postIds) {
         return AjaxResult.success(sysPostService.deletePostByIds(postIds));
     }

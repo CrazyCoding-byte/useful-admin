@@ -123,7 +123,7 @@ public class SysDictTypeController {
         return AjaxResult.success(sysDictTypeVo);
     }
 
-    @GetMapping("/getDictDataByType{dictType}")
+    @GetMapping("/getDictDataByType/{dictType}")
     public AjaxResult getDictDataByType(@PathVariable String dictType) {
         List<SysDictDataVo> sysDictDataVos = dictTypeService.selectDictDataByType(dictType);
         return AjaxResult.success(sysDictDataVos);

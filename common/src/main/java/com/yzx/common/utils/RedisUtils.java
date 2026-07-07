@@ -4,13 +4,10 @@ import com.yzx.model.utils.SpringUtils;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.redisson.api.*;
-import org.redisson.api.options.KeysScanOptions;
 
 import java.time.Duration;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,23 +31,24 @@ public class RedisUtils {
      * @param rateInterval 速率间隔
      * @return -1 表示失败
      */
-    public static long rateLimiter(String key, RateType rateType, int rate, int rateInterval) {
-        return rateLimiter(key, rateType, rate, rateInterval, 0);
+    public static long rateLimiter(String key, RateType rateType, int rate, RateIntervalUnit rateInterval) {
+        return rateLimiter(key, rateType, rate, rateInterval);
     }
 
     /**
-     * 限流
+     * 限流（老版Redisson trySetRate 参数顺序：rate, rateInterval, rateType, timeout）
      *
      * @param key          限流key
      * @param rateType     限流类型
      * @param rate         速率
      * @param rateInterval 速率间隔
-     * @param timeout      超时时间
+     * @param rateIntervalUnit      超时时间
      * @return -1 表示失败
      */
-    public static final long rateLimiter(String key, RateType rateType, int rate, int rateInterval, int timeout) {
+    public static long rateLimiter(String key, RateType rateType, int rate, int rateInterval, RateIntervalUnit rateIntervalUnit) {
         RRateLimiter rateLimiter = CLIENT.getRateLimiter(key);
-        rateLimiter.trySetRate(rateType, rate, Duration.ofSeconds(rateInterval), Duration.ofSeconds(timeout));
+        // 老版本 trySetRate 参数顺序：rate, rateInterval, rateType, waitTimeout
+        rateLimiter.trySetRate(rateType, rate, rateInterval, rateIntervalUnit);
         if (rateLimiter.tryAcquire()) {
             return rateLimiter.availablePermits();
         } else {
@@ -59,8 +57,8 @@ public class RedisUtils {
     }
 
     /**
-     *获取客户端实例
-     * @return
+     * 获取客户端实例
+     * @return RedissonClient
      */
     public static RedissonClient getClient() {
         return CLIENT;
@@ -90,11 +88,15 @@ public class RedisUtils {
         topic.publish(msg);
     }
 
+    /**
+     * 订阅频道消息
+     */
     public static <T> void subscribe(String channelKey, Class<T> clazz, Consumer<T> consumer) {
         RTopic topic = CLIENT.getTopic(channelKey);
         topic.addListener(clazz, (channel, msg) -> consumer.accept(msg));
     }
 
+    // ===================== String 缓存 =====================
     public static <T> void setCacheObject(final String key, final T value) {
         setCacheObject(key, value, false);
     }
@@ -102,15 +104,11 @@ public class RedisUtils {
     public static <T> void setCacheObject(final String key, final T value, final boolean isSaveTtl) {
         RBucket<Object> bucket = CLIENT.getBucket(key);
         if (isSaveTtl) {
-            try {
-                bucket.setAndKeepTTL(value);
-            } catch (Exception e) {
-                long timeToLive = bucket.remainTimeToLive();
-                if (timeToLive == -1) {
-                    bucket.set(value);
-                } else {
-                    bucket.set(value, Duration.ofMillis(timeToLive));
-                }
+            long timeToLive = bucket.remainTimeToLive();
+            if (timeToLive == -1) {
+                bucket.set(value);
+            } else {
+                bucket.set(value);
             }
         } else {
             bucket.set(value);
@@ -119,17 +117,17 @@ public class RedisUtils {
 
     public static <T> void setCacheObject(final String key, final T value, final Duration duration) {
         RBucket<Object> bucket = CLIENT.getBucket(key);
-        bucket.set(value, duration);
+        bucket.set(value, duration.toMillis(), TimeUnit.SECONDS);
     }
 
     public static <T> boolean setObjectIfAbsent(final String key, final T value, final Duration duration) {
         RBucket<T> bucket = CLIENT.getBucket(key);
-        return bucket.setIfAbsent(value, duration);
+        return bucket.setIfExists(value, duration.toMinutes(), TimeUnit.SECONDS);
     }
 
     public static <T> boolean setObjectIfExists(final String key, final T value, final Duration duration) {
         RBucket<T> bucket = CLIENT.getBucket(key);
-        return bucket.setIfExists(value, duration);
+        return bucket.setIfExists(value, duration.toMillis(), TimeUnit.SECONDS);
     }
 
     /**
@@ -149,7 +147,7 @@ public class RedisUtils {
      * 设置有效时间
      *
      * @param key     Redis键
-     * @param timeout 超时时间
+     * @param timeout 超时时间 秒
      * @return true=设置成功；false=设置失败
      */
     public static boolean expire(final String key, final long timeout) {
@@ -165,7 +163,7 @@ public class RedisUtils {
      */
     public static boolean expire(final String key, final Duration duration) {
         RBucket rBucket = CLIENT.getBucket(key);
-        return rBucket.expire(duration);
+        return rBucket.expire(duration.toMillis(), TimeUnit.SECONDS);
     }
 
     /**
@@ -183,10 +181,10 @@ public class RedisUtils {
      * 获得key剩余存活时间
      *
      * @param key 缓存键值
-     * @return 剩余存活时间
+     * @return 剩余存活时间，-1永久，-2不存在
      */
-    public static <T> long getTimeToLive(final String key) {
-        RBucket<T> rBucket = CLIENT.getBucket(key);
+    public static long getTimeToLive(final String key) {
+        RBucket<?> rBucket = CLIENT.getBucket(key);
         return rBucket.remainTimeToLive();
     }
 
@@ -200,16 +198,15 @@ public class RedisUtils {
     }
 
     /**
-     * 删除集合对象
+     * 删除多个key（老版本不推荐大量key批量，无deleteAsync批量）
      *
-     * @param collection 多个对象
+     * @param collection 多个key集合
      */
-    public static void deleteObject(final Collection collection) {
-        RBatch batch = CLIENT.createBatch();
-        collection.forEach(t -> {
-            batch.getBucket(t.toString()).deleteAsync();
-        });
-        batch.execute();
+    public static void deleteObject(final Collection<?> collection) {
+        for (Object obj : collection) {
+            String key = String.valueOf(obj);
+            CLIENT.getBucket(key).delete();
+        }
     }
 
     /**
@@ -221,318 +218,158 @@ public class RedisUtils {
         return CLIENT.getBucket(key).isExists();
     }
 
-    /**
-     * 缓存List数据
-     *
-     * @param key      缓存的键值
-     * @param dataList 待缓存的List数据
-     * @return 缓存的对象
-     */
+    // ===================== List 缓存 =====================
     public static <T> boolean setCacheList(final String key, final List<T> dataList) {
         RList<T> rList = CLIENT.getList(key);
         return rList.addAll(dataList);
     }
 
-    /**
-     * 追加缓存List数据
-     *
-     * @param key  缓存的键值
-     * @param data 待缓存的数据
-     * @return 缓存的对象
-     */
     public static <T> boolean addCacheList(final String key, final T data) {
         RList<T> rList = CLIENT.getList(key);
         return rList.add(data);
     }
 
-    /**
-     * 注册List监听器
-     * <p>
-     * key 监听器需开启 `notify-keyspace-events` 等 redis 相关配置
-     *
-     * @param key      缓存的键值
-     * @param listener 监听器配置
-     */
     public static <T> void addListListener(final String key, final ObjectListener listener) {
         RList<T> rList = CLIENT.getList(key);
         rList.addListener(listener);
     }
 
-    /**
-     * 获得缓存的list对象
-     *
-     * @param key 缓存的键值
-     * @return 缓存键值对应的数据
-     */
     public static <T> List<T> getCacheList(final String key) {
         RList<T> rList = CLIENT.getList(key);
         return rList.readAll();
     }
 
-    /**
-     * 获得缓存的list对象(范围)
-     *
-     * @param key  缓存的键值
-     * @param form 起始下标
-     * @param to   截止下标
-     * @return 缓存键值对应的数据
-     */
     public static <T> List<T> getCacheListRange(final String key, int form, int to) {
         RList<T> rList = CLIENT.getList(key);
         return rList.range(form, to);
     }
 
-    /**
-     * 缓存Set
-     *
-     * @param key     缓存键值
-     * @param dataSet 缓存的数据
-     * @return 缓存数据的对象
-     */
+    // ===================== Set 缓存 =====================
     public static <T> boolean setCacheSet(final String key, final Set<T> dataSet) {
         RSet<T> rSet = CLIENT.getSet(key);
         return rSet.addAll(dataSet);
     }
 
-    /**
-     * 追加缓存Set数据
-     *
-     * @param key  缓存的键值
-     * @param data 待缓存的数据
-     * @return 缓存的对象
-     */
     public static <T> boolean addCacheSet(final String key, final T data) {
         RSet<T> rSet = CLIENT.getSet(key);
         return rSet.add(data);
     }
 
-    /**
-     * 注册Set监听器
-     * <p>
-     * key 监听器需开启 `notify-keyspace-events` 等 redis 相关配置
-     *
-     * @param key      缓存的键值
-     * @param listener 监听器配置
-     */
     public static <T> void addSetListener(final String key, final ObjectListener listener) {
         RSet<T> rSet = CLIENT.getSet(key);
         rSet.addListener(listener);
     }
 
-    /**
-     * 获得缓存的set
-     *
-     * @param key 缓存的key
-     * @return set对象
-     */
     public static <T> Set<T> getCacheSet(final String key) {
         RSet<T> rSet = CLIENT.getSet(key);
         return rSet.readAll();
     }
 
-    /**
-     * 缓存Map
-     *
-     * @param key     缓存的键值
-     * @param dataMap 缓存的数据
-     */
+    // ===================== Hash(Map) 缓存 =====================
     public static <T> void setCacheMap(final String key, final Map<String, T> dataMap) {
-        if (dataMap != null) {
+        if (dataMap != null && !dataMap.isEmpty()) {
             RMap<String, T> rMap = CLIENT.getMap(key);
             rMap.putAll(dataMap);
         }
     }
 
-    /**
-     * 注册Map监听器
-     * <p>
-     * key 监听器需开启 `notify-keyspace-events` 等 redis 相关配置
-     *
-     * @param key      缓存的键值
-     * @param listener 监听器配置
-     */
     public static <T> void addMapListener(final String key, final ObjectListener listener) {
         RMap<String, T> rMap = CLIENT.getMap(key);
         rMap.addListener(listener);
     }
 
-    /**
-     * 获得缓存的Map
-     *
-     * @param key 缓存的键值
-     * @return map对象
-     */
     public static <T> Map<String, T> getCacheMap(final String key) {
         RMap<String, T> rMap = CLIENT.getMap(key);
         return rMap.getAll(rMap.keySet());
     }
 
-    /**
-     * 获得缓存Map的key列表
-     *
-     * @param key 缓存的键值
-     * @return key列表
-     */
     public static <T> Set<String> getCacheMapKeySet(final String key) {
         RMap<String, T> rMap = CLIENT.getMap(key);
         return rMap.keySet();
     }
 
-    /**
-     * 往Hash中存入数据
-     *
-     * @param key   Redis键
-     * @param hKey  Hash键
-     * @param value 值
-     */
     public static <T> void setCacheMapValue(final String key, final String hKey, final T value) {
         RMap<String, T> rMap = CLIENT.getMap(key);
         rMap.put(hKey, value);
     }
 
-    /**
-     * 获取Hash中的数据
-     *
-     * @param key  Redis键
-     * @param hKey Hash键
-     * @return Hash中的对象
-     */
     public static <T> T getCacheMapValue(final String key, final String hKey) {
         RMap<String, T> rMap = CLIENT.getMap(key);
         return rMap.get(hKey);
     }
 
-    /**
-     * 删除Hash中的数据
-     *
-     * @param key  Redis键
-     * @param hKey Hash键
-     * @return Hash中的对象
-     */
     public static <T> T delCacheMapValue(final String key, final String hKey) {
         RMap<String, T> rMap = CLIENT.getMap(key);
         return rMap.remove(hKey);
     }
 
     /**
-     * 删除Hash中的数据
-     *
-     * @param key   Redis键
-     * @param hKeys Hash键
+     * 批量删除hash字段（老版本无RMapAsync，循环删除）
      */
     public static <T> void delMultiCacheMapValue(final String key, final Set<String> hKeys) {
-        RBatch batch = CLIENT.createBatch();
-        RMapAsync<String, T> rMap = batch.getMap(key);
+        RMap<String, T> rMap = CLIENT.getMap(key);
         for (String hKey : hKeys) {
-            rMap.removeAsync(hKey);
+            rMap.remove(hKey);
         }
-        batch.execute();
     }
 
-    /**
-     * 获取多个Hash中的数据
-     *
-     * @param key   Redis键
-     * @param hKeys Hash键集合
-     * @return Hash对象集合
-     */
     public static <K, V> Map<K, V> getMultiCacheMapValue(final String key, final Set<K> hKeys) {
         RMap<K, V> rMap = CLIENT.getMap(key);
         return rMap.getAll(hKeys);
     }
 
-    /**
-     * 设置原子值
-     *
-     * @param key   Redis键
-     * @param value 值
-     */
+    // ===================== 原子计数器 =====================
     public static void setAtomicValue(String key, long value) {
         RAtomicLong atomic = CLIENT.getAtomicLong(key);
         atomic.set(value);
     }
 
-    /**
-     * 获取原子值
-     *
-     * @param key Redis键
-     * @return 当前值
-     */
     public static long getAtomicValue(String key) {
         RAtomicLong atomic = CLIENT.getAtomicLong(key);
         return atomic.get();
     }
 
-    /**
-     * 递增原子值
-     *
-     * @param key Redis键
-     * @return 当前值
-     */
     public static long incrAtomicValue(String key) {
         RAtomicLong atomic = CLIENT.getAtomicLong(key);
         return atomic.incrementAndGet();
     }
 
-    /**
-     * 递减原子值
-     *
-     * @param key Redis键
-     * @return 当前值
-     */
     public static long decrAtomicValue(String key) {
         RAtomicLong atomic = CLIENT.getAtomicLong(key);
         return atomic.decrementAndGet();
     }
 
+    // ===================== Key 扫描操作（移除KeysScanOptions 高版本API） =====================
+
     /**
-     * 获得缓存的基本对象列表(全局匹配忽略租户 自行拼接租户id)
-     * <P>
-     * limit-设置扫描的限制数量(默认为0,查询全部)
-     * pattern-设置键的匹配模式(默认为null)
-     * chunkSize-设置每次扫描的块大小(默认为0,本方法设置为1000)
-     * type-设置键的类型(默认为null,查询全部类型)
-     * </P>
-     * @see KeysScanOptions
-     * @param pattern 字符串前缀
-     * @return 对象列表
+     * 模糊匹配key（老版本scan迭代器，防止keys命令阻塞redis）
+     * @param pattern 匹配前缀 *xxx* / xxx*
+     * @return key集合
      */
     public static Collection<String> keys(final String pattern) {
-        return keys(KeysScanOptions.defaults().pattern(pattern).chunkSize(1000));
+        RKeys rKeys = CLIENT.getKeys();
+        Iterable<String> keysByPattern = rKeys.getKeysByPattern(pattern, 1000);
+        List<String> list = new ArrayList<>();
+        while (keysByPattern.iterator().hasNext()) {
+            list.add(keysByPattern.iterator().next());
+        }
+        return list;
     }
 
     /**
-     * 通过扫描参数获取缓存的基本对象列表
-     * @param keysScanOptions 扫描参数
-     * <P>
-     * limit-设置扫描的限制数量(默认为0,查询全部)
-     * pattern-设置键的匹配模式(默认为null)
-     * chunkSize-设置每次扫描的块大小(默认为0)
-     * type-设置键的类型(默认为null,查询全部类型)
-     * </P>
-     * @see KeysScanOptions
-     */
-    public static Collection<String> keys(final KeysScanOptions keysScanOptions) {
-        Stream<String> keysStream = CLIENT.getKeys().getKeysStream(keysScanOptions);
-        return keysStream.collect(Collectors.toList());
-    }
-
-    /**
-     * 删除缓存的基本对象列表(全局匹配忽略租户 自行拼接租户id)
-     *
-     * @param pattern 字符串前缀
+     * 根据前缀批量删除key
+     * @param pattern key匹配规则
      */
     public static void deleteKeys(final String pattern) {
         CLIENT.getKeys().deleteByPattern(pattern);
     }
 
     /**
-     * 检查redis中是否存在key
-     *
-     * @param key 键
+     * 判断key是否存在
+     * @param key 缓存key
+     * @return true存在
      */
     public static Boolean hasKey(String key) {
-        RKeys rKeys = CLIENT.getKeys();
-        return rKeys.countExists(key) > 0;
+        return CLIENT.getKeys().countExists(key) > 0;
     }
 }

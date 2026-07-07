@@ -84,7 +84,8 @@ public interface SystemApi {
      * @param dictType 字典类型
      * @return 字典类型
      */
-    RemoteDictTypeVo selectDictTypeByType(String dictType);
+    @GetMapping("/system/dict/type/getDictTypeByType/{dictType}")
+    AjaxResult selectDictTypeByType(@PathVariable("dictType") String dictType);
 
     /**
      * 根据字典类型查询字典数据
@@ -92,5 +93,6 @@ public interface SystemApi {
      * @param dictType 字典类型
      * @return 字典数据集合信息
      */
-    List<RemoteDictDataVo> selectDictDataByType(String dictType);
+    @GetMapping("/system/dict/type/getDictDataByType/{dictType}")
+    AjaxResult selectDictDataByType(@PathVariable("dictType") String dictType);
 }
