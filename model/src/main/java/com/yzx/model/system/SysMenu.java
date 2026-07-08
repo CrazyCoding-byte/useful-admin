@@ -1,5 +1,6 @@
 package com.yzx.model.system;
 
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -16,9 +17,9 @@ import java.util.*;
 @Data
 @TableName("sys_menu")
 @Accessors(chain = true)
-public class SysMenu extends BaseEntity{
+public class SysMenu extends BaseEntity {
     /** 菜单ID */
-    @TableId
+    @TableId(value = "menu_id", type = IdType.AUTO)
     private Long menuId;
 
     /** 菜单名称 */

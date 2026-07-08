@@ -1,8 +1,10 @@
 package com.yzx.system.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.system.SysTenantPackage;
-import com.yzx.system.annotation.RequiresPermission;
 import com.yzx.system.service.ISysTenantPackageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -20,12 +22,25 @@ public class SysTenantPackageController {
     private ISysTenantPackageService tenantPackageService;
 
     /**
-     * 获取套餐列表
+     * 获取套餐列表（支持分页和搜索）
      */
     @GetMapping("/list")
-    public AjaxResult list() {
-        List<SysTenantPackage> list = tenantPackageService.selectAvailablePackages();
-        return AjaxResult.success(list);
+    public AjaxResult list(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String packageName,
+            @RequestParam(required = false) String status) {
+
+        LambdaQueryWrapper<SysTenantPackage> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(StringUtils.isNotBlank(packageName), SysTenantPackage::getPackageName, packageName)
+               .eq(StringUtils.isNotBlank(status), SysTenantPackage::getStatus, status)
+               .orderByDesc(SysTenantPackage::getCreateTime);
+
+        Page<SysTenantPackage> page = tenantPackageService.page(new Page<>(pageNum, pageSize), wrapper);
+
+        AjaxResult result = AjaxResult.success(page.getRecords());
+        result.put("total", page.getTotal());
+        return result;
     }
 
     /**

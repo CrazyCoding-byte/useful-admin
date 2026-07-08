@@ -159,7 +159,6 @@ public class DistributionServiceimp extends ServiceImpl<DistributionRelationMapp
     }
 
 
-
     /**
      * 计算并保存佣金记录
      * commissionUserId 获取资金的用户id 金钱流入
@@ -195,7 +194,7 @@ public class DistributionServiceimp extends ServiceImpl<DistributionRelationMapp
         }
 
         // 4. 检查是否已存在相同订单的佣金记录（防止重复计算） 一个订单只能计算一次佣金
-        int exists = commissionRecordService.count(new QueryWrapper<CommissionRecord>()
+        Long exists = commissionRecordService.count(new QueryWrapper<CommissionRecord>()
                 .eq("order_id", orderId)
                 .eq("user_id", commissionUserId)
                 .eq("level", level));

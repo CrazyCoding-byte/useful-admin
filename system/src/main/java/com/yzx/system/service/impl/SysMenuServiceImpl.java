@@ -311,8 +311,12 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         if (!checkMenuNameUnique(bo)) {
             throw new ServiceException("新增菜单" + bo.getMenuName() + "失败，菜单名称已存在");
         }
+        log.info("[DEBUG] insertMenu bo.menuId={}", bo.getMenuId());
         SysMenu menu = menuConvert.boToEntity(bo);
-        return baseMapper.insert(menu) > 0 ? 1 : 0;
+        log.info("[DEBUG] insertMenu before insert menu.menuId={}", menu.getMenuId());
+        int rows = baseMapper.insert(menu);
+        log.info("[DEBUG] insertMenu after insert menu.menuId={}", menu.getMenuId());
+        return rows > 0 ? 1 : 0;
     }
 
     /**

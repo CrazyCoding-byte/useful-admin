@@ -100,7 +100,6 @@
                 <version>${spring-boot.version}</version>
                 <configuration>
                     <mainClass>com.yzx.system.SystemApplication</mainClass>
-                    <skip>true</skip>
                 </configuration>
                 <executions>
                     <execution>

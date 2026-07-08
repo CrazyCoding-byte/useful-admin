@@ -1,5 +1,8 @@
 package com.yzx.system.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yzx.common.tenant.TenantContext;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.system.SysTenant;
@@ -28,7 +31,6 @@ public class SysTenantController {
     @GetMapping("/availableList")
     public List<SysTenant> getAvailableTenantList() {
         log.info("收到获取可用租户列表请求");
-        // 使用忽略租户上下文的方式查询
         List<SysTenant> list = TenantContext.ignoreTenant(() -> tenantService.selectAvailableTenantList());
         log.info("查询到可用租户列表，数量: {}", list != null ? list.size() : 0);
         if (list != null && !list.isEmpty()) {
@@ -46,13 +48,28 @@ public class SysTenantController {
     }
 
     /**
-     * 获取租户列表（管理后台用）
+     * 获取租户列表（管理后台用，支持分页和搜索）
      */
     @GetMapping("/list")
-    public AjaxResult list() {
-        // 超级管理员可以查看所有租户
-        List<SysTenant> list = TenantContext.ignoreTenant(() -> tenantService.list());
-        return AjaxResult.success(list);
+    public AjaxResult list(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String tenantName,
+            @RequestParam(required = false) String contactName,
+            @RequestParam(required = false) String status) {
+
+        LambdaQueryWrapper<SysTenant> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(StringUtils.isNotBlank(tenantName), SysTenant::getTenantName, tenantName)
+               .like(StringUtils.isNotBlank(contactName), SysTenant::getContactName, contactName)
+               .eq(StringUtils.isNotBlank(status), SysTenant::getStatus, status)
+               .orderByDesc(SysTenant::getCreateTime);
+
+        Page<SysTenant> page = TenantContext.ignoreTenant(() ->
+                tenantService.page(new Page<>(pageNum, pageSize), wrapper));
+
+        AjaxResult result = AjaxResult.success(page.getRecords());
+        result.put("total", page.getTotal());
+        return result;
     }
 
     /**
