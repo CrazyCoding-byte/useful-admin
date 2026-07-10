@@ -311,12 +311,11 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         if (!checkMenuNameUnique(bo)) {
             throw new ServiceException("新增菜单" + bo.getMenuName() + "失败，菜单名称已存在");
         }
-        log.info("[DEBUG] insertMenu bo.menuId={}", bo.getMenuId());
         SysMenu menu = menuConvert.boToEntity(bo);
-        log.info("[DEBUG] insertMenu before insert menu.menuId={}", menu.getMenuId());
-        int rows = baseMapper.insert(menu);
-        log.info("[DEBUG] insertMenu after insert menu.menuId={}", menu.getMenuId());
-        return rows > 0 ? 1 : 0;
+        // 手动设置自增ID：查当前最大menu_id + 1（解决MyBatis-Plus AUTO在某些环境不生效的问题）
+        Long nextId = baseMapper.selectMaxMenuId() + 1;
+        menu.setMenuId(nextId);
+        return baseMapper.insert(menu) > 0 ? 1 : 0;
     }
 
     /**

@@ -39,4 +39,6 @@ public interface SysMenuMapper extends BaseMapper<SysMenu> {
      */
     List<SysMenu> selectMenuTreeByUserId(@Param("userId") Long userId);
 
+    Long selectMaxMenuId();
+
 }

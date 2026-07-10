@@ -36,4 +36,8 @@
         order by m.parent_id, m.order_num
     </select>
 
+    <select id="selectMaxMenuId" resultType="java.lang.Long">
+        SELECT IFNULL(MAX(menu_id), 0) FROM sys_menu
+    </select>
+
 </mapper>

@@ -332,6 +332,7 @@ func (s *WebSocketServer) handleUnknown(ctx context.Context, conn *websocket.Con
 	}
 	return wsjson.Write(ctx, conn, response)
 }
+
 func (s *WebSocketServer) sendError(userSession *model.UserSession, errMsg string) error {
 	return userSession.SendJSON(map[string]interface{}{
 		"type":      "error",

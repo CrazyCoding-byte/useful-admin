@@ -19,7 +19,7 @@ import java.util.*;
 @Accessors(chain = true)
 public class SysMenu extends BaseEntity {
     /** 菜单ID */
-    @TableId(value = "menu_id", type = IdType.AUTO)
+    @TableId(value = "menu_id")
     private Long menuId;
 
     /** 菜单名称 */
