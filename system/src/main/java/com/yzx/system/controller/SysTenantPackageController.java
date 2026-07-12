@@ -38,9 +38,10 @@ public class SysTenantPackageController {
 
         Page<SysTenantPackage> page = tenantPackageService.page(new Page<>(pageNum, pageSize), wrapper);
 
-        AjaxResult result = AjaxResult.success(page.getRecords());
-        result.put("total", page.getTotal());
-        return result;
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("list", page.getRecords());
+        data.put("total", page.getTotal());
+        return AjaxResult.success(data);
     }
 
     /**

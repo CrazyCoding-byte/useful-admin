@@ -82,106 +82,63 @@
     <t-dialog
       v-model:visible="dialogVisible"
       :header="dialogTitle"
-      width="650px"
+      width="520px"
       :confirm-btn="{ content: '确定', loading: submitLoading }"
       @confirm="handleSubmit"
       @close="handleDialogClose"
     >
-      <t-form ref="formRef" :data="formData" :rules="formRules" label-width="110px">
-        <!-- 基本信息 -->
-        <t-divider>基本信息</t-divider>
-        <t-row :gutter="[16, 0]">
-          <t-col :span="6">
-            <t-form-item label="租户名称" name="tenantName">
-              <t-input v-model="formData.tenantName" placeholder="请输入租户名称" />
-            </t-form-item>
-          </t-col>
-          <t-col :span="6">
-            <t-form-item label="租户编号" name="tenantId">
-              <t-input v-model="formData.tenantId" placeholder="自动生成" :disabled="isEdit" />
-            </t-form-item>
-          </t-col>
-        </t-row>
-        <t-row :gutter="[16, 0]">
-          <t-col :span="6">
-            <t-form-item label="联系人" name="contactName">
-              <t-input v-model="formData.contactName" placeholder="请输入联系人" />
-            </t-form-item>
-          </t-col>
-          <t-col :span="6">
-            <t-form-item label="联系电话" name="contactPhone">
-              <t-input v-model="formData.contactPhone" placeholder="请输入联系电话" />
-            </t-form-item>
-          </t-col>
-        </t-row>
-        <t-row :gutter="[16, 0]">
-          <t-col :span="6">
-            <t-form-item label="联系邮箱" name="contactEmail">
-              <t-input v-model="formData.contactEmail" placeholder="请输入联系邮箱" />
-            </t-form-item>
-          </t-col>
-          <t-col :span="6">
-            <t-form-item label="所属套餐" name="packageId">
-              <t-select v-model="formData.packageId" placeholder="请选择套餐" clearable>
-                <t-option
-                  v-for="pkg in packageOptions"
-                  :key="pkg.packageId"
-                  :value="pkg.packageId"
-                  :label="pkg.packageName"
-                />
-              </t-select>
-            </t-form-item>
-          </t-col>
-        </t-row>
+      <t-form ref="formRef" :data="formData" :rules="formRules" label-width="100px">
+        <t-form-item label="企业名称" name="tenantName" required>
+          <t-input v-model="formData.tenantName" placeholder="请输入企业名称" />
+        </t-form-item>
 
-        <!-- 高级信息 -->
-        <t-divider>高级信息</t-divider>
-        <t-row :gutter="[16, 0]">
-          <t-col :span="6">
-            <t-form-item label="域名" name="domain">
-              <t-input v-model="formData.domain" placeholder="请输入域名" />
-            </t-form-item>
-          </t-col>
-          <t-col :span="6">
-            <t-form-item label="过期时间" name="expireTime">
-              <t-date-picker
-                v-model="formData.expireTime"
-                placeholder="永久有效"
-                enable-time-picker
-                style="width: 100%"
-              />
-            </t-form-item>
-          </t-col>
-        </t-row>
-        <t-row :gutter="[16, 0]">
-          <t-col :span="6">
-            <t-form-item label="租户地址" name="address">
-              <t-input v-model="formData.address" placeholder="请输入租户地址" />
-            </t-form-item>
-          </t-col>
-          <t-col :span="6">
-            <t-form-item label="信用代码" name="creditCode">
-              <t-input v-model="formData.creditCode" placeholder="统一社会信用代码" />
-            </t-form-item>
-          </t-col>
-        </t-row>
-        <t-row :gutter="[16, 0]">
-          <t-col :span="6">
-            <t-form-item label="状态" name="status">
-              <t-radio-group v-model="formData.status">
-                <t-radio value="0">正常</t-radio>
-                <t-radio value="1">停用</t-radio>
-              </t-radio-group>
-            </t-form-item>
-          </t-col>
-        </t-row>
-        <t-row :gutter="[16, 0]">
-          <t-col :span="12">
-            <t-form-item label="备注" name="remark">
-              <t-textarea v-model="formData.remark" placeholder="请输入备注" :rows="2" />
-            </t-form-item>
-          </t-col>
-        </t-row>
+        <t-form-item label="联系人" name="contactName" required>
+          <t-input v-model="formData.contactName" placeholder="请输入联系人" />
+        </t-form-item>
+
+        <t-form-item label="联系电话" name="contactPhone" required>
+          <t-input v-model="formData.contactPhone" placeholder="请输入联系电话" />
+        </t-form-item>
+
+        <t-form-item label="租户套餐" name="packageId">
+          <t-select v-model="formData.packageId" placeholder="请选择租户套餐" clearable>
+            <t-option
+              v-for="pkg in packageOptions"
+              :key="pkg.packageId"
+              :value="pkg.packageId"
+              :label="pkg.packageName"
+            />
+          </t-select>
+        </t-form-item>
+
+        <t-form-item label="过期时间" name="expireTime">
+          <t-date-picker
+            v-model="formData.expireTime"
+            placeholder="请选择过期时间"
+            enable-time-picker
+            style="width: 100%"
+          />
+        </t-form-item>
+
+        <t-form-item label="用户数量" name="userCount">
+          <t-input v-model="formData.userCount" type="number" placeholder="0" />
+        </t-form-item>
+
+        <t-form-item label="绑定域名" name="domain">
+          <t-input v-model="formData.domain" placeholder="请输入绑定域名" />
+        </t-form-item>
+
+        <t-form-item label="企业地址" name="address">
+          <t-input v-model="formData.address" placeholder="请输入企业地址" />
+        </t-form-item>
+
+        <t-form-item label="企业代码" name="creditCode">
+          <t-input v-model="formData.creditCode" placeholder="请输入统一社会信用代码" />
+        </t-form-item>
+
+        <t-form-item label="企业简介" name="remark">
+          <t-textarea v-model="formData.remark" placeholder="请输入企业简介" :rows="3" />
+        </t-form-item>
       </t-form>
     </t-dialog>
 
@@ -244,24 +201,22 @@ const formData = reactive<Record<string, any>>({
   tenantName: '',
   contactName: '',
   contactPhone: '',
-  contactEmail: '',
   packageId: null,
-  domain: '',
   expireTime: '',
+  userCount: 0,
+  domain: '',
   address: '',
   creditCode: '',
-  status: '0',
   remark: '',
 });
 
 const formRules = {
-  tenantName: [{ required: true, message: '请输入租户名称', type: 'error' }],
+  tenantName: [{ required: true, message: '请输入企业名称', type: 'error' }],
   contactName: [{ required: true, message: '请输入联系人', type: 'error' }],
   contactPhone: [
     { required: true, message: '请输入联系电话', type: 'error' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', type: 'error' },
   ],
-  contactEmail: [{ email: { ignore_max_length: true }, message: '请输入正确的邮箱', type: 'error' }],
 };
 
 // 套餐选项
@@ -285,13 +240,12 @@ const resetFormData = () => {
   formData.tenantName = '';
   formData.contactName = '';
   formData.contactPhone = '';
-  formData.contactEmail = '';
   formData.packageId = null;
-  formData.domain = '';
   formData.expireTime = '';
+  formData.userCount = 0;
+  formData.domain = '';
   formData.address = '';
   formData.creditCode = '';
-  formData.status = '0';
   formData.remark = '';
   formRef.value?.clearValidate();
 };
@@ -300,9 +254,7 @@ const resetFormData = () => {
 const loadPackageOptions = async () => {
   try {
     const res = await tenantPackageApi.getOptions();
-    if (res.code === 200) {
-      packageOptions.value = res.data || [];
-    }
+    packageOptions.value = Array.isArray(res) ? res : (res?.data || []);
   } catch (error) {
     console.error('加载套餐选项失败:', error);
   }
@@ -317,21 +269,21 @@ const fetchData = async () => {
       pageSize: pagination.pageSize,
     };
     const res = await tenantApi.getList(params);
-    if (res.code === 200) {
-      // 处理分页/非分页两种返回格式
-      if (res.data && Array.isArray(res.data)) {
-        tenantList.value = res.data;
-        pagination.total = res.total ?? res.data.length;
-      } else if (res.rows) {
-        tenantList.value = res.rows;
-        pagination.total = res.total ?? 0;
-      } else if (Array.isArray(res)) {
-        tenantList.value = res;
-        pagination.total = res.length;
-      } else {
-        tenantList.value = [];
-        pagination.total = 0;
-      }
+    if (res?.list && Array.isArray(res.list)) {
+      tenantList.value = res.list;
+      pagination.total = res.total ?? res.list.length;
+    } else if (Array.isArray(res)) {
+      tenantList.value = res;
+      pagination.total = res.length;
+    } else if (res?.data && Array.isArray(res.data)) {
+      tenantList.value = res.data;
+      pagination.total = res.total ?? res.data.length;
+    } else if (res?.rows) {
+      tenantList.value = res.rows;
+      pagination.total = res.total ?? 0;
+    } else {
+      tenantList.value = [];
+      pagination.total = 0;
     }
   } catch (error) {
     console.error('获取租户列表失败:', error);
@@ -370,14 +322,16 @@ const handleAdd = () => {
 const handleEdit = (row: Record<string, any>) => {
   isEdit.value = true;
   resetFormData();
-  // 复制行数据到表单
-  Object.keys(formData).forEach((key) => {
-    if (key === 'expireTime' && row[key]) {
-      formData[key] = row[key];
-    } else if (row[key] !== undefined) {
-      formData[key] = row[key];
-    }
-  });
+  formData.tenantId = row.tenantId || '';
+  formData.tenantName = row.tenantName || '';
+  formData.contactName = row.contactName || '';
+  formData.contactPhone = row.contactPhone || '';
+  formData.packageId = row.packageId || null;
+  formData.expireTime = row.expireTime || '';
+  formData.domain = row.domain || '';
+  formData.address = row.address || '';
+  formData.creditCode = row.creditCode || '';
+  formData.remark = row.remark || '';
   dialogVisible.value = true;
 };
 
@@ -406,10 +360,16 @@ const handleSubmit = async () => {
   const validateResult = await formRef.value?.validate();
   if (validateResult !== true) return;
 
+  const submitData = { ...formData };
+  if (submitData.expireTime && submitData.expireTime instanceof Date) {
+    const date = submitData.expireTime as Date;
+    submitData.expireTime = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+  }
+
   submitLoading.value = true;
   try {
     const api = isEdit.value ? tenantApi.update : tenantApi.add;
-    const res = await api(formData);
+    const res = await api(submitData);
     if (res.code === 200) {
       MessagePlugin.success(isEdit.value ? '修改成功' : '创建成功');
       dialogVisible.value = false;

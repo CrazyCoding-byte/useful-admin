@@ -29,6 +29,12 @@ spring:
             - Path=/auth/**
           filters:
             - StripPrefix=0  # 转发时保留/auth前缀
+        - id: system-server
+          uri: lb://system-server
+          predicates:
+            - Path=/system/**
+          filters:
+            - StripPrefix=0  # 转发时保留/system前缀
         - id: scan_route
           uri: no://op
           predicates:

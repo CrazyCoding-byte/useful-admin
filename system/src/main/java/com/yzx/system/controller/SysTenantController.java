@@ -67,9 +67,10 @@ public class SysTenantController {
         Page<SysTenant> page = TenantContext.ignoreTenant(() ->
                 tenantService.page(new Page<>(pageNum, pageSize), wrapper));
 
-        AjaxResult result = AjaxResult.success(page.getRecords());
-        result.put("total", page.getTotal());
-        return result;
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("list", page.getRecords());
+        data.put("total", page.getTotal());
+        return AjaxResult.success(data);
     }
 
     /**
@@ -86,6 +87,9 @@ public class SysTenantController {
      */
     @PostMapping
     public AjaxResult add(@RequestBody SysTenant tenant) {
+        log.info("收到新增租户请求: tenantName={}, contactName={}, contactPhone={}, packageId={}, expireTime={}",
+                tenant.getTenantName(), tenant.getContactName(), tenant.getContactPhone(),
+                tenant.getPackageId(), tenant.getExpireTime());
         boolean success = tenantService.insertTenant(tenant);
         return success ? AjaxResult.success("创建成功") : AjaxResult.error("创建失败");
     }

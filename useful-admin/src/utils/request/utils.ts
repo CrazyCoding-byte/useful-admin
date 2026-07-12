@@ -26,6 +26,15 @@ export function formatRequestDate(params: Recordable) {
     // eslint-disable-next-line no-underscore-dangle
     if (params[key] && params[key]._isAMomentObject) {
       params[key] = params[key].format(DATE_TIME_FORMAT);
+    } else if (params[key] instanceof Date) {
+      const date = params[key] as Date;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      params[key] = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
     if (isString(key)) {
       const value = params[key];
@@ -37,7 +46,7 @@ export function formatRequestDate(params: Recordable) {
         }
       }
     }
-    if (isObject(params[key])) {
+    if (isObject(params[key]) && !(params[key] instanceof Date)) {
       formatRequestDate(params[key]);
     }
   }

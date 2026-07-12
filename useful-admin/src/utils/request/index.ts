@@ -108,6 +108,13 @@ const transform: AxiosTransform = {
   beforeRequestHook: (config, options) => {
     const { apiUrl, isJoinPrefix, urlPrefix, joinParamsToUrl, formatDate, joinTime = true } = options;
 
+    console.log('[Request] 请求配置:', {
+      url: config.url,
+      method: config.method,
+      data: config.data,
+      contentType: config.headers?.['Content-Type'],
+    });
+
     // 添加接口前缀
     if (isJoinPrefix && urlPrefix && isString(urlPrefix)) {
       config.url = `${urlPrefix}${config.url}`;
