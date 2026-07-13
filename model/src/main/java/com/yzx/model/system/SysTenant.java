@@ -1,6 +1,8 @@
 package com.yzx.model.system;
 
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -11,8 +13,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import java.util.Date;
 
 /**
- * 租户表
- * 管理系统中的租户信息
+ * 租户对象 sys_tenant
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -22,100 +23,37 @@ public class SysTenant extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
 
-    /**
-     * 租户编号
-     */
-    @TableId
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
+
     private String tenantId;
 
-    /**
-     * 租户名称
-     */
-    private String tenantName;
+    private String contactUserName;
 
-    /**
-     * 联系人
-     */
-    private String contactName;
-
-    /**
-     * 联系电话
-     */
     private String contactPhone;
 
-    /**
-     * 联系邮箱
-     */
-    private String contactEmail;
+    private String companyName;
 
-    /**
-     * 租户套餐ID
-     */
+    private String licenseNumber;
+
+    private String address;
+
+    private String domain;
+
+    private String intro;
+
+    private String remark;
+
     private Long packageId;
 
-    /**
-     * 过期时间
-     */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date expireTime;
 
-    /**
-     * 租户状态（0正常 1停用）
-     */
+    private Long accountCount;
+
     private String status;
 
-    /**
-     * 备注
-     */
-    private String remark;
-
-    /**
-     * 是否系统默认（0否 1是）
-     */
-    private String isDefault;
-
-    /**
-     * 域名
-     */
-    private String domain;
-
-    /**
-     * 租户Logo
-     */
-    private String logo;
-
-    /**
-     * 租户地址
-     */
-    private String address;
-
-    /**
-     * 统一社会信用代码
-     */
-    private String creditCode;
-
-    /**
-     * 判断租户是否过期
-     */
-    public boolean isExpired() {
-        if (expireTime == null) {
-            return false;
-        }
-        return expireTime.before(new Date());
-    }
-
-    /**
-     * 判断是否为系统默认租户
-     */
-    public boolean isDefaultTenant() {
-        return "1".equals(isDefault);
-    }
-
-    /**
-     * 判断是否可用
-     */
-    public boolean isAvailable() {
-        return "0".equals(status) && !isExpired();
-    }
+    @TableLogic
+    private String delFlag;
 }

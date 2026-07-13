@@ -26,11 +26,6 @@ public interface ISysTenantService extends IService<SysTenant> {
     boolean checkTenantAvailable(String tenantId);
 
     /**
-     * 校验租户是否允许操作（系统内置租户不允许删除）
-     */
-    void checkTenantAllowed(String tenantId);
-
-    /**
      * 新增租户
      */
     boolean insertTenant(SysTenant tenant);
@@ -43,5 +38,5 @@ public interface ISysTenantService extends IService<SysTenant> {
     /**
      * 删除租户
      */
-    boolean deleteTenantById(String tenantId);
+    boolean deleteTenantById(Long id);
 }

@@ -1,17 +1,16 @@
 <template>
   <div class="tenant-container">
-    <!-- 搜索表单 -->
     <t-card class="search-card" :bordered="false">
       <t-form ref="searchFormRef" :data="searchForm" label-width="80px" @submit="handleSearch" @reset="handleReset">
         <t-row :gutter="[16, 16]">
           <t-col :span="3">
-            <t-form-item label="租户名称" name="tenantName">
-              <t-input v-model="searchForm.tenantName" placeholder="请输入租户名称" clearable />
+            <t-form-item label="企业名称" name="companyName">
+              <t-input v-model="searchForm.companyName" placeholder="请输入企业名称" clearable />
             </t-form-item>
           </t-col>
           <t-col :span="3">
-            <t-form-item label="联系人" name="contactName">
-              <t-input v-model="searchForm.contactName" placeholder="请输入联系人" clearable />
+            <t-form-item label="联系人" name="contactUserName">
+              <t-input v-model="searchForm.contactUserName" placeholder="请输入联系人" clearable />
             </t-form-item>
           </t-col>
           <t-col :span="3">
@@ -30,7 +29,6 @@
       </t-form>
     </t-card>
 
-    <!-- 表格卡片 -->
     <t-card class="table-card" :bordered="false">
       <div class="table-toolbar">
         <t-button theme="primary" @click="handleAdd">
@@ -43,7 +41,7 @@
         :data="tenantList"
         :columns="columns"
         :loading="loading"
-        row-key="tenantId"
+        row-key="id"
         :pagination="pagination"
         hover
         stripe
@@ -52,11 +50,6 @@
         <template #status="{ row }">
           <t-tag :theme="row.status === '0' ? 'success' : 'danger'" variant="light">
             {{ row.status === '0' ? '正常' : '停用' }}
-          </t-tag>
-        </template>
-        <template #isDefault="{ row }">
-          <t-tag :theme="row.isDefault === '1' ? 'warning' : 'default'" variant="light">
-            {{ row.isDefault === '1' ? '系统默认' : '普通租户' }}
           </t-tag>
         </template>
         <template #expireTime="{ row }">
@@ -68,7 +61,6 @@
           <t-space>
             <t-link theme="primary" hover="color" @click="handleEdit(row)">编辑</t-link>
             <t-link
-              v-if="row.isDefault !== '1'"
               theme="danger"
               hover="color"
               @click="handleDelete(row)"
@@ -78,7 +70,6 @@
       </t-table>
     </t-card>
 
-    <!-- 新增/编辑弹窗 -->
     <t-dialog
       v-model:visible="dialogVisible"
       :header="dialogTitle"
@@ -88,12 +79,12 @@
       @close="handleDialogClose"
     >
       <t-form ref="formRef" :data="formData" :rules="formRules" label-width="100px">
-        <t-form-item label="企业名称" name="tenantName" required>
-          <t-input v-model="formData.tenantName" placeholder="请输入企业名称" />
+        <t-form-item label="企业名称" name="companyName" required>
+          <t-input v-model="formData.companyName" placeholder="请输入企业名称" />
         </t-form-item>
 
-        <t-form-item label="联系人" name="contactName" required>
-          <t-input v-model="formData.contactName" placeholder="请输入联系人" />
+        <t-form-item label="联系人" name="contactUserName" required>
+          <t-input v-model="formData.contactUserName" placeholder="请输入联系人" />
         </t-form-item>
 
         <t-form-item label="联系电话" name="contactPhone" required>
@@ -120,8 +111,8 @@
           />
         </t-form-item>
 
-        <t-form-item label="用户数量" name="userCount">
-          <t-input v-model="formData.userCount" type="number" placeholder="0" />
+        <t-form-item label="用户数量" name="accountCount">
+          <t-input v-model="formData.accountCount" type="number" placeholder="-1表示不限制" />
         </t-form-item>
 
         <t-form-item label="绑定域名" name="domain">
@@ -132,17 +123,20 @@
           <t-input v-model="formData.address" placeholder="请输入企业地址" />
         </t-form-item>
 
-        <t-form-item label="企业代码" name="creditCode">
-          <t-input v-model="formData.creditCode" placeholder="请输入统一社会信用代码" />
+        <t-form-item label="企业代码" name="licenseNumber">
+          <t-input v-model="formData.licenseNumber" placeholder="请输入统一社会信用代码" />
         </t-form-item>
 
-        <t-form-item label="企业简介" name="remark">
-          <t-textarea v-model="formData.remark" placeholder="请输入企业简介" :rows="3" />
+        <t-form-item label="企业简介" name="intro">
+          <t-textarea v-model="formData.intro" placeholder="请输入企业简介" :rows="3" />
+        </t-form-item>
+
+        <t-form-item label="备注" name="remark">
+          <t-textarea v-model="formData.remark" placeholder="请输入备注" :rows="2" />
         </t-form-item>
       </t-form>
     </t-dialog>
 
-    <!-- 删除确认对话框 -->
     <t-dialog
       v-model:visible="deleteVisible"
       header="确认删除"
@@ -158,14 +152,12 @@ import { MessagePlugin, type FormInstanceFunctions, type PaginationProps, type P
 import { AddIcon } from 'tdesign-icons-vue-next';
 import { tenantApi, tenantPackageApi } from '@/api/system/tenant';
 
-// ==================== 表格 ====================
 const columns = [
   { colKey: 'tenantId', title: '租户编号', width: 110 },
-  { colKey: 'tenantName', title: '租户名称', width: 160, ellipsis: true },
-  { colKey: 'contactName', title: '联系人', width: 100 },
+  { colKey: 'companyName', title: '企业名称', width: 160, ellipsis: true },
+  { colKey: 'contactUserName', title: '联系人', width: 100 },
   { colKey: 'contactPhone', title: '联系电话', width: 130 },
   { colKey: 'status', title: '状态', width: 80 },
-  { colKey: 'isDefault', title: '租户类型', width: 100 },
   { colKey: 'expireTime', title: '过期时间', width: 170 },
   { colKey: 'createTime', title: '创建时间', width: 170 },
   { colKey: 'operation', title: '操作', width: 130, fixed: 'right' },
@@ -181,76 +173,73 @@ const pagination = reactive<PaginationProps>({
   pageSizeOptions: [10, 20, 50],
 });
 
-// ==================== 搜索 ====================
 const searchForm = reactive({
-  tenantName: '',
-  contactName: '',
+  companyName: '',
+  contactUserName: '',
   status: '',
 });
 
-// ==================== 弹窗 ====================
 const dialogVisible = ref(false);
 const isEdit = ref(false);
 const submitLoading = ref(false);
 const formRef = ref<FormInstanceFunctions>();
 const dialogTitle = computed(() => (isEdit.value ? '编辑租户' : '新增租户'));
 
-// ==================== 表单 ====================
 const formData = reactive<Record<string, any>>({
+  id: null,
   tenantId: '',
-  tenantName: '',
-  contactName: '',
+  companyName: '',
+  contactUserName: '',
   contactPhone: '',
   packageId: null,
   expireTime: '',
-  userCount: 0,
+  accountCount: -1,
   domain: '',
   address: '',
-  creditCode: '',
+  licenseNumber: '',
+  intro: '',
   remark: '',
 });
 
 const formRules = {
-  tenantName: [{ required: true, message: '请输入企业名称', type: 'error' }],
-  contactName: [{ required: true, message: '请输入联系人', type: 'error' }],
+  companyName: [{ required: true, message: '请输入企业名称', type: 'error' }],
+  contactUserName: [{ required: true, message: '请输入联系人', type: 'error' }],
   contactPhone: [
     { required: true, message: '请输入联系电话', type: 'error' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', type: 'error' },
   ],
 };
 
-// 套餐选项
 const packageOptions = ref<{ packageId: number; packageName: string }[]>([]);
 
-// ==================== 删除确认 ====================
 const deleteVisible = ref(false);
 const deleteTarget = ref<Record<string, any>>({});
 const deleteBody = computed(() => {
-  return `确定要删除租户「${deleteTarget.value.tenantName}」吗？该租户下的所有数据将被清空，且无法恢复！`;
+  return `确定要删除租户「${deleteTarget.value.companyName}」吗？该租户下的所有数据将被清空，且无法恢复！`;
 });
 
-// ==================== 辅助方法 ====================
 const isExpired = (row: Record<string, any>) => {
   if (!row.expireTime) return false;
   return new Date(row.expireTime) < new Date();
 };
 
 const resetFormData = () => {
+  formData.id = null;
   formData.tenantId = '';
-  formData.tenantName = '';
-  formData.contactName = '';
+  formData.companyName = '';
+  formData.contactUserName = '';
   formData.contactPhone = '';
   formData.packageId = null;
   formData.expireTime = '';
-  formData.userCount = 0;
+  formData.accountCount = -1;
   formData.domain = '';
   formData.address = '';
-  formData.creditCode = '';
+  formData.licenseNumber = '';
+  formData.intro = '';
   formData.remark = '';
   formRef.value?.clearValidate();
 };
 
-// ==================== 数据加载 ====================
 const loadPackageOptions = async () => {
   try {
     const res = await tenantPackageApi.getOptions();
@@ -293,15 +282,14 @@ const fetchData = async () => {
   }
 };
 
-// ==================== 事件处理 ====================
 const handleSearch = () => {
   pagination.current = 1;
   fetchData();
 };
 
 const handleReset = () => {
-  searchForm.tenantName = '';
-  searchForm.contactName = '';
+  searchForm.companyName = '';
+  searchForm.contactUserName = '';
   searchForm.status = '';
   pagination.current = 1;
   fetchData();
@@ -322,15 +310,18 @@ const handleAdd = () => {
 const handleEdit = (row: Record<string, any>) => {
   isEdit.value = true;
   resetFormData();
+  formData.id = row.id || null;
   formData.tenantId = row.tenantId || '';
-  formData.tenantName = row.tenantName || '';
-  formData.contactName = row.contactName || '';
+  formData.companyName = row.companyName || '';
+  formData.contactUserName = row.contactUserName || '';
   formData.contactPhone = row.contactPhone || '';
   formData.packageId = row.packageId || null;
   formData.expireTime = row.expireTime || '';
+  formData.accountCount = row.accountCount ?? -1;
   formData.domain = row.domain || '';
   formData.address = row.address || '';
-  formData.creditCode = row.creditCode || '';
+  formData.licenseNumber = row.licenseNumber || '';
+  formData.intro = row.intro || '';
   formData.remark = row.remark || '';
   dialogVisible.value = true;
 };
@@ -342,7 +333,7 @@ const handleDelete = (row: Record<string, any>) => {
 
 const handleDeleteConfirm = async () => {
   try {
-    const res = await tenantApi.delete(deleteTarget.value.tenantId);
+    const res = await tenantApi.delete(deleteTarget.value.id);
     if (res.code === 200) {
       MessagePlugin.success('删除成功');
       deleteVisible.value = false;
@@ -389,7 +380,6 @@ const handleDialogClose = () => {
   resetFormData();
 };
 
-// ==================== 初始化 ====================
 onMounted(() => {
   loadPackageOptions();
   fetchData();

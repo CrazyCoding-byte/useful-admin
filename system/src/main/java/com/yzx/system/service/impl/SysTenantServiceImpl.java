@@ -2,9 +2,6 @@ package com.yzx.system.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yzx.common.tenant.TenantContext;
-import com.yzx.model.ResultCode;
-import com.yzx.model.enums.AuthCode;
-import com.yzx.model.exception.CustomException;
 import com.yzx.model.system.SysTenant;
 import com.yzx.system.mapper.SysTenantMapper;
 import com.yzx.system.service.ISysTenantService;
@@ -27,25 +24,16 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
     @Autowired
     private SysTenantMapper tenantMapper;
 
-    /**
-     * 查询所有可用租户列表（供登录选择）
-     */
     @Override
     public List<SysTenant> selectAvailableTenantList() {
         return tenantMapper.selectAvailableTenantList();
     }
 
-    /**
-     * 根据租户ID查询租户
-     */
     @Override
     public SysTenant selectByTenantId(String tenantId) {
         return tenantMapper.selectByTenantId(tenantId);
     }
 
-    /**
-     * 检查租户是否存在且可用
-     */
     @Override
     public boolean checkTenantAvailable(String tenantId) {
         if (tenantId == null || tenantId.isEmpty()) {
@@ -54,62 +42,37 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
         return tenantMapper.checkTenantAvailable(tenantId) > 0;
     }
 
-    /**
-     * 校验租户是否允许操作（系统内置租户不允许删除）
-     */
-    @Override
-    public void checkTenantAllowed(String tenantId) {
-        SysTenant tenant = selectByTenantId(tenantId);
-        if (tenant != null && tenant.isDefaultTenant()) {
-            throw new CustomException(AuthCode.AUTH_TENANT_NO_ALLOWD_OPERATION);
-        }
-    }
-
-    /**
-     * 新增租户
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean insertTenant(SysTenant tenant) {
-        // 生成租户ID（使用UUID前8位）
         if (tenant.getTenantId() == null || tenant.getTenantId().isEmpty()) {
             tenant.setTenantId(UUID.randomUUID().toString().replaceAll("-", "").substring(0, 8).toUpperCase());
         }
         tenant.setCreateTime(new Date());
         tenant.setUpdateTime(new Date());
-        // 默认状态为正常
         if (tenant.getStatus() == null) {
             tenant.setStatus("0");
         }
-        // 默认非系统租户
-        if (tenant.getIsDefault() == null) {
-            tenant.setIsDefault("0");
-        }
-
-        // 在忽略租户上下文的情况下保存（系统级操作）
         return TenantContext.ignoreTenant(() -> save(tenant));
     }
 
-    /**
-     * 修改租户
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateTenant(SysTenant tenant) {
-        // 系统内置租户不允许修改
-        checkTenantAllowed(tenant.getTenantId());
+        // 如果 id 为 null 但 tenantId 有值，通过 tenantId 查出已有记录获取 id
+        if (tenant.getId() == null && tenant.getTenantId() != null && !tenant.getTenantId().isEmpty()) {
+            SysTenant existing = TenantContext.ignoreTenant(() -> selectByTenantId(tenant.getTenantId()));
+            if (existing != null) {
+                tenant.setId(existing.getId());
+            }
+        }
         tenant.setUpdateTime(new Date());
         return TenantContext.ignoreTenant(() -> updateById(tenant));
     }
 
-    /**
-     * 删除租户
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteTenantById(String tenantId) {
-        // 系统内置租户不允许删除
-        checkTenantAllowed(tenantId);
-        return TenantContext.ignoreTenant(() -> removeById(tenantId));
+    public boolean deleteTenantById(Long id) {
+        return TenantContext.ignoreTenant(() -> removeById(id));
     }
 }
