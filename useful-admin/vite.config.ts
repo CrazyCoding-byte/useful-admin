@@ -59,6 +59,14 @@ export default ({ mode }: ConfigEnv): UserConfig => {
         '/product':{
           target: 'http://127.0.0.1:8880/',
           changeOrigin: true,
+        },
+        '/coupon': {
+          target: 'http://127.0.0.1:8882/',
+          changeOrigin: true,
+        },
+        '/api/video': {
+          target: 'http://127.0.0.1:8890/',
+          changeOrigin: true,
         }
       },
     },

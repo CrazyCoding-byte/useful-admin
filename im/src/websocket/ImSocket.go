@@ -3,10 +3,10 @@ package websocket
 import (
 	"context"
 	"fmt"
-	"local/im/src/config"
 	"local/im/src/model"
 	"local/im/src/repository"
-	"local/im/src/utils"
+	"local/pkg/config"
+	"local/pkg/utils"
 	"log"
 	"log/slog"
 	"net/http"

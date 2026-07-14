@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"local/im/src/config"
 	"local/im/src/handler"
 	"local/im/src/repository"
+	"local/pkg/config"
 	"log"
 
 	"github.com/gin-gonic/gin"

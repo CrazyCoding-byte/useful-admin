@@ -96,9 +96,7 @@ public class AuthenticationController {
     private SysTenant createDefaultTenant() {
         SysTenant tenant = new SysTenant();
         tenant.setTenantId("000000");
-        tenant.setTenantName("默认租户");
         tenant.setStatus("0");
-        tenant.setIsDefault("1");
         return tenant;
     }
 

@@ -1,0 +1,85 @@
+server:
+  port: 8890
+  base-url: "http://localhost:8890"
+
+# 数据库配置（复用 IM 模块的 DatabaseConfig 结构）
+database:
+  driver: "mysql"
+  host: "localhost"
+  port: 3306
+  username: "root"
+  password: "password"
+  dbname: "education"
+  charset: "utf8mb4"
+
+# 日志配置（复用 IM 模块的 LogConfig 结构）
+log:
+  path: "./logs/app.log"
+  level: "info"
+  format: "text"
+  max_size: 10
+
+# 对称加密密钥（复用 IM 模块的 AESConfig 结构）。
+# 注意：IM 模块 YAML 节点名是 aseKey（历史拼写），所以这里必须与 IM 保持一致，
+# 否则 IM 的鉴权中间件读取不到密钥。
+aseKey:
+  key: "yangzhixuan944166810@qq.com1150614966@qq.com13735713859"
+
+# MinIO 配置（复用 IM 模块的 MinIOConfig 结构）。
+# video 模块不再自己实现 MinIO 初始化，而是调用 IM 的 InitMinIO() 方法。
+minio:
+  endpoint: "localhost:19000"
+  access-key-id: "minio"
+  secret-access-key: "QWEasd123"
+  bucket-name: "video"
+  use-ssl: false
+  # 以下字段属于 IM 的 MinIOConfig，video 点播/直播业务本身不用，但保留默认配置避免解析为空
+  chunk-size: 10485760      # 单分片大小 10MB
+  max-file-size: 209715200  # 最大文件大小 200MB
+  redis-prefix: "minio:"
+  expire-time: 24h
+
+# Redis 配置（复用 IM 模块的 RedisConfig 结构）
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+
+# 文件配置（复用 IM 模块的 FileConfig 结构，video 业务当前未使用，保留默认值）
+file:
+  upload-baseUrl: "file-storage"
+  max-file-size: 200
+  max-chunk-size: 5
+
+# 重试配置（复用 IM 模块的 Retry 结构，video 业务当前未使用，保留默认值）
+retry:
+  max-retries: 3
+  retry-delay: 1s
+
+# 视频处理配置（video 模块专属）
+video:
+  # 临时工作目录（切片、转码用）
+  work-dir: "./tmp/video"
+  # HLS 切片时长（秒）
+  hls-segment-time: 10
+  # 试看默认秒数
+  default-trial-seconds: 30
+  # 历史弹幕条数
+  danmaku-history-limit: 100
+  # 弹幕 Redis 发布订阅频道前缀
+  danmaku-redis-channel: "danmaku:video:"
+
+# ZLMediaKit 直播服务器配置（video 模块专属）
+zlmediakit:
+  # ZLMediaKit HTTP API 地址，调用 /index/api/* 时使用
+  host: "localhost:6080"
+  # ZLMediaKit 配置文件 general.adminParamsSecret，用于调用管理 API
+  secret: "035c73f7-bb6b-4889-a715-d9eb2d1925cc"
+  # OBS 推流 RTMP 基础地址，流名称为直播间 stream_id
+  rtmp-push-host: "rtmp://localhost/live"
+  # HTTP 播放基础地址，小程序/H5 用 HTTP-FLV 或 HLS 播放
+  http-playback-url: "http://localhost:6080"
+  # 是否启用 webhook 回调（需要在 ZLMediaKit 配置中开启 hook）
+  enable-webhook: true
+  # webhook 校验密钥，防止伪造推流/断流事件
+  webhook-secret: "video-webhook-secret-2026"
