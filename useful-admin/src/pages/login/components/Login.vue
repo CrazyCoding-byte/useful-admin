@@ -133,7 +133,12 @@ const loadTenantList = async () => {
 
     if (Array.isArray(tenantData) && tenantData.length > 0) {
       tenantList.value = tenantData;
-      console.log('设置租户列表:', tenantList.value);
+      console.log(
+        '设置租户列表: 共',
+        tenantList.value.length,
+        '条，',
+        tenantList.value.map((t) => `${t.tenantId}=${t.tenantName}`),
+      );
       // 如果有默认租户，自动选中第一个
       if (!formData.value.tenantId) {
         formData.value.tenantId = tenantData[0].tenantId;

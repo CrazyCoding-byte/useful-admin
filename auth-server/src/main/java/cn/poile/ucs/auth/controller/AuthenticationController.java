@@ -20,7 +20,10 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -53,12 +56,20 @@ public class AuthenticationController {
     @GetMapping("/tenant/list")
     public AjaxResult getTenantList() {
         log.info("开始获取租户列表...");
+        List<Map<String, Object>> result = new ArrayList<>();
         try {
             // 使用本地 Mapper 查询，避免 Feign 调用问题
             List<SysTenant> tenantList = sysTenantMapper.selectAvailableTenantList();
             log.info("从数据库查询到租户列表，数量: {}", tenantList != null ? tenantList.size() : 0);
             if (tenantList != null && !tenantList.isEmpty()) {
-                return AjaxResult.success(tenantList);
+                for (SysTenant tenant : tenantList) {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("tenantId", tenant.getTenantId());
+                    // 表中没有 tenant_name，用 company_name 作为显示名称
+                    item.put("tenantName", tenant.getCompanyName());
+                    result.add(item);
+                }
+                return AjaxResult.success(result);
             } else {
                 log.warn("数据库中租户列表为空");
             }
@@ -68,7 +79,11 @@ public class AuthenticationController {
 
         // 如果查询失败或返回空，返回默认租户
         log.info("返回默认租户");
-        return AjaxResult.success(java.util.Arrays.asList(createDefaultTenant()));
+        Map<String, Object> defaultItem = new HashMap<>();
+        defaultItem.put("tenantId", "000000");
+        defaultItem.put("tenantName", "默认租户");
+        result.add(defaultItem);
+        return AjaxResult.success(result);
     }
 
     /**
@@ -88,16 +103,6 @@ public class AuthenticationController {
             // 如果检查失败，只允许默认租户
             return AjaxResult.success("000000".equals(tenantId));
         }
-    }
-
-    /**
-     * 创建默认租户信息
-     */
-    private SysTenant createDefaultTenant() {
-        SysTenant tenant = new SysTenant();
-        tenant.setTenantId("000000");
-        tenant.setStatus("0");
-        return tenant;
     }
 
     @PostMapping("/user/login")

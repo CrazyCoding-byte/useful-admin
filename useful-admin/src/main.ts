@@ -9,6 +9,9 @@ import '@/style/index.less';
 import './permission';
 import App from './App.vue';
 
+// 调试需要：在控制台可以直接访问 router
+(window as any).router = router;
+
 const app = createApp(App);
 
 app.use(TDesign);

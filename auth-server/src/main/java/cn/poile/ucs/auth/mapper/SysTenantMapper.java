@@ -17,7 +17,9 @@ public interface SysTenantMapper {
     /**
      * 查询所有可用租户列表（供登录选择）
      */
-    @Select("SELECT tenant_id, tenant_name, logo FROM sys_tenant WHERE status = '0' AND (expire_time IS NULL OR expire_time > NOW()) ORDER BY create_time DESC")
+    // sys_tenant 表中没有 tenant_name/logo 字段，只有 company_name，
+    // 登录下拉列表按 del_flag 过滤即可，把 status/过期时间交给登录校验去判断。
+    @Select("SELECT * FROM sys_tenant WHERE del_flag = '0' ORDER BY create_time DESC")
     List<SysTenant> selectAvailableTenantList();
 
     /**

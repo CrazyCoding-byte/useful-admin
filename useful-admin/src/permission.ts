@@ -32,6 +32,20 @@ router.beforeEach(async (to, from, next) => {
     return;
   }
 
+  // 页面刷新后 token 仍在但 userInfo 会被重置，需要重新获取用户信息，
+  // 否则右上角会显示“未登录”，且后续权限判断也可能依赖 roles。
+  if (!userStore.userInfo?.name) {
+    try {
+      console.log('[Router] token 存在但用户信息为空，重新获取用户信息...');
+      await userStore.getUserInfo();
+    } catch (error) {
+      console.error('[Router] 重新获取用户信息失败，跳转登录页:', error);
+      userStore.removeToken();
+      next({ path: '/login', query: { redirect: encodeURIComponent(to.fullPath) } });
+      return;
+    }
+  }
+
   // 只在路由未初始化时获取路由
   if (!routesInitialized) {
     console.log('[Router] 路由未初始化,开始初始化...');

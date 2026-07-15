@@ -17,6 +17,9 @@ async function fetchRoutesFromBackend(token: string): Promise<Array<RouteRecordR
 
     const result = await request.get({ url: '/auth/user/getRouters' });
 
+    // 🔥 关键调试：打印后端返回的原始结构
+    console.log('[Route] /auth/user/getRouters 原始返回:', JSON.stringify(result));
+
     // 检查后端返回的数据结构
     // 经过请求拦截器处理，result 已经是路由数据（data 字段的内容）
     let routesData;
@@ -26,20 +29,15 @@ async function fetchRoutesFromBackend(token: string): Promise<Array<RouteRecordR
       // 兼容处理：如果拦截器配置改变，可能仍有 data 包装
       routesData = result.data;
     } else {
+      console.error('[Route] 后端返回不是数组，无法生成动态路由:', result);
       return [];
     }
 
-    routesData.slice(0, 3).forEach((route, index) => {
-      if (route.children) {
-        route.children.forEach((child, cidx) => {
-        });
-      }
-    });
+    console.log('[Route] 后端路由数组长度:', routesData.length);
 
     return convertBackendRoutesToFrontend(routesData);
-
-    return [];
   } catch (error) {
+    console.error('[Route] 从后端获取路由失败:', error);
     return [];
   }
 }
@@ -56,6 +54,8 @@ function convertBackendRoutesToFrontend(backendRoutes: any[], isChild: boolean =
 
   return backendRoutes
     .filter(route => {
+      if (!route) return false;
+      if (route.menuType === 'F') return false;
       return route.component || (route.children && route.children.length > 0);
     })
     .map((route) => {
@@ -64,12 +64,10 @@ function convertBackendRoutesToFrontend(backendRoutes: any[], isChild: boolean =
       // 父路由（顶级路由）需要前导斜杠
       // 子路由使用相对路径，不要前导斜杠
       if (!isChild) {
-        // 父路由：确保有前导斜杠
         if (path && !path.startsWith('/')) {
           path = '/' + path;
         }
       } else {
-        // 子路由：确保没有前导斜杠（相对路径）
         if (path && path.startsWith('/')) {
           path = path.substring(1);
         }
@@ -77,21 +75,30 @@ function convertBackendRoutesToFrontend(backendRoutes: any[], isChild: boolean =
 
       // 构建完整路径用于调试
       const fullPath = isChild ? `${parentPath}/${path}`.replace(/\/+/g, '/') : path;
-      console.log(`[Route] 处理路由: ${route.menuName || route.title}, path: ${path}, fullPath: ${fullPath}, component: ${route.component}`);
+      console.log(`[Route] 处理路由: ${route.menuName || route.title}, path: ${path}, fullPath: ${fullPath}, component: ${route.component}, menuType: ${route.menuType}`);
 
-      let redirect = route.redirect === 'noRedirect' ?
-        (route.children && route.children.length > 0 ?
-          (isChild ? '' : '/') + route.children[0].path : undefined) :
-        route.redirect;
+      // 过滤子路由：只保留 M/C 类型，F类型（按钮）不需要生成路由
+      const validChildren = (route.children || []).filter(child => {
+        if (!child) return false;
+        if (child.menuType === 'F') return false;
+        return child.component || (child.children && child.children.length > 0);
+      });
 
-      if (redirect && typeof redirect === 'string' && !redirect.startsWith('/') && !isChild) {
-        redirect = '/' + redirect;
+      // 处理重定向
+      let redirect: string | undefined;
+      if (route.redirect === 'noRedirect') {
+        redirect = undefined;
+      } else if (route.redirect) {
+        redirect = route.redirect;
+      } else if (validChildren.length > 0) {
+        const firstChildPath = validChildren[0].path?.replace(/^\//, '') || '';
+        redirect = `${fullPath}/${firstChildPath}`.replace(/\/+/g, '/');
       }
 
-      const routeName = route.name || path.replace(/\//g, '_').replace(/^_/, '') || `route_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const routeName = fullPath.replace(/\//g, '_').replace(/^_/, '') || `route_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       const frontendRoute: RouteRecordRaw = {
-        path: path,
+        path: isChild ? path : `/${path}`.replace(/\/+/g, '/'),
         name: routeName,
         redirect: redirect,
         meta: {
@@ -102,32 +109,30 @@ function convertBackendRoutesToFrontend(backendRoutes: any[], isChild: boolean =
         },
       };
 
-      if (route.component === 'Layout' || (!route.component && route.children && route.children.length > 0)) {
+      // M类型（目录）或有子路由且无component的，用Layout
+      if (route.component === 'Layout' || (!route.component && validChildren.length > 0)) {
         frontendRoute.component = Layout;
       } else if (route.component) {
-        // 处理 component 路径，确保格式正确
         let componentPath = route.component;
-        // 移除开头的斜杠
         if (componentPath.startsWith('/')) {
           componentPath = componentPath.substring(1);
         }
-        // 确保路径不带 .vue 扩展名
         componentPath = componentPath.replace(/\.vue$/, '');
-
 
         const modulePath = `../../pages/${componentPath}.vue`;
         if (pageModules[modulePath]) {
           frontendRoute.component = pageModules[modulePath];
         } else {
-          // 如果找不到组件，使用 404 页面作为 fallback
           frontendRoute.component = () => import('../../pages/result/404/index.vue');
         }
       }
 
-      // 递归处理子路由，标记为子路由
-      if (route.children && route.children.length > 0) {
-        frontendRoute.children = convertBackendRoutesToFrontend(route.children, true, fullPath);
+      // 只有过滤后还有有效子路由才生成children
+      if (validChildren.length > 0) {
+        frontendRoute.children = convertBackendRoutesToFrontend(validChildren, true, fullPath);
       }
+
+      console.log(`[Route] 生成路由: name=${routeName}, path=${frontendRoute.path}, hasChildren=${!!frontendRoute.children?.length}, component=${typeof frontendRoute.component}`);
 
       return frontendRoute;
     });
@@ -144,55 +149,53 @@ function addRoutes(routes: Array<RouteRecordRaw>) {
 
   console.log('[Route] 开始添加路由，数量:', routes.length);
 
-  // 递归添加路由（包括子路由）
-  const addRouteRecursive = (route: RouteRecordRaw, parentName?: string) => {
+  // 打印每个顶级路由及其子路由结构
+  routes.forEach((r, i) => {
+    console.log(`[Route] 待添加路由[${i}]: name=${r.name}, path=${r.path}, childrenCount=${r.children?.length || 0}`);
+    if (r.children) {
+      r.children.forEach((c, ci) => {
+        console.log(`[Route]   └─ 子路由[${ci}]: name=${c.name}, path=${c.path}`);
+      });
+    }
+  });
+
+  // 顶层路由已经通过 children 数组嵌套了所有子路由，
+  // 直接调用 router.addRoute(route) 即可，不需要再单独 addRoute(parentName, child)。
+  routes.forEach((route) => {
     if (!route || !route.path) {
       console.log('[Route] 跳过无效路由');
       return;
     }
 
-    // 确保路由有名称
+    // 路由名必须存在，否则 Vue Router 在某些场景下会警告。
     if (!route.name) {
-      route.name = route.path.replace(/\//g, '_').replace(/^_/, '');
+      route.name = `route_${(route.path || '').replace(/\//g, '_').replace(/^_/, '')}_${Date.now()}`;
     }
 
-    console.log(`[Route] 添加路由: name=${route.name}, path=${route.path}, parent=${parentName || 'root'}, component=${typeof route.component === 'function' ? 'async' : route.component}`);
-
     // 跳过默认路由（登录和404）
-    const isDefaultRoute = defaultRouterList.some(defaultRoute =>
-      defaultRoute.name === route.name &&
-      (defaultRoute.name === 'login' || defaultRoute.name === '404Page')
+    const isDefaultRoute = defaultRouterList.some(
+      (defaultRoute) =>
+        defaultRoute.name === route.name &&
+        (defaultRoute.name === 'login' || defaultRoute.name === '404Page'),
     );
     if (isDefaultRoute) {
       console.log(`[Route] 跳过默认路由: ${route.name}`);
       return;
     }
 
-    try {
-      if (parentName) {
-        // 添加子路由到指定父路由
-        router.addRoute(parentName, route);
-        console.log(`[Route] 成功添加子路由 ${route.name} 到父路由 ${parentName}`);
-      } else {
-        // 添加顶级路由
-        router.addRoute(route);
-        console.log(`[Route] 成功添加顶级路由 ${route.name}`);
-      }
+    console.log(
+      `[Route] 添加路由: name=${route.name}, path=${route.path}, component=${
+        typeof route.component === 'function' ? 'async' : route.component
+      }`,
+    );
 
-      // 递归处理子路由
-      if (route.children && route.children.length > 0) {
-        console.log(`[Route] 处理子路由，数量: ${route.children.length}`);
-        route.children.forEach(child => {
-          addRouteRecursive(child, route.name as string);
-        });
-      }
+    try {
+      router.addRoute(route);
+      console.log(`[Route] 成功添加顶级路由 ${route.name}`);
     } catch (error) {
       console.error(`[Route] 添加路由失败: ${route.name}`, error);
     }
-  };
-
-  // 开始递归添加所有路由
-  routes.forEach(route => addRouteRecursive(route));
+  });
 
   // 重新添加404路由，确保它始终在最后匹配
   // 先移除旧的404路由（如果存在）
@@ -209,6 +212,16 @@ function addRoutes(routes: Array<RouteRecordRaw>) {
   });
 
   console.log('[Route] 路由添加完成');
+
+  // 🔥 关键调试：打印当前 Vue Router 中所有已注册路由（包含嵌套子路由）
+  const allRegisteredRoutes = router.getRoutes().map((r) => ({
+    path: r.path,
+    name: r.name,
+    redirect: r.redirect,
+    childrenCount: r.children?.length || 0,
+    children: r.children?.map(c => ({ path: c.path, name: c.name })) || []
+  }));
+  console.log('[Route] 当前已注册路由:', JSON.stringify(allRegisteredRoutes));
 }
 
 export const usePermissionStore = defineStore('permission', {
