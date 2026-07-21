@@ -211,10 +211,7 @@ const onSubmit = async ({ validateResult }) => {
       const loginResult = await userStore.login(formData.value);
       console.log('登录成功，结果:', loginResult);
 
-      console.log('开始初始化权限路由...');
-      await permissionStore.initRoutes(userStore.roles);
-      console.log('权限路由初始化完成，路由数量:', permissionStore.routers.length);
-
+      // 路由初始化交给 permission.ts 路由守卫处理，避免此处 token/roles 未就绪导致拉取到错误路由
       const redirect = route.query.redirect as string;
       console.log("redirect:", redirect);
       const redirectUrl = redirect ? decodeURIComponent(redirect) : '/dashboard';

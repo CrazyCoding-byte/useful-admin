@@ -139,6 +139,43 @@ function convertBackendRoutesToFrontend(backendRoutes: any[], isChild: boolean =
 }
 
 /**
+ * 按 path 合并路由：相同 path 的路由合并为一个，children 取并集
+ * 用于处理后端返回重复顶级菜单的情况（如两个 /system）
+ */
+function mergeRoutesByPath(routes: Array<RouteRecordRaw>): Array<RouteRecordRaw> {
+  const pathMap = new Map<string, RouteRecordRaw>();
+
+  routes.forEach((route) => {
+    if (!route.path) return;
+
+    const existing = pathMap.get(route.path);
+    if (!existing) {
+      pathMap.set(route.path, route);
+      return;
+    }
+
+    // 已存在相同 path，合并 children
+    const existingChildren = existing.children || [];
+    const newChildren = route.children || [];
+    const childPathSet = new Set(existingChildren.map(c => c.path));
+    const mergedChildren = [...existingChildren];
+
+    newChildren.forEach((child) => {
+      if (child.path && !childPathSet.has(child.path)) {
+        mergedChildren.push(child);
+        childPathSet.add(child.path);
+      }
+    });
+
+    if (mergedChildren.length > 0) {
+      existing.children = mergedChildren;
+    }
+  });
+
+  return Array.from(pathMap.values());
+}
+
+/**
  * 动态添加路由 - 修复版：正确处理嵌套路由
  */
 function addRoutes(routes: Array<RouteRecordRaw>) {
@@ -147,10 +184,28 @@ function addRoutes(routes: Array<RouteRecordRaw>) {
     return;
   }
 
-  console.log('[Route] 开始添加路由，数量:', routes.length);
+  // 深拷贝路由对象，避免响应式/引用污染导致已注册路由被外部修改
+  const clonedRoutes: Array<RouteRecordRaw> = JSON.parse(JSON.stringify(routes.map(r => ({
+    ...r,
+    component: undefined,
+    children: r.children,
+  }))));
+  // 恢复 component 函数引用（JSON 序列化会丢失函数）
+  clonedRoutes.forEach((clonedRoute, index) => {
+    const originalRoute = routes[index];
+    clonedRoute.component = originalRoute.component;
+    if (originalRoute.children) {
+      clonedRoute.children = originalRoute.children.map((child, cIndex) => {
+        const clonedChild = { ...child };
+        return clonedChild;
+      });
+    }
+  });
+
+  console.log('[Route] 开始添加路由，数量:', clonedRoutes.length);
 
   // 打印每个顶级路由及其子路由结构
-  routes.forEach((r, i) => {
+  clonedRoutes.forEach((r, i) => {
     console.log(`[Route] 待添加路由[${i}]: name=${r.name}, path=${r.path}, childrenCount=${r.children?.length || 0}`);
     if (r.children) {
       r.children.forEach((c, ci) => {
@@ -159,9 +214,33 @@ function addRoutes(routes: Array<RouteRecordRaw>) {
     }
   });
 
+  // 先移除已存在的同名/同路径路由，避免静态/旧动态路由覆盖新的动态路由
+  // 例如之前已注册的 /system 只包含 tenant/tenantPackage，
+  // 而后端返回的 /system 应该包含 user/role/menu/dept 等，需要替换掉
+
+  // 🔥 清理所有和本次动态路由同路径（或同前缀）的已有路由
+  const dynamicTopPaths = routes.map(r => r.path).filter(Boolean);
+  dynamicTopPaths.forEach((topPath) => {
+    let count = 0;
+    const conflictRoutes = router.getRoutes().filter(r =>
+      r.path === topPath || r.path.startsWith(`${topPath}/`)
+    );
+    conflictRoutes.forEach((conflictRoute) => {
+      if (conflictRoute.name) {
+        try {
+          router.removeRoute(conflictRoute.name);
+          count++;
+        } catch (e) {
+          // 忽略
+        }
+      }
+    });
+    console.log(`[Route] 清理冲突路由: ${topPath}, 移除数量=${count}`);
+  });
+
   // 顶层路由已经通过 children 数组嵌套了所有子路由，
   // 直接调用 router.addRoute(route) 即可，不需要再单独 addRoute(parentName, child)。
-  routes.forEach((route) => {
+  clonedRoutes.forEach((route) => {
     if (!route || !route.path) {
       console.log('[Route] 跳过无效路由');
       return;
@@ -191,7 +270,11 @@ function addRoutes(routes: Array<RouteRecordRaw>) {
 
     try {
       router.addRoute(route);
-      console.log(`[Route] 成功添加顶级路由 ${route.name}`);
+      // addRoute 后立即检查是否生效
+      const addedRoute = router.getRoutes().find(r => r.path === route.path);
+      console.log(
+        `[Route] 成功添加顶级路由 ${route.name}, 实际children=${addedRoute?.children?.length || 0}`,
+      );
     } catch (error) {
       console.error(`[Route] 添加路由失败: ${route.name}`, error);
     }
@@ -261,10 +344,15 @@ export const usePermissionStore = defineStore('permission', {
           );
         }
 
-        addRoutes(accessedRouters);
+        // 对路由按 path 合并去重：后端可能返回重复的顶级菜单（如两个 /system），
+        // 合并后保留所有子路由，避免后一个覆盖前一个导致 children 丢失。
+        const mergedRouters = mergeRoutesByPath(accessedRouters);
+        console.log('[Route] 合并去重后路由数量:', mergedRouters.length);
 
-        this.routers = accessedRouters;
-        this.dynamicRoutes = accessedRouters;
+        addRoutes(mergedRouters);
+
+        this.routers = mergedRouters;
+        this.dynamicRoutes = mergedRouters;
 
         return accessedRouters;
       } catch (error) {
