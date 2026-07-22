@@ -18,7 +18,22 @@ spring:
     username: root
     password: password
     driverClassName: com.mysql.cj.jdbc.Driver
-
+  rabbitmq:
+    host: 192.168.56.129
+    port: 5672
+    publisher-returns: true # 开启返回机制
+    publisher-confirm-type: correlated # 开启确认机制
+    template:
+      mandatory: true  #强制返回未路由的消息（否则直接丢弃）
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 3 # 消费线程数
+        max-concurrency: 10 # 最大消费线程数
+        retry:
+          enabled: true # 开启重试
+          max-attempts: 3 #最大重试次数
+          initial-interval: 1000ms # 初始重试间隔
 mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

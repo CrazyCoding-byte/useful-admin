@@ -214,28 +214,24 @@ function addRoutes(routes: Array<RouteRecordRaw>) {
     }
   });
 
-  // 先移除已存在的同名/同路径路由，避免静态/旧动态路由覆盖新的动态路由
-  // 例如之前已注册的 /system 只包含 tenant/tenantPackage，
-  // 而后端返回的 /system 应该包含 user/role/menu/dept 等，需要替换掉
-
-  // 🔥 清理所有和本次动态路由同路径（或同前缀）的已有路由
-  const dynamicTopPaths = routes.map(r => r.path).filter(Boolean);
-  dynamicTopPaths.forEach((topPath) => {
+  // 先移除已存在的同名路由，避免旧动态路由覆盖新的动态路由。
+  // 注意：不再按 path 前缀清理所有子路由，否则会把静态路由中独有的子路由（如 /shop/goods/sku/:productId）误删。
+  // 静态路由和动态路由会在 initRoutes 中按 path 合并后再注册。
+  routes.forEach((route) => {
+    if (!route.name) return;
     let count = 0;
-    const conflictRoutes = router.getRoutes().filter(r =>
-      r.path === topPath || r.path.startsWith(`${topPath}/`)
-    );
-    conflictRoutes.forEach((conflictRoute) => {
-      if (conflictRoute.name) {
-        try {
-          router.removeRoute(conflictRoute.name);
-          count++;
-        } catch (e) {
-          // 忽略
-        }
+    while (router.getRoutes().some(r => r.name === route.name)) {
+      try {
+        router.removeRoute(route.name);
+        count++;
+      } catch (e) {
+        break;
       }
-    });
-    console.log(`[Route] 清理冲突路由: ${topPath}, 移除数量=${count}`);
+      if (count > 10) break;
+    }
+    if (count > 0) {
+      console.log(`[Route] 清理同名路由: ${route.name}, 移除数量=${count}`);
+    }
   });
 
   // 顶层路由已经通过 children 数组嵌套了所有子路由，
@@ -319,33 +315,32 @@ export const usePermissionStore = defineStore('permission', {
   actions: {
     async initRoutes(roles: Array<unknown>) {
       try {
+        // 静态路由（排除登录和首页重定向）
+        const staticRouters = allRoutes.filter(
+          (route) => route.path !== '/login' && route.path !== '/',
+        );
 
-        let accessedRouters: Array<RouteRecordRaw> = [];
+        let backendRouters: Array<RouteRecordRaw> = [];
 
         try {
           const userStoreInstance = getUserStore();
           const token = userStoreInstance.token;
 
           if (token) {
-            const backendRoutes = await fetchRoutesFromBackend(token);
-
-
-            if (backendRoutes && backendRoutes.length > 0) {
-              accessedRouters = backendRoutes;
-            } else {
-              accessedRouters = allRoutes.filter(route =>
-                route.path !== '/login' && route.path !== '/'
-              );
-            }
+            backendRouters = await fetchRoutesFromBackend(token);
           }
         } catch (error) {
-          accessedRouters = allRoutes.filter(route =>
-            route.path !== '/login' && route.path !== '/'
-          );
+          console.error('[Route] 获取后端路由失败:', error);
         }
 
-        // 对路由按 path 合并去重：后端可能返回重复的顶级菜单（如两个 /system），
-        // 合并后保留所有子路由，避免后一个覆盖前一个导致 children 丢失。
+        // 合并静态路由和动态路由：相同 path 的顶级路由 children 取并集。
+        // 这样既保留静态路由中独有的子路由（如 /shop/goods/sku/:productId），
+        // 又补充后端返回的动态子路由（如 /system/user）。
+        // 同时也能处理后端返回重复顶级菜单的情况（如两个 /system）。
+        const accessedRouters =
+          backendRouters && backendRouters.length > 0
+            ? [...staticRouters, ...backendRouters]
+            : staticRouters;
         const mergedRouters = mergeRoutesByPath(accessedRouters);
         console.log('[Route] 合并去重后路由数量:', mergedRouters.length);
 
@@ -354,7 +349,7 @@ export const usePermissionStore = defineStore('permission', {
         this.routers = mergedRouters;
         this.dynamicRoutes = mergedRouters;
 
-        return accessedRouters;
+        return mergedRouters;
       } catch (error) {
         return [];
       }
