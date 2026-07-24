@@ -1,6 +1,7 @@
 package com.yzx.coupon;
 
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.ComponentScan;
 @ComponentScan(basePackages = {"com.yzx.coupon", "com.yzx.common", "com.yzx.apiclient.api"})
 @MapperScan({"com.yzx.coupon.mapper", "com.yzx.common.mapper"})
 @EnableDiscoveryClient
+@EnableRabbit
 public class CouponApplication {
 
     public static void main(String[] args) {

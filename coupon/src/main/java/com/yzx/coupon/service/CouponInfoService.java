@@ -42,4 +42,6 @@ public interface CouponInfoService extends IService<CouponInfo> {
 
     //更新优惠卷使用状态
     void updateCouponInfoUseStatus(Long couponId, Long userId, Long orderId);
+
+    boolean publishCoupon(Long couponId);
 }

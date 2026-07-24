@@ -95,4 +95,10 @@ public class CouponInfoAdminController {
         boolean success = couponInfoService.removeById(id);
         return success ? AjaxResult.success("删除成功") : AjaxResult.error("删除失败");
     }
+
+    @PostMapping("/publishCoupon/{couponId}")
+    public AjaxResult publishCoupon(@PathVariable Long couponId) {
+        boolean success = couponInfoService.publishCoupon(couponId);
+        return success ? AjaxResult.success("发卷成功", "发卷失败");
+    }
 }

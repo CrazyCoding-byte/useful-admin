@@ -18,18 +18,18 @@ import lombok.Data;
 @Data
 @TableName("coupon_range")
 public class CouponRange extends BaseEntity {
-	
-	private static final long serialVersionUID = 1L;
-	@TableId(type = IdType.AUTO)
-	private Long id;
-	@TableField("coupon_id")
-	private Long couponId;
 
-	@TableField("range_type")
-	private CouponRangeType rangeType;
+    private static final long serialVersionUID = 1L;
+    @TableId(type = IdType.AUTO)
+    private Long id;
+    @TableField("coupon_id")
+    private Long couponId;
 
-	@TableField("range_id")
-	private Long rangeId;
+    @TableField("range_type")
+    private CouponRangeType rangeType;// ALL / SKU / CATEGORY
+
+    @TableField("range_id")
+    private Long rangeId;
 
 }
 

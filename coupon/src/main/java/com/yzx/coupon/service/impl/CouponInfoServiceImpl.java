@@ -1,4 +1,4 @@
-package com.yzx.coupon.service;
+package com.yzx.coupon.service.impl;
 
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -8,16 +8,20 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yzx.apiclient.api.ProductFeignService;
 import com.yzx.coupon.mapper.CouponInfoMapper;
 import com.yzx.coupon.mapper.CouponRangeMapper;
+import com.yzx.coupon.mapper.CouponStockMapper;
 import com.yzx.coupon.mapper.CouponUseMapper;
+import com.yzx.coupon.service.CouponInfoService;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.cart.vo.CartItemVo;
 import com.yzx.model.cart.vo.SkuInfoVo;
 import com.yzx.model.coupon.CouponInfo;
 import com.yzx.model.coupon.CouponRange;
+import com.yzx.model.coupon.CouponStock;
 import com.yzx.model.coupon.CouponUse;
 import com.yzx.model.coupon.eunms.CouponStatus;
 import com.yzx.model.order.enums.CouponRangeType;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -42,6 +46,12 @@ public class CouponInfoServiceImpl extends ServiceImpl<CouponInfoMapper, CouponI
     @Autowired
     private ProductFeignService productFeignClient;
 
+    @Autowired
+    private CouponStockMapper couponStockMapper;
+
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
     //    2 根据skuId+userId查询优惠卷信息
     @Override
     public List<CouponInfo> findCouponInfoList(Long skuId, Long userId) {
@@ -51,7 +61,7 @@ public class CouponInfoServiceImpl extends ServiceImpl<CouponInfoMapper, CouponI
         if (Objects.isNull(o)) return null;
         //根据条件查询：skuId + 分类id + userId
         List<CouponInfo> couponInfoList = baseMapper.selectCouponInfoList(o.getSkuId(),
-        o.getCatalogId(), userId);
+                o.getCatalogId(), userId);
 
         return couponInfoList;
     }
@@ -164,6 +174,26 @@ public class CouponInfoServiceImpl extends ServiceImpl<CouponInfoMapper, CouponI
 
         //调用方法修改
         couponUseMapper.updateById(couponUse);
+    }
+
+    @Override
+    public boolean publishCoupon(Long couponId) {
+        CouponInfo couponInfo = baseMapper.selectById(couponId);
+        if (couponInfo == null) return false;
+        CouponStock couponStock = couponStockMapper.selectOne(new LambdaQueryWrapper<CouponStock>().eq(CouponStock::getCouponId, couponId));
+        if (couponStock == null) {
+            // 首次发布：插入库存记录
+            couponStock = new CouponStock();
+            couponStock.setCouponId(couponId);
+            couponStock.setRemainCount(couponInfo.getPublishCount());
+            couponStockMapper.insert(couponStock);
+        } else {
+            // 重新发布（比如库存补了）：更新剩余数
+            couponStock.setRemainCount(couponInfo.getPublishCount());
+            couponStockMapper.updateById(couponStock);
+        }
+        stringRedisTemplate.opsForValue().set("coupon:stock:" + couponId, String.valueOf(couponInfo.getPublishCount()));
+        return true;
     }
 
     private BigDecimal computeTotalAmount(List<CartItemVo> cartInfoList) {
