@@ -28,23 +28,13 @@ public class CouponInfoAdminController {
      * 分页列表
      */
     @GetMapping("/list")
-    public AjaxResult list(
-            @RequestParam(defaultValue = "1") Long pageNum,
-            @RequestParam(defaultValue = "10") Long pageSize,
-            @RequestParam(required = false) String couponName,
-            @RequestParam(required = false) String couponType,
-            @RequestParam(required = false) String rangeType,
-            @RequestParam(required = false) Boolean publishStatus) {
+    public AjaxResult list(@RequestParam(defaultValue = "1") Long pageNum, @RequestParam(defaultValue = "10") Long pageSize, @RequestParam(required = false) String couponName, @RequestParam(required = false) String couponType, @RequestParam(required = false) String rangeType, @RequestParam(required = false) Boolean publishStatus) {
 
         CouponType couponTypeEnum = StringUtils.isNotBlank(couponType) ? CouponType.valueOf(couponType) : null;
         CouponRangeType rangeTypeEnum = StringUtils.isNotBlank(rangeType) ? CouponRangeType.valueOf(rangeType) : null;
 
         LambdaQueryWrapper<CouponInfo> wrapper = new LambdaQueryWrapper<>();
-        wrapper.like(StringUtils.isNotBlank(couponName), CouponInfo::getCouponName, couponName)
-                .eq(couponTypeEnum != null, CouponInfo::getCouponType, couponTypeEnum)
-                .eq(rangeTypeEnum != null, CouponInfo::getRangeType, rangeTypeEnum)
-                .eq(publishStatus != null, CouponInfo::getPublishStatus, publishStatus)
-                .orderByDesc(CouponInfo::getCreateTime);
+        wrapper.like(StringUtils.isNotBlank(couponName), CouponInfo::getCouponName, couponName).eq(couponTypeEnum != null, CouponInfo::getCouponType, couponTypeEnum).eq(rangeTypeEnum != null, CouponInfo::getRangeType, rangeTypeEnum).eq(publishStatus != null, CouponInfo::getPublishStatus, publishStatus).orderByDesc(CouponInfo::getCreateTime);
 
         Page<CouponInfo> page = couponInfoService.page(new Page<>(pageNum, pageSize), wrapper);
 
@@ -99,6 +89,6 @@ public class CouponInfoAdminController {
     @PostMapping("/publishCoupon/{couponId}")
     public AjaxResult publishCoupon(@PathVariable Long couponId) {
         boolean success = couponInfoService.publishCoupon(couponId);
-        return success ? AjaxResult.success("发卷成功", "发卷失败");
+        return success ? AjaxResult.success("发卷成功") : AjaxResult.error("发卷失败");
     }
 }

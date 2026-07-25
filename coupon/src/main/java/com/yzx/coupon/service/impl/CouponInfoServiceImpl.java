@@ -109,7 +109,7 @@ public class CouponInfoServiceImpl extends ServiceImpl<CouponInfoMapper, CouponI
                 if (totalAmount.subtract(couponInfo.getConditionAmount()).doubleValue() >= 0) {
                     couponInfo.setIsSelect(1);
                 }
-            } else {
+            } else {    
                 //优惠卷id获取对应skuId列表
                 List<Long> skuIdList
                         = couponIdToSkuIdMap.get(couponInfo.getId());
