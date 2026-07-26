@@ -35,13 +35,25 @@ spring:
             - Path=/system/**
           filters:
             - StripPrefix=0  # 转发时保留/system前缀
+        - id: product-server
+          uri: lb://product-server
+          predicates:
+            - Path=/product/**
+        - id: wms-server
+          uri: lb://wms-server
+          predicates:
+            - Path=/wms/**
+        - id: coupon-server
+          uri: lb://coupon-server
+          predicates:
+            - Path=/coupon/**
         - id: scan_route
           uri: no://op
           predicates:
             - Path=/gateway/scan/**
 
 AES:
-  key: 1234567890123456
+  key: yangzhixuan94416
 management:
   endpoint:
     gateway:

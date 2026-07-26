@@ -12,6 +12,11 @@ spring:
 mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# JWT 中 AES 加密字段解密用的密钥，必须与授权服务器保持一致
+AES:
+  key: yangzhixuan94416
+
 eureka:
   client:
     serviceUrl:
