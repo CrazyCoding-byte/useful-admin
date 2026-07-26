@@ -14,7 +14,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "com.yzx.apiclient.api")
-@ComponentScan(basePackages = {"com.yzx.product", "com.yzx.common", "com.yzx.apiclient.api"})
+@ComponentScan(basePackages = {"com.yzx.product", "com.yzx.common", "com.yzx.apiclient.api", "com.yzx.model"})
 @MapperScan({"com.yzx.product.mapper", "com.yzx.common.mapper"})
 @EnableScheduling
 public class ProductApplication {

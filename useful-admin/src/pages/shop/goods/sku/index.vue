@@ -281,7 +281,7 @@ import {title} from 'process';
 const autoUpload = ref(true);
 const route = useRoute();
 const productId = route.params.productId;
-const spuName = route.params.spuName;
+const spuName = route.query.spuName;
 const showImage = ref(false);
 const showImageFileName = ref(true);
 

@@ -1,6 +1,8 @@
 package cn.poile.ucs.auth.controller;
 
+import cn.poile.ucs.auth.mapper.BaseUserMapper;
 import cn.poile.ucs.auth.service.AuthService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.yzx.apiclient.api.SystemApi;
 import com.yzx.common.tenant.TenantContext;
 import com.yzx.model.AjaxResult;
@@ -10,6 +12,8 @@ import com.yzx.model.enums.AuthCode;
 import com.yzx.model.exception.CustomException;
 import com.yzx.model.exception.ExceptionCast;
 import com.yzx.model.system.SysTenant;
+import com.yzx.model.system.SysUser;
+import com.yzx.model.ucenter.BaseUser;
 import com.yzx.model.ucenter.ext.AuthToken;
 import com.yzx.model.utils.Oauth2Util;
 import com.yzx.model.utils.ServletUtils;
@@ -48,6 +52,8 @@ public class AuthenticationController {
     private Oauth2Util oauth2Util;
     @Autowired
     private cn.poile.ucs.auth.mapper.SysTenantMapper sysTenantMapper;
+    @Autowired
+    private BaseUserMapper baseUserMapper;
 
     /**
      * 获取可用租户列表（供登录选择）
@@ -112,12 +118,18 @@ public class AuthenticationController {
             ExceptionCast.cast(AuthCode.AUTH_LOGIN_ERROR);
         }
 
-        // 先进行认证，获取用户信息以判断是否为超级管理员
+        // 先根据账号/手机号查出用户，判断是否为超级管理员
         String tenantId = loginRequest.getTenantId();
+        BaseUser loginUser = getLoginUser(loginRequest);
+        boolean isSuperAdmin = loginUser != null && SysUser.isAdmin(loginUser.getUserId());
 
-        // 验证租户（如果不是超级管理员）
-        if (StringUtils.isNotEmpty(tenantId)) {
-            // 检查租户是否存在且可用（使用本地 Mapper）
+        // 超级管理员不受租户管理：跳过租户可用性校验，并强制使用默认租户
+        if (isSuperAdmin) {
+            log.info("超级管理员[{}]登录，跳过租户校验，使用默认租户", loginUser.getUserName());
+            tenantId = "000000";
+            loginRequest.setTenantId(tenantId);
+        } else if (StringUtils.isNotEmpty(tenantId)) {
+            // 普通用户：检查租户是否存在且可用（使用本地 Mapper）
             log.info("检查租户可用性，tenantId: {}", tenantId);
             int count = sysTenantMapper.checkTenantAvailable(tenantId);
             boolean tenantAvailable = count > 0;
@@ -245,6 +257,40 @@ public class AuthenticationController {
         Oauth2Util.UserJwt userJwt = oauth2Util.getUserJwtFromHeader(request);
         Long id = userJwt.getId();
         return systemApi.getMenusTreeByUserId(id);
+    }
+
+    /**
+     * 根据登录请求中的账号或手机号查询用户
+     */
+    private BaseUser getLoginUser(LoginRequest loginRequest) {
+        try {
+            switch (loginRequest.getGrantType()) {
+                case Constants.LOGIN_TYPE_PASSWORD:
+                    if (StringUtils.isNotEmpty(loginRequest.getUsername())) {
+                        return baseUserMapper.selectOne(
+                                new LambdaQueryWrapper<BaseUser>()
+                                        .eq(BaseUser::getUserName, loginRequest.getUsername())
+                                        .last("LIMIT 1")
+                        );
+                    }
+                    break;
+                case Constants.LOGIN_TYPE_PWD:
+                case Constants.LOGIN_TYPE_SMS:
+                    if (StringUtils.isNotEmpty(loginRequest.getMobile())) {
+                        return baseUserMapper.selectOne(
+                                new LambdaQueryWrapper<BaseUser>()
+                                        .eq(BaseUser::getPhonenumber, loginRequest.getMobile())
+                                        .last("LIMIT 1")
+                        );
+                    }
+                    break;
+                default:
+                    break;
+            }
+        } catch (Exception e) {
+            log.error("查询登录用户失败", e);
+        }
+        return null;
     }
 
 }

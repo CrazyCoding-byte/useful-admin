@@ -27,20 +27,6 @@ export const defaultRouterList: Array<RouteRecordRaw> = [
     path: '/',
     redirect: '/login',
   },
-
-  {
-    path: '/shop',
-    component: Layout,
-    meta: { title: '商品管理', hidden: true },
-    children: [
-      {
-        path: 'goods/sku/:productId',
-        name: 'SkuManagement',
-        component: () => import('@/pages/shop/goods/sku/index.vue'),
-        meta: { title: 'SKU规格管理', hidden: true },
-      },
-    ],
-  },
   {
     path: '/:pathMatch(.*)*',
     name: '404Page',

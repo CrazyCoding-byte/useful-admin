@@ -18,6 +18,7 @@
         <module>model</module>
         <module>wms</module>
         <module>product</module>
+        <module>coupon</module>
     </modules>
 
     <parent>

@@ -5,6 +5,7 @@ import cn.poile.ucs.auth.auth.granter.ScanCodeTokenGranter;
 import cn.poile.ucs.auth.convert.JwtAccessToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -63,6 +64,9 @@ public class AuthorizationConfig extends AuthorizationServerConfigurerAdapter {
     @Autowired
     private TokenStore tokenStore;
 
+    @Value("${auth.tokenValiditySecondsComputer:7200}")
+    private Integer accessTokenValiditySeconds;
+
     @Bean
     public AuthorizationServerTokenServices tokenServices() {
         DefaultTokenServices services = new DefaultTokenServices();
@@ -76,8 +80,8 @@ public class AuthorizationConfig extends AuthorizationServerConfigurerAdapter {
         services.setSupportRefreshToken(true);
         services.setReuseRefreshToken(true);
 
-        // 3. 过期时间（测试用 10 秒）
-        services.setAccessTokenValiditySeconds(10);
+        // 3. 过期时间：从配置读取，默认 2 小时；刷新令牌 7 天
+        services.setAccessTokenValiditySeconds(accessTokenValiditySeconds);
         services.setRefreshTokenValiditySeconds(604800); // 7 天
 
         return services;
