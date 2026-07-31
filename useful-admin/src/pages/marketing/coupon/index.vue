@@ -6,31 +6,31 @@
         <t-row :gutter="[16, 16]">
           <t-col :span="4">
             <t-form-item label="券名称" name="couponName">
-              <t-input v-model="searchForm.couponName" placeholder="请输入优惠券名称" clearable />
+              <t-input v-model="searchForm.couponName" placeholder="请输入优惠券名称" clearable/>
             </t-form-item>
           </t-col>
           <t-col :span="4">
             <t-form-item label="券类型" name="couponType">
               <t-select v-model="searchForm.couponType" placeholder="请选择券类型" clearable>
-                <t-option value="FULL_REDUCTION" label="满减券" />
-                <t-option value="CASH" label="现金券" />
+                <t-option value="FULL_REDUCTION" label="满减券"/>
+                <t-option value="CASH" label="现金券"/>
               </t-select>
             </t-form-item>
           </t-col>
           <t-col :span="4">
             <t-form-item label="适用范围" name="rangeType">
               <t-select v-model="searchForm.rangeType" placeholder="请选择适用范围" clearable>
-                <t-option value="ALL" label="通用" />
-                <t-option value="SKU" label="SKU" />
-                <t-option value="CATEGORY" label="分类" />
+                <t-option value="ALL" label="通用"/>
+                <t-option value="SKU" label="SKU"/>
+                <t-option value="CATEGORY" label="分类"/>
               </t-select>
             </t-form-item>
           </t-col>
           <t-col :span="4">
             <t-form-item label="发布状态" name="publishStatus">
               <t-select v-model="searchForm.publishStatus" placeholder="请选择发布状态" clearable>
-                <t-option :value="true" label="已发布" />
-                <t-option :value="false" label="未发布" />
+                <t-option :value="true" label="已发布"/>
+                <t-option :value="false" label="未发布"/>
               </t-select>
             </t-form-item>
           </t-col>
@@ -46,7 +46,9 @@
     <t-card class="table-card" :bordered="false">
       <div class="table-toolbar">
         <t-button theme="primary" @click="handleAdd">
-          <template #icon><add-icon /></template>
+          <template #icon>
+            <add-icon/>
+          </template>
           新增优惠券
         </t-button>
       </div>
@@ -113,14 +115,14 @@
         <t-row :gutter="[16, 0]">
           <t-col :span="6">
             <t-form-item label="优惠券名称" name="couponName">
-              <t-input v-model="formData.couponName" placeholder="请输入优惠券名称" />
+              <t-input v-model="formData.couponName" placeholder="请输入优惠券名称"/>
             </t-form-item>
           </t-col>
           <t-col :span="6">
             <t-form-item label="优惠券类型" name="couponType">
               <t-select v-model="formData.couponType" placeholder="请选择优惠券类型">
-                <t-option value="FULL_REDUCTION" label="满减券" />
-                <t-option value="CASH" label="现金券" />
+                <t-option value="FULL_REDUCTION" label="满减券"/>
+                <t-option value="CASH" label="现金券"/>
               </t-select>
             </t-form-item>
           </t-col>
@@ -128,25 +130,25 @@
         <t-row :gutter="[16, 0]">
           <t-col :span="6">
             <t-form-item label="优惠金额" name="amount">
-              <t-input-number v-model="formData.amount" placeholder="请输入优惠金额" :min="0" :decimal-places="2" />
+              <t-input-number v-model="formData.amount" placeholder="请输入优惠金额" :min="0" :decimal-places="2"/>
             </t-form-item>
           </t-col>
           <t-col :span="6">
             <t-form-item label="使用门槛" name="conditionAmount">
-              <t-input-number v-model="formData.conditionAmount" placeholder="满多少可用" :min="0" :decimal-places="2" />
+              <t-input-number v-model="formData.conditionAmount" placeholder="满多少可用" :min="0" :decimal-places="2"/>
             </t-form-item>
           </t-col>
         </t-row>
         <t-form-item label="有效期" name="timeRange">
-          <t-date-range-picker v-model="formData.timeRange" clearable />
+          <t-date-range-picker v-model="formData.timeRange" clearable/>
         </t-form-item>
         <t-row :gutter="[16, 0]">
           <t-col :span="6">
             <t-form-item label="适用范围" name="rangeType">
               <t-select v-model="formData.rangeType" placeholder="请选择适用范围">
-                <t-option value="ALL" label="通用" />
-                <t-option value="SKU" label="SKU" />
-                <t-option value="CATEGORY" label="分类" />
+                <t-option value="ALL" label="通用"/>
+                <t-option value="SKU" label="SKU"/>
+                <t-option value="CATEGORY" label="分类"/>
               </t-select>
             </t-form-item>
           </t-col>
@@ -162,17 +164,17 @@
         <t-row :gutter="[16, 0]">
           <t-col :span="6">
             <t-form-item label="发放总量" name="publishCount">
-              <t-input-number v-model="formData.publishCount" placeholder="-1 表示不限" :min="-1" />
+              <t-input-number v-model="formData.publishCount" placeholder="-1 表示不限" :min="-1"/>
             </t-form-item>
           </t-col>
           <t-col :span="6">
             <t-form-item label="每人限领" name="perLimit">
-              <t-input-number v-model="formData.perLimit" placeholder="请输入每人限领数量" :min="1" />
+              <t-input-number v-model="formData.perLimit" placeholder="请输入每人限领数量" :min="1"/>
             </t-form-item>
           </t-col>
         </t-row>
         <t-form-item label="范围描述" name="rangeDesc">
-          <t-textarea v-model="formData.rangeDesc" placeholder="请输入范围描述" :rows="2" />
+          <t-textarea v-model="formData.rangeDesc" placeholder="请输入范围描述" :rows="2"/>
         </t-form-item>
       </t-form>
     </t-dialog>
@@ -184,16 +186,21 @@
       :body="deleteBody"
       @confirm="handleDeleteConfirm"
     />
+    <CouponRangeDialog v-model="rangeDialogVisible" :coupon-info="currentCoupon" @saved="fetchData"></CouponRangeDialog>
   </div>
+
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue';
-import { MessagePlugin, type FormInstanceFunctions, type PaginationProps, type PageInfo } from 'tdesign-vue-next';
-import { AddIcon } from 'tdesign-icons-vue-next';
-import { couponApi } from '@/api/marketing/coupon';
+import {ref, reactive, onMounted, computed} from 'vue';
+import {MessagePlugin, type FormInstanceFunctions, type PaginationProps, type PageInfo} from 'tdesign-vue-next';
+import {AddIcon} from 'tdesign-icons-vue-next';
+import {couponApi} from '@/api/marketing/coupon';
 import dayjs from 'dayjs';
+import CouponRangeDialog from './components/CouponRangeDialog.vue';
 
+const rangeDialogVisible = ref(false);
+const currentCoupon = ref<Record<string, any>>({});
 // ==================== 枚举映射 ====================
 const couponTypeMap: Record<string, string> = {
   FULL_REDUCTION: '满减券',
@@ -208,19 +215,19 @@ const rangeTypeMap: Record<string, string> = {
 
 // ==================== 表格 ====================
 const columns = [
-  { colKey: 'id', title: '券ID', width: 80 },
-  { colKey: 'couponName', title: '优惠券名称', width: 160, ellipsis: true },
-  { colKey: 'couponType', title: '券类型', width: 100 },
-  { colKey: 'amount', title: '优惠金额', width: 100 },
-  { colKey: 'condition', title: '使用门槛', width: 130 },
-  { colKey: 'validTime', title: '有效期', width: 220 },
-  { colKey: 'couponStatus', title: '有效状态', width: 100 },
-  { colKey: 'rangeType', title: '适用范围', width: 100 },
-  { colKey: 'publishCount', title: '发放总量', width: 100 },
-  { colKey: 'perLimit', title: '每人限领', width: 100 },
-  { colKey: 'publishStatus', title: '发布状态', width: 100 },
-  { colKey: 'createTime', title: '创建时间', width: 170 },
-  { colKey: 'operation', title: '操作', width: 170, fixed: 'right' },
+  {colKey: 'id', title: '券ID', width: 80},
+  {colKey: 'couponName', title: '优惠券名称', width: 160, ellipsis: true},
+  {colKey: 'couponType', title: '券类型', width: 100},
+  {colKey: 'amount', title: '优惠金额', width: 100},
+  {colKey: 'condition', title: '使用门槛', width: 130},
+  {colKey: 'validTime', title: '有效期', width: 220},
+  {colKey: 'couponStatus', title: '有效状态', width: 100},
+  {colKey: 'rangeType', title: '适用范围', width: 100},
+  {colKey: 'publishCount', title: '发放总量', width: 100},
+  {colKey: 'perLimit', title: '每人限领', width: 100},
+  {colKey: 'publishStatus', title: '发布状态', width: 100},
+  {colKey: 'createTime', title: '创建时间', width: 170},
+  {colKey: 'operation', title: '操作', width: 170, fixed: 'right'},
 ];
 
 const couponList = ref([]);
@@ -264,10 +271,10 @@ const formData = reactive({
 });
 
 const formRules = {
-  couponName: [{ required: true, message: '请输入优惠券名称', type: 'error' }],
-  couponType: [{ required: true, message: '请选择优惠券类型', type: 'error' }],
-  amount: [{ required: true, message: '请输入优惠金额', type: 'error' }],
-  conditionAmount: [{ required: true, message: '请输入使用门槛', type: 'error' }],
+  couponName: [{required: true, message: '请输入优惠券名称', type: 'error'}],
+  couponType: [{required: true, message: '请选择优惠券类型', type: 'error'}],
+  amount: [{required: true, message: '请输入优惠金额', type: 'error'}],
+  conditionAmount: [{required: true, message: '请输入使用门槛', type: 'error'}],
 };
 
 // ==================== 删除 ====================
@@ -294,7 +301,7 @@ const resetFormData = () => {
 };
 
 const parseTimeRange = (timeRange: any[]) => {
-  if (!timeRange || timeRange.length < 2) return { startTime: undefined, endTime: undefined };
+  if (!timeRange || timeRange.length < 2) return {startTime: undefined, endTime: undefined};
   return {
     startTime: timeRange[0] ? dayjs(timeRange[0]).format('YYYY-MM-DD') : undefined,
     endTime: timeRange[1] ? dayjs(timeRange[1]).format('YYYY-MM-DD') : undefined,
@@ -306,10 +313,10 @@ const getCouponStatus = (row: Record<string, any>) => {
   const start = row.startTime ? dayjs(row.startTime) : null;
   const end = row.endTime ? dayjs(row.endTime) : null;
 
-  if (!start || !end) return { label: '未知', theme: 'default' };
-  if (now.isBefore(start)) return { label: '未开始', theme: 'primary' };
-  if (now.isAfter(end)) return { label: '已过期', theme: 'danger' };
-  return { label: '有效', theme: 'success' };
+  if (!start || !end) return {label: '未知', theme: 'default'};
+  if (now.isBefore(start)) return {label: '未开始', theme: 'primary'};
+  if (now.isAfter(end)) return {label: '已过期', theme: 'danger'};
+  return {label: '有效', theme: 'success'};
 };
 
 // ==================== 数据加载 ====================
@@ -396,7 +403,8 @@ const handleEdit = (row: Record<string, any>) => {
 };
 
 const handleRule = (row: Record<string, any>) => {
-  MessagePlugin.info(`优惠券规则配置暂未实现，券ID：${row.id}`);
+  currentCoupon.value = row;
+  rangeDialogVisible.value = true;
 };
 
 const handleDelete = (row: Record<string, any>) => {
@@ -426,7 +434,7 @@ const handleSubmit = async () => {
 
   submitLoading.value = true;
   try {
-    const { startTime, endTime } = parseTimeRange(formData.timeRange);
+    const {startTime, endTime} = parseTimeRange(formData.timeRange);
     const submitData = {
       id: formData.id,
       couponName: formData.couponName,

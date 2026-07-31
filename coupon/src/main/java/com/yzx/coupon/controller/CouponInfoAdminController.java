@@ -3,15 +3,18 @@ package com.yzx.coupon.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.yzx.coupon.mapper.CouponRangeMapper;
 import com.yzx.coupon.service.CouponInfoService;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.coupon.CouponInfo;
+import com.yzx.model.coupon.CouponRange;
 import com.yzx.model.order.enums.CouponRangeType;
 import com.yzx.model.order.enums.CouponType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,6 +26,8 @@ public class CouponInfoAdminController {
 
     @Autowired
     private CouponInfoService couponInfoService;
+    @Autowired
+    private CouponRangeMapper couponRangeMapper;
 
     /**
      * 分页列表
@@ -90,5 +95,32 @@ public class CouponInfoAdminController {
     public AjaxResult publishCoupon(@PathVariable Long couponId) {
         boolean success = couponInfoService.publishCoupon(couponId);
         return success ? AjaxResult.success("发卷成功") : AjaxResult.error("发卷失败");
+    }
+
+    /**
+     * 获取优惠卷已经配置的规则范围列表
+     * @param couponId
+     * @return
+     */
+    @GetMapping("/{couponId}/range")
+    public AjaxResult getRangeList(@PathVariable Long couponId) {
+        List<CouponRange> couponRanges = couponRangeMapper.selectList(new LambdaQueryWrapper<CouponRange>().eq(CouponRange::getCouponId, couponId));
+        return AjaxResult.success(couponRanges);
+    }
+
+    /**
+     * 保存优惠卷规则范围
+     * @return
+     */
+    @PostMapping("/{couponId}/range")
+    public AjaxResult saveRange(@PathVariable Long couponId, @RequestBody List<CouponRange> rangeList) {
+        couponRangeMapper.delete(new LambdaQueryWrapper<CouponRange>().eq(CouponRange::getCouponId, couponId));
+        if (rangeList != null && !rangeList.isEmpty()) {
+            for (CouponRange range : rangeList) {
+                range.setCouponId(couponId);
+                couponRangeMapper.insert(range);
+            }
+        }
+        return AjaxResult.success();
     }
 }
