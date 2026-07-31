@@ -14,7 +14,7 @@ watch(() => props.modelValue, (v) => {
 watch(visible, (v) => emit('update:modelValue', v));
 const submitLoading = ref(false);
 const skuList = ref<any[]>([]);
-const selectSkuIds = ref<number[]>([]);
+const selectedSkuIds = ref<number[]>([]);
 const categoryTree = ref<any>([]);
 const selectedCategoryIds = ref<number[]>([]);
 //已有的规则回显
@@ -84,13 +84,15 @@ const handleSave = async () => {
   }
 }
 const handleClose = () => {
-  selectSkuIds.value = [];
+  selectedSkuIds.value = [];
   selectedCategoryIds.value = [];
 }
 </script>
 
 <template>
-  <t-dialog>
+  <t-dialog v-model:visible="visible" header="配置优惠券规则" width="800px"
+            :confirm-btn="{ content: '保存', loading: submitLoading }"
+            @confirm="handleSave" @close="handleClose">
     <!--    通用卷提示-->
     <t-alert v-if="couponInfo.rangeType==='ALL'" theme="info" message="通用卷无需配置规则,所有商品都可以使用">
     </t-alert>

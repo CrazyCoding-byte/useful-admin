@@ -53,7 +53,7 @@ export const couponApi = {
     },
     getRangeList: (couponId: number) => request.get({url: `/coupon/couponInfo/${couponId}/range`}),
     saveRange: (couponId: number, rangeList: any[]) => request.post({
-      url: `/cuopon/couponInfo/${couponId}/range`,
+      url: `/coupon/couponInfo/${couponId}/range`,
       data: rangeList
     })
   }
