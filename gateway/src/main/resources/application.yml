@@ -19,12 +19,6 @@ server:
 spring:
   application:
     name: oauth2-gateway
-  autoconfigure:
-    exclude:
-      # 网关是 WebFlux 应用，排除 Servlet 安全自动配置，鉴权由 AuthGlobalFilter 处理
-      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
-      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
-      - org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration
   cloud:
     gateway:
       routes:

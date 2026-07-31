@@ -10,7 +10,7 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
 @EnableFeignClients(basePackages = "com.yzx.apiclient.api")
-@ComponentScan(basePackages = {"com.yzx.coupon", "com.yzx.common", "com.yzx.apiclient.api"})
+@ComponentScan(basePackages = {"com.yzx.coupon", "com.yzx.common", "com.yzx.model", "com.yzx.apiclient.api"})
 @MapperScan({"com.yzx.coupon.mapper", "com.yzx.common.mapper"})
 @EnableDiscoveryClient
 @EnableRabbit
