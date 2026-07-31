@@ -45,29 +45,40 @@ export default ({ mode }: ConfigEnv): UserConfig => {
       port: 3002,
       host: '0.0.0.0',
       proxy: {
-        '/api': {
-          target: 'http://127.0.0.1:8120/',
+        // 统一走网关（9100），由网关根据路径前缀路由到对应微服务
+        '/auth': {
+          target: 'http://127.0.0.1:9100/',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ''),
         },
         '/system': {
-          target: 'http://127.0.0.1:8120/',
+          target: 'http://127.0.0.1:9100/',
           changeOrigin: true,
         },
-        '/auth': 'http://127.0.0.1:8001/',
-
-        '/product':{
-          target: 'http://127.0.0.1:8880/',
+        '/product': {
+          target: 'http://127.0.0.1:9100/',
           changeOrigin: true,
         },
         '/coupon': {
-          target: 'http://127.0.0.1:8882/',
+          target: 'http://127.0.0.1:9100/',
           changeOrigin: true,
         },
-        '/api/video': {
-          target: 'http://127.0.0.1:8890/',
+        '/wms': {
+          target: 'http://127.0.0.1:9100/',
           changeOrigin: true,
-        }
+        },
+        '/post': {
+          target: 'http://127.0.0.1:9100/',
+          changeOrigin: true,
+        },
+        '/shop': {
+          target: 'http://127.0.0.1:9100/',
+          changeOrigin: true,
+        },
+        '/api': {
+          target: 'http://127.0.0.1:9100/',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
       },
     },
   };

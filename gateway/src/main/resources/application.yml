@@ -19,6 +19,12 @@ server:
 spring:
   application:
     name: oauth2-gateway
+  autoconfigure:
+    exclude:
+      # 网关是 WebFlux 应用，排除 Servlet 安全自动配置，鉴权由 AuthGlobalFilter 处理
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration
   cloud:
     gateway:
       routes:
@@ -47,6 +53,21 @@ spring:
           uri: lb://coupon-server
           predicates:
             - Path=/coupon/**
+        # 岗位管理路由（SysPostController 使用 /post 前缀，不在 /system 下）
+        - id: post-route
+          uri: lb://system-server
+          predicates:
+            - Path=/post/**
+        # 电商（shop）路由
+        - id: shop-route
+          uri: lb://product-server
+          predicates:
+            - Path=/shop/**
+        # 视频服务（Go 独立部署，走直连 URL）
+        - id: video-server
+          uri: http://localhost:8890
+          predicates:
+            - Path=/api/video/**
         - id: scan_route
           uri: no://op
           predicates:

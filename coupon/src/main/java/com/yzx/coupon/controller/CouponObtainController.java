@@ -42,7 +42,6 @@ public class CouponObtainController {
         if (userId == null) {
             return AjaxResult.error("请先登录");
         }
-
         boolean ok = obtainService.obtainCoupon(userId, couponId);
         return ok ? AjaxResult.success("领取成功")
                 : AjaxResult.error("领取失败，库存不足或已领过");
