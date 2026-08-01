@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * @className: IndexController
@@ -27,9 +28,9 @@ public class IndexController {
     private EsSearchService esSearchService;
 
     //查询出分类信息
-    @GetMapping("/index/category")
-    public AjaxResult index() {
-        return AjaxResult.success(productCateGoryService.getCateGory());
+    @PostMapping("/index/category")
+    public AjaxResult index(Map<String, Object> params) {
+        return AjaxResult.success(productCateGoryService.getCateGory(params));
     }
 
     //es搜索
@@ -38,7 +39,7 @@ public class IndexController {
         try {
             return esSearchService.search(searchParam);
         } catch (IOException e) {
-           return AjaxResult.error(e.getMessage());
+            return AjaxResult.error(e.getMessage());
         }
     }
 

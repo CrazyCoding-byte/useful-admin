@@ -34,7 +34,7 @@ const loadExistingRange = async () => {
 }
 const loadSkuList = async () => {
   try {
-    const res = await getSkuPage({pageNum: 1, pageSize: 200});
+    const res = await productApi.getProductLists({pageNum: 1, pageSize: 200});
     skuList.value = (res?.list || res?.data?.list || []).map((item: any) => ({
       id: item.id,
       skuName: item.skuName || item.spuName || `商品${item.id}`

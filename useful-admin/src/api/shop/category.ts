@@ -7,9 +7,9 @@ export const categoryApi = {
    * @param params 查询参数
    * @returns 分类列表
    */
-  getCategoryList: (params: any) => {
+  getCategoryList: (params: any,pageNum:Number,pageSize:Number) => {
     return request.post({
-      url: '/shop/category/list',
+      url: `/product/CategoryList/${pageNum}/${pageSize}`,
       data: params
     });
   },
@@ -21,7 +21,7 @@ export const categoryApi = {
    */
   saveCategory: (data: any) => {
     return request.post({
-      url: '/shop/category/save',
+      url: '/product/category/save',
       data: data
     });
   },
@@ -33,7 +33,7 @@ export const categoryApi = {
    */
   deleteCategory: (ids: number[]) => {
     return request.post({
-      url: '/shop/category/delete',
+      url: '/product/category/delete',
       data: ids
     });
   },
@@ -44,7 +44,7 @@ export const categoryApi = {
    */
   getCategoryTree: () => {
     return request.get({
-      url: '/shop/category/tree'
+      url: '/product/category/tree'
     });
   }
 };

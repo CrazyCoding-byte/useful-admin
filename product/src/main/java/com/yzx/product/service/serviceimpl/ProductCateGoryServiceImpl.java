@@ -1,5 +1,6 @@
 package com.yzx.product.service.serviceimpl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yzx.model.Result;
 import com.yzx.model.product.PmsCategory;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -23,10 +25,14 @@ import java.util.stream.Collectors;
 @Service
 public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, PmsCategory> implements ProductCateGoryService {
 
-    @Cacheable(value = "category",key = "#root.methodName")
+    @Cacheable(value = "category", key = "#root.methodName")
     @Override
-    public Result getCateGory() {
-        List<PmsCategory> categoryEntities = this.baseMapper.selectList(null);
+    public Result getCateGory(Map<String, Object> params) {
+        LambdaQueryWrapper<PmsCategory> pmsCategoryLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        if (params.containsKey("categoryName")) {
+            pmsCategoryLambdaQueryWrapper.like(PmsCategory::getName, params.get("categoryName"));
+        }
+        List<PmsCategory> categoryEntities = this.baseMapper.selectList(pmsCategoryLambdaQueryWrapper);
         return Result.success(buildCategoryTree(0L, categoryEntities));
     }
 

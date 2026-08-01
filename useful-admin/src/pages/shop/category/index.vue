@@ -3,8 +3,8 @@
     <t-card class="category-card-container">
       <t-row justify="space-between" align="middle">
         <div class="left-operation-container">
-          <t-button theme="primary" @click="handleAddCategory"> 新增分类 </t-button>
-          <t-button variant="base" theme="default" :disabled="!selectedRowKeys.length"> 批量删除 </t-button>
+          <t-button theme="primary" @click="handleAddCategory"> 新增分类</t-button>
+          <t-button variant="base" theme="default" :disabled="!selectedRowKeys.length"> 批量删除</t-button>
           <p v-if="!!selectedRowKeys.length" class="selected-count">已选{{ selectedRowKeys.length }}项</p>
         </div>
         <div class="search-container">
@@ -38,8 +38,8 @@
         @select-change="onSelectChange"
       >
         <template #status="{ row }">
-          <t-tag v-if="row.status === '0'" theme="success" variant="light"> 正常 </t-tag>
-          <t-tag v-else theme="danger" variant="light"> 禁用 </t-tag>
+          <t-tag v-if="row.status === '0'" theme="success" variant="light"> 正常</t-tag>
+          <t-tag v-else theme="danger" variant="light"> 禁用</t-tag>
         </template>
         <template #op="{ row }">
           <a class="t-button-link" @click="editCategory(row)">编辑</a>
@@ -61,19 +61,19 @@
         label-width="100px"
       >
         <t-form-item label="分类名称" name="categoryName">
-          <t-input v-model="addForm.categoryName" placeholder="请输入分类名称" />
+          <t-input v-model="addForm.categoryName" placeholder="请输入分类名称"/>
         </t-form-item>
         <t-form-item label="分类编码" name="categoryCode">
-          <t-input v-model="addForm.categoryCode" placeholder="请输入分类编码" />
+          <t-input v-model="addForm.categoryCode" placeholder="请输入分类编码"/>
         </t-form-item>
         <t-form-item label="父分类" name="parentId">
           <t-select v-model="addForm.parentId" placeholder="请选择父分类">
-            <t-option value="0" label="顶级分类" />
+            <t-option value="0" label="顶级分类"/>
             <!-- 这里可以动态加载分类树 -->
           </t-select>
         </t-form-item>
         <t-form-item label="分类描述" name="description">
-          <t-textarea v-model="addForm.description" placeholder="请输入分类描述" />
+          <t-textarea v-model="addForm.description" placeholder="请输入分类描述"/>
         </t-form-item>
         <t-form-item label="状态" name="status">
           <t-radio-group v-model="addForm.status">
@@ -102,11 +102,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { MessagePlugin } from 'tdesign-vue-next';
-import type { PaginationProps, TableProps } from 'tdesign-vue-next';
-import { categoryApi } from '@/api/shop/category';
-import type { Category } from '@/api/model/categoryModel';
+import {ref, onMounted, computed} from 'vue';
+import {MessagePlugin} from 'tdesign-vue-next';
+import type {PaginationProps, TableProps} from 'tdesign-vue-next';
+import {categoryApi} from '@/api/shop/category';
+import type {Category} from '@/api/model/categoryModel';
 
 // 搜索表单
 const searchForm = ref<Partial<Category>>({
@@ -150,26 +150,26 @@ const columns: any = [
   {
     colKey: 'status',
     title: '状态',
-    cell: (h: any, { row }: any) => {
+    cell: (h: any, {row}: any) => {
       if (row.status === '0') {
-        return h('t-tag', { props: { theme: 'success', variant: 'light' } }, ' 正常 ');
+        return h('t-tag', {props: {theme: 'success', variant: 'light'}}, ' 正常 ');
       } else {
-        return h('t-tag', { props: { theme: 'danger', variant: 'light' } }, ' 禁用 ');
+        return h('t-tag', {props: {theme: 'danger', variant: 'light'}}, ' 禁用 ');
       }
     },
   },
   {
     colKey: 'op',
     title: '操作',
-    cell: (h: any, { row }: any) => {
+    cell: (h: any, {row}: any) => {
       return h('div', [
         h('a', {
           class: 't-button-link',
-          on: { click: () => editCategory(row as Category) }
+          on: {click: () => editCategory(row as Category)}
         }, '编辑'),
         h('a', {
           class: 't-button-link',
-          on: { click: () => deleteCategory((row as Category).categoryId!) }
+          on: {click: () => deleteCategory((row as Category).categoryId!)}
         }, '删除')
       ]);
     },
@@ -198,13 +198,11 @@ const getCategoryList = async (pageInfo?: any) => {
 
     const requestParams = {
       ...searchForm.value,
-      pageNum: current,
-      pageSize: pageSize
     };
     console.log('请求参数:', requestParams);
 
     // 使用分类API请求
-    const response = await categoryApi.getCategoryList(requestParams);
+    const response = await categoryApi.getCategoryList(requestParams, current, pageSize);
     console.log('响应数据:', response);
 
     // 直接使用响应数据
@@ -267,22 +265,22 @@ const addForm = ref({
 
 const addFormRules = ref<any>({
   categoryName: [
-    { required: true, message: '请输入分类名称', trigger: ['blur', 'change'] },
-    { min: 2, max: 50, message: '分类名称长度应在2-50个字符之间', trigger: ['blur', 'change'] }
+    {required: true, message: '请输入分类名称', trigger: ['blur', 'change']},
+    {min: 2, max: 50, message: '分类名称长度应在2-50个字符之间', trigger: ['blur', 'change']}
   ],
   categoryCode: [
-    { required: true, message: '请输入分类编码', trigger: ['blur', 'change'] },
-    { min: 2, max: 30, message: '分类编码长度应在2-30个字符之间', trigger: ['blur', 'change'] }
+    {required: true, message: '请输入分类编码', trigger: ['blur', 'change']},
+    {min: 2, max: 30, message: '分类编码长度应在2-30个字符之间', trigger: ['blur', 'change']}
   ],
   parentId: [
-    { required: true, message: '请选择父分类', trigger: ['blur', 'change'] }
+    {required: true, message: '请选择父分类', trigger: ['blur', 'change']}
   ],
   description: [
-    { required: false, message: '请输入分类描述', trigger: ['blur', 'change'] },
-    { max: 200, message: '分类描述长度不能超过200个字符', trigger: ['blur', 'change'] }
+    {required: false, message: '请输入分类描述', trigger: ['blur', 'change']},
+    {max: 200, message: '分类描述长度不能超过200个字符', trigger: ['blur', 'change']}
   ],
   status: [
-    { required: true, message: '请选择状态', trigger: ['blur', 'change'] }
+    {required: true, message: '请选择状态', trigger: ['blur', 'change']}
   ]
 });
 
@@ -314,7 +312,7 @@ const submitAddForm = async () => {
     await addFormRef.value.validate();
 
     // 准备提交数据
-    const submitData = { ...addForm.value };
+    const submitData = {...addForm.value};
 
     // 对于编辑分类，如果某些字段为空，不发送
     if (submitData.categoryId) {

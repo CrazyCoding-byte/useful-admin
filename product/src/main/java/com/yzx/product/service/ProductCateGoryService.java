@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.yzx.model.Result;
 import com.yzx.model.product.PmsCategory;
 
+import java.util.Map;
+
 /**
  * @className: ProductCateGoryService
  * @author: yzx
@@ -12,5 +14,5 @@ import com.yzx.model.product.PmsCategory;
  * @description:
  */
 public interface ProductCateGoryService extends IService<PmsCategory> {
-    Result getCateGory();
+    Result getCateGory(Map<String, Object> map);
 }

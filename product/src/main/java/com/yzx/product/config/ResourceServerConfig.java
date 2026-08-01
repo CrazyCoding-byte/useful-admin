@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableResourceServer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.ResourceServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configurers.ResourceServerSecurityConfigurer;
@@ -71,7 +72,17 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
     @Override
     public void configure(HttpSecurity http) throws Exception {
         http.csrf().disable()
-            .authorizeRequests()
+                .sessionManagement()
+                //不创建session 进行管理
+                /**
+                 * Result 类（ Result.java ）没实现 Serializable 。
+                 * Spring Security 默认把 SecurityContext
+                 * 存到 HTTP Session 里，响应结束时 Tomcat
+                 * 尝试序列化 Session 里的对象，碰到 Result （它被间接引用了）就炸了。
+                 */
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .and()
+                .authorizeRequests()
                 .antMatchers("/actuator/**").permitAll()
                 .antMatchers(org.springframework.http.HttpMethod.OPTIONS).permitAll()
                 .anyRequest().authenticated();

@@ -3,10 +3,12 @@ package com.yzx.product.contoller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yzx.common.utils.PageResult;
 import com.yzx.model.AjaxResult;
+import com.yzx.model.Result;
 import com.yzx.model.product.PmsAttr;
 import com.yzx.model.product.SpuInfoEntity;
 import com.yzx.model.product.vo.PmsGroupVo;
 import com.yzx.model.product.vo.SkuVo;
+import com.yzx.product.service.ProductCateGoryService;
 import com.yzx.product.service.SkuInfoService;
 import com.yzx.product.service.SpuInfoService;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,14 @@ public class ProductController {
     private SpuInfoService spuInfoService;
     @Autowired
     private SkuInfoService skuInfoService;
+    @Autowired
+    private ProductCateGoryService productCateGoryService;
+
+    @PostMapping("/CategoryList/{pageNum}/{pageSize}")
+    public AjaxResult getAllAttr(@PathVariable Integer pageNum, @PathVariable Integer pageSize, @RequestBody(required = false) Map<String, Object> params) {
+        Result cateGory = productCateGoryService.getCateGory(params);
+        return AjaxResult.success(cateGory);
+    }
 
     /**
      * 根据分类id查询属性
