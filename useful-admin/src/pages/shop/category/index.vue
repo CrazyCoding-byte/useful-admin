@@ -9,14 +9,8 @@
         </div>
         <div class="search-container">
           <t-input
-            v-model="searchForm.categoryName"
+            v-model="searchForm.name"
             placeholder="分类名称"
-            style="width: 200px; margin-right: 10px;"
-            clearable
-          />
-          <t-input
-            v-model="searchForm.categoryCode"
-            placeholder="分类编码"
             style="width: 200px; margin-right: 10px;"
             clearable
           />
@@ -25,11 +19,12 @@
         </div>
       </t-row>
 
-      <t-table
+      <t-enhanced-table
         :data="categoryList"
         :loading="loading"
         :columns="columns"
         :row-key="rowKey"
+        :tree="{childrenKey:'children',defaultExpandAll:true}"
         bordered
         stripe
         :pagination="pagination"
@@ -43,15 +38,15 @@
         </template>
         <template #op="{ row }">
           <a class="t-button-link" @click="editCategory(row)">编辑</a>
-          <a class="t-button-link" @click="deleteCategory(row.categoryId!)">删除</a>
+          <a class="t-button-link" @click="deleteCategory(row.catId!)">删除</a>
         </template>
-      </t-table>
+      </t-enhanced-table>
     </t-card>
 
     <!-- 新增/修改分类对话框 -->
     <t-dialog
       v-model:visible="addDialogVisible"
-      :header="addForm.categoryId ? '修改分类' : '新增分类'"
+      :header="addForm.catId ? '修改分类' : '新增分类'"
       width="600px"
     >
       <t-form
@@ -61,7 +56,7 @@
         label-width="100px"
       >
         <t-form-item label="分类名称" name="categoryName">
-          <t-input v-model="addForm.categoryName" placeholder="请输入分类名称"/>
+          <t-input v-model="addForm.name" placeholder="请输入分类名称"/>
         </t-form-item>
         <t-form-item label="分类编码" name="categoryCode">
           <t-input v-model="addForm.categoryCode" placeholder="请输入分类编码"/>
@@ -106,12 +101,11 @@ import {ref, onMounted, computed} from 'vue';
 import {MessagePlugin} from 'tdesign-vue-next';
 import type {PaginationProps, TableProps} from 'tdesign-vue-next';
 import {categoryApi} from '@/api/shop/category';
-import type {Category} from '@/api/model/categoryModel';
+import type {Category, CategoryTree} from '@/api/model/categoryModel';
 
 // 搜索表单
 const searchForm = ref<Partial<Category>>({
-  categoryName: '',
-  categoryCode: '',
+  name: '',
 });
 
 // 分类列表
@@ -127,36 +121,31 @@ const columns: any = [
     width: 46,
   },
   {
-    colKey: 'categoryId',
+    colKey: 'catId',
     title: '分类ID',
   },
   {
-    colKey: 'categoryName',
+    colKey: 'name',
     title: '分类名称',
   },
   {
-    colKey: 'categoryCode',
-    title: '分类编码',
-  },
-  {
-    colKey: 'parentId',
+    colKey: 'parentCid',
     title: '父分类ID',
   },
   {
-    colKey: 'description',
-    title: '分类描述',
-    ellipsis: true,
+    colKey: 'catLevel',
+    title: '层级',
   },
   {
-    colKey: 'status',
+    colKey: 'sort',
+    title: '排序',
+  },
+  {
+    colKey: 'showStatus',
     title: '状态',
-    cell: (h: any, {row}: any) => {
-      if (row.status === '0') {
-        return h('t-tag', {props: {theme: 'success', variant: 'light'}}, ' 正常 ');
-      } else {
-        return h('t-tag', {props: {theme: 'danger', variant: 'light'}}, ' 禁用 ');
-      }
-    },
+    cell: (h: any, {row}: any) =>
+      h('t-tag', {props: {theme: row.showStatus === 1 ? 'success' : 'danger', variant: 'light'}},
+        row.showStatus === 1 ? '显示' : '隐藏'),
   },
   {
     colKey: 'op',
@@ -169,55 +158,40 @@ const columns: any = [
         }, '编辑'),
         h('a', {
           class: 't-button-link',
-          on: {click: () => deleteCategory((row as Category).categoryId!)}
+          on: {click: () => deleteCategory((row as Category).catId!)}
         }, '删除')
       ]);
     },
   },
 ];
 
-// 分页配置
-const pagination = ref({
-  pageSize: 10,
-  current: 1,
-  total: 0,
-  showJumper: true,
-  showSizeChanger: true,
-  pageSizeOptions: [10, 20, 50, 100],
-});
 
 // 行键
-const rowKey = 'categoryId';
+const rowKey = 'catId';
 
 // 获取分类列表
 const getCategoryList = async (pageInfo?: any) => {
   loading.value = true;
   try {
-    const current = pageInfo?.current || pagination.value.current || 1;
-    const pageSize = pageInfo?.pageSize || pagination.value.pageSize || 10;
-
     const requestParams = {
       ...searchForm.value,
     };
     console.log('请求参数:', requestParams);
 
     // 使用分类API请求
-    const response = await categoryApi.getCategoryList(requestParams, current, pageSize);
+    const response = await categoryApi.getCategoryList(requestParams);
     console.log('响应数据:', response);
-
+    const data = response;
+    categoryList.value = Array.isArray(data) ? data : (data.records || data?.data || []);
     // 直接使用响应数据
-    categoryList.value = response.records || [];
     console.log('分类列表:', categoryList.value);
     console.log('分类列表长度:', categoryList.value.length);
 
-    pagination.value.total = response.total || 0;
-    console.log('总记录数:', pagination.value.total);
 
   } catch (error) {
     MessagePlugin.error('获取分类列表失败');
     console.error('获取分类列表失败:', error);
     categoryList.value = [];
-    pagination.value.total = 0;
   } finally {
     loading.value = false;
   }
@@ -226,8 +200,8 @@ const getCategoryList = async (pageInfo?: any) => {
 // 重置搜索
 const resetSearch = () => {
   searchForm.value = {
-    categoryName: '',
-    categoryCode: '',
+    name: '',
+
   };
   getCategoryList();
 };
@@ -240,8 +214,6 @@ const handleSearch = () => {
 // 处理分页变化
 const onPageChange = async (pageInfo: any) => {
   console.log('page-change', pageInfo);
-  pagination.value.current = pageInfo.current;
-  pagination.value.pageSize = pageInfo.pageSize;
   await getCategoryList(pageInfo);
 };
 
@@ -255,12 +227,9 @@ const onSelectChange = (value: any, params: any) => {
 const addDialogVisible = ref(false);
 const addFormRef = ref<any>();
 const addForm = ref({
-  categoryId: null,
-  categoryName: '',
-  categoryCode: '',
-  parentId: 0,
-  description: '',
-  status: '0'
+  catId: null,
+  name: '',
+  showStatus: 0
 });
 
 const addFormRules = ref<any>({
@@ -289,12 +258,9 @@ const handleAddCategory = () => {
   console.log('新增分类');
   // 重置表单
   addForm.value = {
-    categoryId: null,
-    categoryName: '',
-    categoryCode: '',
-    parentId: 0,
-    description: '',
-    status: '0'
+    catId: null,
+    name: '',
+    showStatus: 0
   };
   // 打开对话框
   addDialogVisible.value = true;
@@ -315,7 +281,7 @@ const submitAddForm = async () => {
     const submitData = {...addForm.value};
 
     // 对于编辑分类，如果某些字段为空，不发送
-    if (submitData.categoryId) {
+    if (submitData.catId) {
       Object.keys(submitData).forEach(key => {
         if (submitData[key] === null || submitData[key] === undefined || submitData[key] === '') {
           delete submitData[key];
@@ -327,7 +293,7 @@ const submitAddForm = async () => {
 
     // 使用同一个API接口处理新增和修改
     await categoryApi.saveCategory(submitData);
-    MessagePlugin.success(addForm.value.categoryId ? '修改分类成功' : '新增分类成功');
+    MessagePlugin.success(addForm.value.catId ? '修改分类成功' : '新增分类成功');
 
     // 关闭对话框
     addDialogVisible.value = false;
@@ -344,12 +310,9 @@ const editCategory = (category: Category) => {
   try {
     // 直接使用传入的分类数据填充表单
     addForm.value = {
-      categoryId: category.categoryId || null,
-      categoryName: category.categoryName || '',
-      categoryCode: category.categoryCode || '',
-      parentId: category.parentId || 0,
-      description: category.description || '',
-      status: category.status || '0'
+      catId: category.catId || null,
+      name: category.name || '',
+      showStatus: category.showStatus || 0
     };
     console.log('填充表单数据:', addForm.value);
     // 打开对话框
@@ -396,10 +359,7 @@ const onCancel = () => {
 
 // 页面挂载时获取分类列表
 onMounted(async () => {
-  await getCategoryList({
-    current: pagination.value.current || 1,
-    pageSize: pagination.value.pageSize || 10,
-  });
+  await getCategoryList({});
 });
 </script>
 

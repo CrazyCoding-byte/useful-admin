@@ -1,7 +1,7 @@
 package com.yzx.product.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.yzx.model.Result;
+import com.yzx.model.AjaxResult;
 import com.yzx.model.product.PmsCategory;
 
 import java.util.Map;
@@ -14,5 +14,5 @@ import java.util.Map;
  * @description:
  */
 public interface ProductCateGoryService extends IService<PmsCategory> {
-    Result getCateGory(Map<String, Object> map);
+    AjaxResult getCateGory(Map<String, Object> map);
 }

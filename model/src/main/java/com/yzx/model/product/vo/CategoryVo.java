@@ -2,6 +2,7 @@ package com.yzx.model.product.vo;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -12,8 +13,8 @@ import java.util.List;
  * @description:
  */
 @Data
-public class CategoryVo {
-
+public class CategoryVo implements Serializable {
+    private static final long serialVersionUID = 1L;
     private Long catId;
     private String name;
     private String icon;

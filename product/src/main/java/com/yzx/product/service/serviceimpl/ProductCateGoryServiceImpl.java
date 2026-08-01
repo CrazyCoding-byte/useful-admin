@@ -2,6 +2,7 @@ package com.yzx.product.service.serviceimpl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.yzx.model.AjaxResult;
 import com.yzx.model.Result;
 import com.yzx.model.product.PmsCategory;
 import com.yzx.model.product.vo.CategoryVo;
@@ -27,13 +28,13 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
 
     @Cacheable(value = "category", key = "#root.methodName")
     @Override
-    public Result getCateGory(Map<String, Object> params) {
+    public AjaxResult getCateGory(Map<String, Object> params) {
         LambdaQueryWrapper<PmsCategory> pmsCategoryLambdaQueryWrapper = new LambdaQueryWrapper<>();
         if (params.containsKey("categoryName")) {
             pmsCategoryLambdaQueryWrapper.like(PmsCategory::getName, params.get("categoryName"));
         }
         List<PmsCategory> categoryEntities = this.baseMapper.selectList(pmsCategoryLambdaQueryWrapper);
-        return Result.success(buildCategoryTree(0L, categoryEntities));
+        return AjaxResult.success(buildCategoryTree(0L, categoryEntities));
     }
 
     private List<CategoryVo> buildCategoryTree(Long parentId, List<PmsCategory> entities) {

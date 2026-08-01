@@ -7,9 +7,9 @@ export const categoryApi = {
    * @param params 查询参数
    * @returns 分类列表
    */
-  getCategoryList: (params: any,pageNum:Number,pageSize:Number) => {
+  getCategoryList: (params: any) => {
     return request.post({
-      url: `/product/CategoryList/${pageNum}/${pageSize}`,
+      url: `/product/CategoryList`,
       data: params
     });
   },

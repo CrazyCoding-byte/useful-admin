@@ -35,26 +35,7 @@ public class ProductController {
     private SpuInfoService spuInfoService;
     @Autowired
     private SkuInfoService skuInfoService;
-    @Autowired
-    private ProductCateGoryService productCateGoryService;
 
-    @PostMapping("/CategoryList/{pageNum}/{pageSize}")
-    public AjaxResult getAllAttr(@PathVariable Integer pageNum, @PathVariable Integer pageSize, @RequestBody(required = false) Map<String, Object> params) {
-        Result cateGory = productCateGoryService.getCateGory(params);
-        return AjaxResult.success(cateGory);
-    }
-
-    /**
-     * 根据分类id查询属性
-     * @param id
-     * @return
-     */
-    @GetMapping("/getAttrByCategoryId/{id}")
-    public AjaxResult getAttrByCategoryId(@PathVariable Long id) {
-        log.info("查询商品属性，id={}", id);
-        List<PmsGroupVo> attrs = spuInfoService.getAttrByCategoryId(id);
-        return AjaxResult.success(attrs);
-    }
 
     /**
      * 获取商品列表（分页）
