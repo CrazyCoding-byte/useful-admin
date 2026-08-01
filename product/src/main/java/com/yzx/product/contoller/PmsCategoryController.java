@@ -1,6 +1,7 @@
 package com.yzx.product.contoller;
 
 import com.yzx.model.AjaxResult;
+import com.yzx.model.product.PmsCategory;
 import com.yzx.model.product.vo.PmsGroupVo;
 import com.yzx.product.service.ProductCateGoryService;
 import com.yzx.product.service.SpuInfoService;
@@ -21,7 +22,7 @@ import java.util.Map;
 @RequestMapping("product")
 @RestController
 @Slf4j
-public class PmsCategory {
+public class PmsCategoryController {
     @Autowired
     private ProductCateGoryService productCateGoryService;
     @Autowired
@@ -29,13 +30,11 @@ public class PmsCategory {
 
     /**
      *  分类列表接口
-     * @param pageNum
-     * @param pageSize
      * @param params
      * @return
      */
     @PostMapping("/CategoryList")
-    public AjaxResult getAllAttr( @RequestBody(required = false) Map<String, Object> params) {
+    public AjaxResult getAllAttr(@RequestBody(required = false) Map<String, Object> params) {
         AjaxResult result = productCateGoryService.getCateGory(params);
         return result;
     }
@@ -50,5 +49,25 @@ public class PmsCategory {
         log.info("查询商品属性，id={}", id);
         List<PmsGroupVo> attrs = spuInfoService.getAttrByCategoryId(id);
         return AjaxResult.success(attrs);
+    }
+
+    /**
+     * 保存修改
+     * @param category
+     * @return
+     */
+    @PostMapping("/category/save")
+    public AjaxResult save(@RequestBody PmsCategory category) {
+        boolean success = productCateGoryService.saveOrUpdate(category);
+        return success ? AjaxResult.success("操作成功") : AjaxResult.error("操作失败");
+    }
+
+    /**
+     * 删除分类
+     */
+    @PostMapping("/category/delete")
+    public AjaxResult deleteCategory(@RequestBody List<Long> ids) {
+        productCateGoryService.removeByIds(ids);
+        return AjaxResult.success("删除成功");
     }
 }

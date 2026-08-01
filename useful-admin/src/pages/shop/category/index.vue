@@ -58,23 +58,27 @@
         <t-form-item label="分类名称" name="categoryName">
           <t-input v-model="addForm.name" placeholder="请输入分类名称"/>
         </t-form-item>
-        <t-form-item label="分类编码" name="categoryCode">
-          <t-input v-model="addForm.categoryCode" placeholder="请输入分类编码"/>
+        <t-form-item label="父分类" name="parentCid">
+          <t-input v-model="addForm.parentCid" placeholder="请输入分类编码"/>
         </t-form-item>
-        <t-form-item label="父分类" name="parentId">
-          <t-select v-model="addForm.parentId" placeholder="请选择父分类">
-            <t-option value="0" label="顶级分类"/>
-            <!-- 这里可以动态加载分类树 -->
-          </t-select>
+        <t-form-item label="层级" name="catLevel">
+          <t-input-number v-model="addForm.catLevel" placeholder="请选择层级" :min="1" :max="3">
+          </t-input-number>
         </t-form-item>
-        <t-form-item label="分类描述" name="description">
-          <t-textarea v-model="addForm.description" placeholder="请输入分类描述"/>
+        <t-form-item label="排序" name="sort">
+          <t-input-number v-model="addForm.sort" :min="0"/>
         </t-form-item>
-        <t-form-item label="状态" name="status">
-          <t-radio-group v-model="addForm.status">
-            <t-radio value="0">正常</t-radio>
-            <t-radio value="1">禁用</t-radio>
+        <t-form-item label="状态" name="showStatus">
+          <t-radio-group v-model="addForm.showStatus">
+            <t-radio :value="1">显示</t-radio>
+            <t-radio :value="0">隐藏</t-radio>
           </t-radio-group>
+        </t-form-item>
+        <t-form-item label="图标" name="icon">
+          <t-input v-model="addForm.icon" placeholder="图标地址"/>
+        </t-form-item>
+        <t-form-item label="计量单位" name="productUnit">
+          <t-input v-model="addForm.productUnit" placeholder="如：个、件、箱"/>
         </t-form-item>
       </t-form>
       <template #footer>
@@ -227,30 +231,22 @@ const onSelectChange = (value: any, params: any) => {
 const addDialogVisible = ref(false);
 const addFormRef = ref<any>();
 const addForm = ref({
-  catId: null,
+  catId: undefined as number | undefined,
   name: '',
-  showStatus: 0
+  parentCid: 0,
+  catLevel: 1,
+  showStatus: 0,
+  sort: 0,
+  icon: '',
+  productUnit: '',
+  productCount: 0,
 });
 
 const addFormRules = ref<any>({
-  categoryName: [
+  name: [
     {required: true, message: '请输入分类名称', trigger: ['blur', 'change']},
     {min: 2, max: 50, message: '分类名称长度应在2-50个字符之间', trigger: ['blur', 'change']}
   ],
-  categoryCode: [
-    {required: true, message: '请输入分类编码', trigger: ['blur', 'change']},
-    {min: 2, max: 30, message: '分类编码长度应在2-30个字符之间', trigger: ['blur', 'change']}
-  ],
-  parentId: [
-    {required: true, message: '请选择父分类', trigger: ['blur', 'change']}
-  ],
-  description: [
-    {required: false, message: '请输入分类描述', trigger: ['blur', 'change']},
-    {max: 200, message: '分类描述长度不能超过200个字符', trigger: ['blur', 'change']}
-  ],
-  status: [
-    {required: true, message: '请选择状态', trigger: ['blur', 'change']}
-  ]
 });
 
 // 新增分类
@@ -258,9 +254,15 @@ const handleAddCategory = () => {
   console.log('新增分类');
   // 重置表单
   addForm.value = {
-    catId: null,
+    catId: undefined,
     name: '',
-    showStatus: 0
+    parentCid: 0,
+    catLevel: 1,
+    showStatus: 1,
+    sort: 0,
+    icon: '',
+    productUnit: '',
+    productCount: 0,
   };
   // 打开对话框
   addDialogVisible.value = true;
@@ -310,9 +312,15 @@ const editCategory = (category: Category) => {
   try {
     // 直接使用传入的分类数据填充表单
     addForm.value = {
-      catId: category.catId || null,
+      catId: category.catId,
       name: category.name || '',
-      showStatus: category.showStatus || 0
+      parentCid: category.parentCid || 0,
+      catLevel: category.catLevel || 1,
+      showStatus: category.showStatus ?? 1,
+      sort: category.sort || 0,
+      icon: category.icon || '',
+      productUnit: category.productUnit || '',
+      productCount: category.productCount || 0,
     };
     console.log('填充表单数据:', addForm.value);
     // 打开对话框
