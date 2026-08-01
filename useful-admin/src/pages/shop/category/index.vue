@@ -37,8 +37,10 @@
           <t-tag v-else theme="danger" variant="light"> 禁用</t-tag>
         </template>
         <template #op="{ row }">
-          <a class="t-button-link" @click="editCategory(row)">编辑</a>
-          <a class="t-button-link" @click="deleteCategory(row.catId!)">删除</a>
+          <t-space>
+            <t-link theme="primary" @click="editCategory(row)">编辑</t-link>
+            <t-link theme="danger" @click="deleteCategory(row.catId!)">删除</t-link>
+          </t-space>
         </template>
       </t-enhanced-table>
     </t-card>
@@ -154,18 +156,7 @@ const columns: any = [
   {
     colKey: 'op',
     title: '操作',
-    cell: (h: any, {row}: any) => {
-      return h('div', [
-        h('a', {
-          class: 't-button-link',
-          on: {click: () => editCategory(row as Category)}
-        }, '编辑'),
-        h('a', {
-          class: 't-button-link',
-          on: {click: () => deleteCategory((row as Category).catId!)}
-        }, '删除')
-      ]);
-    },
+    width: 150,
   },
 ];
 
