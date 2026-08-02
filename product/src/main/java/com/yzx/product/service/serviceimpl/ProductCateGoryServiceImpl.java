@@ -11,6 +11,7 @@ import com.yzx.product.service.ProductCateGoryService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,18 @@ import java.util.stream.Collectors;
  */
 @Service
 public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, PmsCategory> implements ProductCateGoryService {
-
+    @Override
+    public void updateChildrenLevel(Long catId, int newLevel) {
+        LambdaQueryWrapper<PmsCategory> pmsCategoryLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        pmsCategoryLambdaQueryWrapper.eq(PmsCategory::getParentCid, catId);
+        List<PmsCategory> pmsCategories = this.baseMapper.selectList(pmsCategoryLambdaQueryWrapper);
+        if (CollectionUtils.isEmpty(pmsCategories)) return;
+        for (PmsCategory child : pmsCategories) {
+            child.setCatLevel(newLevel + 1);
+            this.baseMapper.updateById(child);
+            updateChildrenLevel(child.getCatId(), child.getCatLevel());
+        }
+    }
 
     @Override
     public AjaxResult getParentTree(Long catId) {
@@ -38,6 +50,7 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
         }
         return AjaxResult.success(categoryVos);
     }
+
 
     private List<CategoryVo> filterNodeAndDescendants(List<CategoryVo> categoryVos, Long catId) {
         return categoryVos.stream().filter(node -> !node.getCatId().equals(catId)).map(node -> {

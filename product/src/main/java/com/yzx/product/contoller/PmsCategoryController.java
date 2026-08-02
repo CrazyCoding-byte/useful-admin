@@ -67,8 +67,14 @@ public class PmsCategoryController {
             if (old != null && !Objects.equals(old.getParentCid(), category.getCatId())) {
                 //父类变了+计算新层级
                 int newLevel = calcLevel(category.getParentCid());
-
+                category.setCatLevel(newLevel);
+                //同步更新所有子孙层级
+                productCateGoryService.updateChildrenLevel(category.getCatId(), newLevel);
             }
+        } else {
+// 新增时自动算层级
+            int newLevel = calcLevel(category.getParentCid());
+            category.setCatLevel(newLevel);
         }
         boolean success = productCateGoryService.saveOrUpdate(category);
         return success ? AjaxResult.success("操作成功") : AjaxResult.error("操作失败");
@@ -76,7 +82,8 @@ public class PmsCategoryController {
 
     private int calcLevel(Long parentCid) {
         if (parentCid == null || parentCid == 0) return 1;
-
+        PmsCategory parent = productCateGoryService.getById(parentCid);
+        return parent != null ? parent.getCatLevel() + 1 : 0;
     }
 
     /**

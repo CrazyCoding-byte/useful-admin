@@ -17,4 +17,6 @@ public interface ProductCateGoryService extends IService<PmsCategory> {
     AjaxResult getCateGory(Map<String, Object> map);
 
     AjaxResult getParentTree(Long catId);
+
+    void updateChildrenLevel(Long catId, int newLevel);
 }
