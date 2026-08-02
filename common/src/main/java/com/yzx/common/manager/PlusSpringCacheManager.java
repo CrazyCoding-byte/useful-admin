@@ -3,6 +3,7 @@ package com.yzx.common.manager;
 import com.yzx.common.utils.RedisUtils;
 import org.redisson.api.RMap;
 import org.redisson.api.RMapCache;
+import org.redisson.codec.JsonJacksonCodec;
 import org.redisson.spring.cache.CacheConfig;
 import org.redisson.spring.cache.RedissonCache;
 import org.springframework.boot.convert.DurationStyle;
@@ -139,7 +140,7 @@ public class PlusSpringCacheManager implements CacheManager {
     }
 
     private Cache createMap(String name, CacheConfig config, int local) {
-        RMap<Object, Object> map = RedisUtils.getClient().getMap(name);
+        RMap<Object, Object> map = RedisUtils.getClient().getMap(name, JsonJacksonCodec.INSTANCE);
 
         Cache cache = new RedissonCache(map, allowNullValues);
         if (local == 1) {
@@ -156,7 +157,7 @@ public class PlusSpringCacheManager implements CacheManager {
     }
 
     private Cache createMapCache(String name, CacheConfig config, int local) {
-        RMapCache<Object, Object> map = RedisUtils.getClient().getMapCache(name);
+        RMapCache<Object, Object> map = RedisUtils.getClient().getMapCache(name,JsonJacksonCodec.INSTANCE);
 
         Cache cache = new RedissonCache(map, config, allowNullValues);
         if (local == 1) {

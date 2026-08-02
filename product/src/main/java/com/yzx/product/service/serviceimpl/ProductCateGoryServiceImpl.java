@@ -47,6 +47,10 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
             vo.setCatId(entity.getCatId());
             vo.setIcon(entity.getIcon());
             vo.setName(entity.getName());
+            vo.setParentCid(entity.getParentCid());
+            vo.setProductUnit(entity.getProductUnit());
+            vo.setShowStatus(entity.getShowStatus());
+            vo.setIcon(entity.getIcon());
             vo.setChildren(buildCategoryTree(entity.getCatId(), entities));
             categoryVos.add(vo);
         }
