@@ -57,11 +57,19 @@
         ref="addFormRef"
         label-width="100px"
       >
-        <t-form-item label="分类名称" name="categoryName">
+        <t-form-item label="分类名称" name="name">
           <t-input v-model="addForm.name" placeholder="请输入分类名称"/>
         </t-form-item>
         <t-form-item label="父分类" name="parentCid">
-          <t-input v-model="addForm.parentCid" placeholder="请输入分类编码"/>
+          <t-tree-select
+            v-model="addForm.parentCid"
+            :data="parentCategoryTree"
+            :keys="{label:'name',value:'catId',children:'children'}"
+            placeholder="请选择分类"
+            clearable
+            filterable
+            :tree-props="{expandAll:false}"
+          ></t-tree-select>
         </t-form-item>
         <t-form-item label="层级" name="catLevel">
           <t-input-number v-model="addForm.catLevel" placeholder="请选择层级" :min="1" :max="3">
@@ -113,6 +121,17 @@ import type {Category, CategoryTree} from '@/api/model/categoryModel';
 const searchForm = ref<Partial<Category>>({
   name: '',
 });
+//父类树数据
+const parentCategoryTree = ref<any[]>();
+const loadCategoryTree = async (catId?: number) => {
+  try {
+    const res = await categoryApi.getCategoryTree(catId || 0);
+    parentCategoryTree.value = res || [];
+  } catch (e) {
+    console.error("加载分类树失败", e);
+  }
+}
+
 
 // 分类列表
 const categoryList = ref<Category[]>([]);
@@ -243,6 +262,7 @@ const addFormRules = ref<any>({
 // 新增分类
 const handleAddCategory = () => {
   console.log('新增分类');
+  loadCategoryTree();
   // 重置表单
   addForm.value = {
     catId: undefined,
@@ -300,6 +320,7 @@ const submitAddForm = async () => {
 // 编辑分类
 const editCategory = (category: Category) => {
   console.log('编辑分类:', category);
+  loadCategoryTree(category.catId);
   try {
     // 直接使用传入的分类数据填充表单
     addForm.value = {

@@ -7,10 +7,12 @@ import com.yzx.product.service.ProductCateGoryService;
 import com.yzx.product.service.SpuInfoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * @className: PmsCategory
@@ -57,17 +59,39 @@ public class PmsCategoryController {
      * @return
      */
     @PostMapping("/category/save")
+    @CacheEvict(value = "category", allEntries = true)
     public AjaxResult save(@RequestBody PmsCategory category) {
+        //判断是否修改+父类是否变了
+        if (category.getCatId() != null) {
+            PmsCategory old = productCateGoryService.getById(category.getCatId());
+            if (old != null && !Objects.equals(old.getParentCid(), category.getCatId())) {
+                //父类变了+计算新层级
+                int newLevel = calcLevel(category.getParentCid());
+
+            }
+        }
         boolean success = productCateGoryService.saveOrUpdate(category);
         return success ? AjaxResult.success("操作成功") : AjaxResult.error("操作失败");
+    }
+
+    private int calcLevel(Long parentCid) {
+        if (parentCid == null || parentCid == 0) return 1;
+
     }
 
     /**
      * 删除分类
      */
     @PostMapping("/category/delete")
+    @CacheEvict(value = "category", allEntries = true)
     public AjaxResult deleteCategory(@RequestBody List<Long> ids) {
         productCateGoryService.removeByIds(ids);
         return AjaxResult.success("删除成功");
+    }
+
+    @GetMapping("/category/parentTree/{catId}")
+    public AjaxResult getParentCategoryTree(@PathVariable(required = false) Long catId) {
+        AjaxResult result = productCateGoryService.getParentTree(catId);
+        return result;
     }
 }

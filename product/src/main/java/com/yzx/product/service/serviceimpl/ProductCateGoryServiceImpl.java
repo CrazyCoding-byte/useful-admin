@@ -8,6 +8,7 @@ import com.yzx.model.product.PmsCategory;
 import com.yzx.model.product.vo.CategoryVo;
 import com.yzx.product.mapper.PmsCategoryMapper;
 import com.yzx.product.service.ProductCateGoryService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,29 @@ import java.util.stream.Collectors;
 @Service
 public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, PmsCategory> implements ProductCateGoryService {
 
+
+    @Override
+    public AjaxResult getParentTree(Long catId) {
+        List<PmsCategory> pmsCategories = baseMapper.selectList(null);
+        List<CategoryVo> categoryVos = buildCategoryTree(0L, pmsCategories);
+        // 如果 excludeCatId 有值，递归过滤掉该节点及其所有子孙
+        if (catId != null && catId > 0L) {
+            categoryVos = filterNodeAndDescendants(categoryVos, catId);
+        }
+        return AjaxResult.success(categoryVos);
+    }
+
+    private List<CategoryVo> filterNodeAndDescendants(List<CategoryVo> categoryVos, Long catId) {
+        return categoryVos.stream().filter(node -> !node.getCatId().equals(catId)).map(node -> {
+            CategoryVo vo = new CategoryVo();
+            BeanUtils.copyProperties(node, vo);
+            if (node.getParentCid() != null) {
+                vo.setChildren(filterNodeAndDescendants(node.getChildren(), catId));
+            }
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
     @Cacheable(value = "category", key = "#root.methodName")
     @Override
     public AjaxResult getCateGory(Map<String, Object> params) {
@@ -36,6 +60,7 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
         List<PmsCategory> categoryEntities = this.baseMapper.selectList(pmsCategoryLambdaQueryWrapper);
         return AjaxResult.success(buildCategoryTree(0L, categoryEntities));
     }
+
 
     private List<CategoryVo> buildCategoryTree(Long parentId, List<PmsCategory> entities) {
         List<PmsCategory> childCategories = entities.stream()

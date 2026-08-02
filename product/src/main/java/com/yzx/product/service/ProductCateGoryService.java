@@ -15,4 +15,6 @@ import java.util.Map;
  */
 public interface ProductCateGoryService extends IService<PmsCategory> {
     AjaxResult getCateGory(Map<String, Object> map);
+
+    AjaxResult getParentTree(Long catId);
 }
