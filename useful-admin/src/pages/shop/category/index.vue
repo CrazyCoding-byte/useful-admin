@@ -123,14 +123,6 @@ const searchForm = ref<Partial<Category>>({
 });
 //父类树数据
 const parentCategoryTree = ref<any[]>();
-const loadCategoryTree = async (catId?: number) => {
-  try {
-    const res = await categoryApi.getCategoryTree(catId || 0);
-    parentCategoryTree.value = res || [];
-  } catch (e) {
-    console.error("加载分类树失败", e);
-  }
-}
 
 
 // 分类列表
@@ -211,6 +203,59 @@ const getCategoryList = async (pageInfo?: any) => {
   }
 };
 
+const filterByLevel = (tree: any[], targetLevel: number): any[] => {
+  return tree.map(node => {
+    const filteredChildren = node.children ? filterByLevel(node.children, targetLevel) : [];
+    //如果当前节点是目标层级,保留他(去掉子节点,因为它不能做父级)
+    if (node.catLevel === targetLevel) {
+      return {...node, children: []};
+    }
+    //如果子节点中有符合条件的,保留当前节点作为树节点
+    if (filteredChildren.length > 0) {
+      return {...node, children: filteredChildren};
+    }
+    //不符合条件且没有符合条件的子节点->丢弃
+    return null;
+  }).filter(Boolean);
+}
+
+//获取分类树
+const loadCategoryTree = async (currentLevel?: number, catId?: number) => {
+  try {
+    const res = await categoryApi.getCategoryTree(catId || 0);
+    let tree = res || [];
+    //1.排除自己+子孙
+    if (catId) {
+      const excludeIds = collectDescendantIds(tree, catId);
+      excludeIds.add(catId);
+      tree = removeNodes(tree, catId);
+    }
+    //2.只显示上一级节点(当前层级-1)
+    if (currentLevel && currentLevel > 1) {
+      tree = filterByLevel(tree, currentLevel - 1);
+    }
+    parentCategoryTree.value = tree || [];
+
+  } catch (e) {
+    console.error("加载分类树失败", e);
+  }
+}
+const collectDescendantIds = (tree: any[], catId: number) => {
+
+}
+/**
+ * 从树中移除多个ID对应的节点
+ * @param tree 树
+ * @param ids 要移除的ID集合
+ */
+const removeNodes = (tree: any[], ids: Set<number>): any[] => {
+  return tree.filter(node => !ids.has(node.catId))
+    .map(node => ({...node, children: node.children ? removeNodes(node.children, ids) : []})
+    )
+    .filter(node => {
+      return true;
+    })
+}
 // 重置搜索
 const resetSearch = () => {
   searchForm.value = {

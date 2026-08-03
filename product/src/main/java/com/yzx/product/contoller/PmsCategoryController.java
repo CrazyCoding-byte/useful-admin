@@ -30,6 +30,43 @@ public class PmsCategoryController {
     @Autowired
     private SpuInfoService spuInfoService;
 
+    static class CategoryNode {
+        private Integer catId;
+        private String name;
+        // 子节点列表
+        private List<CategoryNode> children;
+
+        // getter/setter 必须要有
+        public Integer getCatId() {
+            return catId;
+        }
+
+        public void setCatId(Integer catId) {
+            this.catId = catId;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public List<CategoryNode> getChildren() {
+            return children;
+        }
+
+        public void setChildren(List<CategoryNode> children) {
+            this.children = children;
+        }
+    }
+
+    public static void main(String[] args) {
+
+
+    }
+
     /**
      *  分类列表接口
      * @param params
