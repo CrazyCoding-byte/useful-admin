@@ -17,9 +17,7 @@ async function fetchRoutesFromBackend(token: string): Promise<Array<RouteRecordR
 
     const result = await request.get({ url: '/auth/user/getRouters' });
 
-    // 🔥 关键调试：打印后端返回的原始结构
     console.log('[Route] /auth/user/getRouters 原始返回:', JSON.stringify(result));
-
     // 检查后端返回的数据结构
     // 经过请求拦截器处理，result 已经是路由数据（data 字段的内容）
     let routesData;

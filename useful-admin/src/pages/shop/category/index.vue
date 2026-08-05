@@ -27,7 +27,6 @@
         :tree="{childrenKey:'children',defaultExpandAll:true}"
         bordered
         stripe
-        :pagination="pagination"
         :selected-row-keys="selectedRowKeys"
         @page-change="onPageChange"
         @select-change="onSelectChange"
@@ -122,7 +121,7 @@ const searchForm = ref<Partial<Category>>({
   name: '',
 });
 //父类树数据
-const parentCategoryTree = ref<any[]>();
+const parentCategoryTree = ref<any[]>([]);
 
 
 // 分类列表
@@ -228,7 +227,7 @@ const loadCategoryTree = async (currentLevel?: number, catId?: number) => {
     if (catId) {
       const excludeIds = collectDescendantIds(tree, catId);
       excludeIds.add(catId);
-      tree = removeNodes(tree, catId);
+      tree = removeNodes(tree, excludeIds);
     }
     //2.只显示上一级节点(当前层级-1)
     if (currentLevel && currentLevel > 1) {
@@ -240,8 +239,31 @@ const loadCategoryTree = async (currentLevel?: number, catId?: number) => {
     console.error("加载分类树失败", e);
   }
 }
-const collectDescendantIds = (tree: any[], catId: number) => {
-
+/**
+ * 递归收集某个节点的所有子孙ID
+ * @param tree 整颗树
+ * @param catId 目标节点
+ * @Retruns所有子孙ID的Set(不包含targetId自己)
+ */
+const collectDescendantIds = (tree: any[], catId: number): Set<number> => {
+  const ids = new Set<number>();
+  let found = false;
+  const walk = (nodes: any[]): boolean => {
+    for (const node of nodes) {
+      if (found) {
+        //已经找到目标节点,后面的都是子孙
+        ids.add(node.catId);
+        if (node.children) walk(node.children)
+      } else if (node.catId === catId) {
+        found = true;
+        if (node.children) walk(node.children);
+      } else if (node.children && node.children.length > 0) {
+        if (walk(node.children)) return true;
+      }
+    }
+  };
+  walk(tree);
+  return ids;
 }
 /**
  * 从树中移除多个ID对应的节点
@@ -252,9 +274,6 @@ const removeNodes = (tree: any[], ids: Set<number>): any[] => {
   return tree.filter(node => !ids.has(node.catId))
     .map(node => ({...node, children: node.children ? removeNodes(node.children, ids) : []})
     )
-    .filter(node => {
-      return true;
-    })
 }
 // 重置搜索
 const resetSearch = () => {
@@ -309,7 +328,7 @@ const handleAddCategory = () => {
   console.log('新增分类');
   loadCategoryTree();
   // 重置表单
-  addForm.value = {
+  Object.assign(addForm.value, {
     catId: undefined,
     name: '',
     parentCid: 0,
@@ -319,7 +338,7 @@ const handleAddCategory = () => {
     icon: '',
     productUnit: '',
     productCount: 0,
-  };
+  });
   // 打开对话框
   addDialogVisible.value = true;
 };
@@ -365,20 +384,15 @@ const submitAddForm = async () => {
 // 编辑分类
 const editCategory = (category: Category) => {
   console.log('编辑分类:', category);
-  loadCategoryTree(category.catId);
+  loadCategoryTree(category.catLevel, category.catId);
   try {
     // 直接使用传入的分类数据填充表单
-    addForm.value = {
-      catId: category.catId,
-      name: category.name || '',
-      parentCid: category.parentCid || 0,
-      catLevel: category.catLevel || 1,
-      showStatus: category.showStatus ?? 1,
-      sort: category.sort || 0,
-      icon: category.icon || '',
-      productUnit: category.productUnit || '',
-      productCount: category.productCount || 0,
-    };
+    Object.assign(addForm.value, {
+      catId: category.catId, name: category.name || '', parentCid: category.parentCid || 0,
+      catLevel: category.catLevel || 1, showStatus: category.showStatus ?? 1,
+      sort: category.sort || 0, icon: category.icon || '',
+      productUnit: category.productUnit || '', productCount: category.productCount || 0,
+    })
     console.log('填充表单数据:', addForm.value);
     // 打开对话框
     addDialogVisible.value = true;
