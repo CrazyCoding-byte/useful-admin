@@ -44,7 +44,7 @@ export const categoryApi = {
    */
   getCategoryTree: (catId: number) => {
     return request.get({
-      url: `/product/category/parentTree/${catId}`
+      url: catId?`/product/category/parentTree/${catId}`:"/product/category/parentTree"
     });
   }
 };

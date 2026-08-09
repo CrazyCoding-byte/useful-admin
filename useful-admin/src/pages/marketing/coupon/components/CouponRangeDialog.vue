@@ -65,7 +65,7 @@ const handleSave = async () => {
   try {
     const rangeList = [];
     if (props.couponInfo.rangeType === 'SKU') {
-      selectSkuIds.value.forEach(skuId => {
+      selectedSkuIds.value.forEach(skuId => {
         rangeList.push({rangeType: "SKU", rangeId: skuId});
       })
     } else if (props.couponInfo.rangeType === "CATEGORY") {

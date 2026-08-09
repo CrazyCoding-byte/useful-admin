@@ -133,6 +133,18 @@ public class PmsCategoryController {
         return AjaxResult.success("删除成功");
     }
 
+    /**
+     * 获取父分类树（不排除任何分类）
+     */
+    @GetMapping("/category/parentTree")
+    public AjaxResult getParentCategoryTree() {
+        AjaxResult result = productCateGoryService.getParentTree(null);
+        return result;
+    }
+
+    /**
+     * 获取父分类树（排除指定分类及其子孙）
+     */
     @GetMapping("/category/parentTree/{catId}")
     public AjaxResult getParentCategoryTree(@PathVariable(required = false) Long catId) {
         AjaxResult result = productCateGoryService.getParentTree(catId);
