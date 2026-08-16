@@ -115,5 +115,14 @@ public class PmsCategoryController {
         return result;
     }
 
+    /**
+     *根据catIds 获取子分类
+     * @param catIds
+     * @return 返回父 它下面子分类的map
+     */
+    @PostMapping("/category/descendantIds")
+    public AjaxResult getCategoryDescendantIds(@RequestBody List<Long> catIds) {
+        return AjaxResult.success(productCateGoryService.findCategoryDescendantIds(catIds));
+    }
 
 }

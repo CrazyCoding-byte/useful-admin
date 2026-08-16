@@ -2,9 +2,7 @@ package com.yzx.apiclient.api;
 
 import com.yzx.model.AjaxResult;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -41,6 +39,7 @@ public interface ProductFeignService {
      */
     @GetMapping(value = "/product/skuinfo/{skuId}/price")
     BigDecimal getPrice(@PathVariable("skuId") Long skuId);
+
     /**
      * 根据skuId查询spu的信息
      * @param skuId
@@ -48,4 +47,12 @@ public interface ProductFeignService {
      */
     @GetMapping(value = "/product/spuinfo/skuId/{skuId}")
     public AjaxResult getSpuInfoBySkuId(@PathVariable("skuId") Long skuId);
+
+    /**
+     *根据catIds 获取子分类
+     * @param catIds
+     * @return 返回父 它下面子分类的map
+     */
+    @PostMapping(value = "/product/category/descendantIds")
+    AjaxResult getCategoryDescendantIds(@RequestBody List<Long> catIds);
 }

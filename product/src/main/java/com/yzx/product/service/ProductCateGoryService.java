@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.product.PmsCategory;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -19,4 +20,6 @@ public interface ProductCateGoryService extends IService<PmsCategory> {
     AjaxResult getParentTree(Long catId);
 
     void updateChildrenLevel(Long catId, int newLevel);
+
+    Map<Long, List<Long>> findCategoryDescendantIds(List<Long> catIds);
 }
