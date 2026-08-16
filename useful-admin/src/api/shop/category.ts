@@ -42,7 +42,7 @@ export const categoryApi = {
    * 获取分类树
    * @returns 分类树
    */
-  getCategoryTree: (catId: number) => {
+  getCategoryTree: (catId?: number) => {
     return request.get({
       url: catId?`/product/category/parentTree/${catId}`:"/product/category/parentTree"
     });

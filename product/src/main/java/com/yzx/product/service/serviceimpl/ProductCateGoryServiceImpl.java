@@ -13,9 +13,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -27,6 +25,67 @@ import java.util.stream.Collectors;
  */
 @Service
 public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, PmsCategory> implements ProductCateGoryService {
+    public static void main(String[] args) {
+        HashMap<String, List<String>> map = new HashMap<>();
+        map.computeIfAbsent("高三一班", k -> new ArrayList<>()).add("张三");
+        map.computeIfAbsent("高三一班", k -> new ArrayList<>()).add("李四");
+        System.out.println(map);
+    }
+
+    public Map<Long, List<Long>> findCategoryDescendantIds(List<Long> catIds) {
+        Map<Long, List<Long>> result = new HashMap<>();
+        if (CollectionUtils.isEmpty(catIds)) return result;
+        List<PmsCategory> categories = this.list();
+        //父->子
+        Map<Long, List<Long>> childrenMap = new HashMap<>();
+        for (PmsCategory cat : categories) {
+            if (cat.getParentCid() != null && cat.getParentCid() > 0) {
+                childrenMap.computeIfAbsent(cat.getParentCid(), k -> new ArrayList<>()).add(cat.getCatId());
+            }
+        }
+        // 从每个锚点 BFS 向下展开（含自己）
+        for (Long catId : catIds) {
+            if (catId == null) continue;
+            List<Long> descendants = new ArrayList<>();
+            Deque<Long> queue = new ArrayDeque<>();
+            queue.offer(catId);
+            while (!queue.isEmpty()) {
+                Long cur = queue.poll();
+                descendants.add(cur);
+                List<Long> children = childrenMap.get(cur);
+                if (children != null) queue.addAll(children);
+            }
+            result.put(catId, descendants);
+        }
+        return result;
+    }
+
+    public Map<Long, List<Long>> getChild(List<Long> catIds) {
+        if (CollectionUtils.isEmpty(catIds)) return new HashMap<>();
+        Map<Long, List<Long>> result = new HashMap<>();
+        List<PmsCategory> categories = this.list();
+        Map<Long, List<Long>> childrenMap = new HashMap<>();
+        for (PmsCategory cat : categories) {
+            if (cat.getParentCid() != null && cat.getParentCid() > 0) {
+                childrenMap.putIfAbsent(cat.getParentCid(), new ArrayList<>()).add(cat.getCatId());
+            }
+        }
+        for (Long catId : catIds) {
+            if (catId == null) continue;
+            List<Long> descendants = new ArrayList<>();
+            Deque<Long> queue = new ArrayDeque<>();
+            queue.offer(catId);
+            while (!queue.isEmpty()) {
+                Long cur = queue.poll();
+                descendants.add(cur);
+                List<Long> children = childrenMap.get(cur);
+                if (children != null) queue.addAll(children);
+            }
+            result.put(catId, descendants);
+        }
+        return result;
+    }
+
     @Override
     public void updateChildrenLevel(Long catId, int newLevel) {
         LambdaQueryWrapper<PmsCategory> pmsCategoryLambdaQueryWrapper = new LambdaQueryWrapper<>();
@@ -76,9 +135,7 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
 
 
     private List<CategoryVo> buildCategoryTree(Long parentId, List<PmsCategory> entities) {
-        List<PmsCategory> childCategories = entities.stream()
-                .filter(category -> parentId.equals(category.getParentCid()))
-                .collect(Collectors.toList());
+        List<PmsCategory> childCategories = entities.stream().filter(category -> parentId.equals(category.getParentCid())).collect(Collectors.toList());
         List<CategoryVo> categoryVos = new ArrayList<>();
         for (PmsCategory entity : childCategories) {
             CategoryVo vo = new CategoryVo();

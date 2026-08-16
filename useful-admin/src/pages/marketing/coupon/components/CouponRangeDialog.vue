@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import {ref, watch} from 'vue';
+import {nextTick, ref, watch} from 'vue';
+import {SearchIcon} from "tdesign-icons-vue-next";
 import {MessagePlugin} from "tdesign-vue-next";
 import {couponApi} from "@/api/marketing/coupon";
 import {productApi} from "@/api/product";
@@ -17,24 +18,77 @@ const skuList = ref<any[]>([]);
 const selectedSkuIds = ref<number[]>([]);
 const categoryTree = ref<any>([]);
 const selectedCategoryIds = ref<number[]>([]);
+//分类树搜索过滤
+const filterText = ref('');
+const filterByText = ref();
+const treeRef = ref<any>();
+//收集树中所有节点id（搜索时展开全部，让匹配结果可见）
+const collectAllIds = (nodes: any[]): number[] => {
+  const result: number[] = [];
+  const walk = (list: any[]) => {
+    list.forEach((node: any) => {
+      result.push(node.id);
+      if (node.children?.length) walk(node.children);
+    });
+  };
+  walk(nodes);
+  return result;
+};
+const onCategoryInput = (value?: string) => {
+  const keyword = (value ?? filterText.value ?? '').trim();
+  if (!keyword) {
+    //清空搜索：恢复只展开第一级
+    filterByText.value = undefined;
+    treeRef.value?.setExpanded([]);
+    return;
+  }
+  filterByText.value = (node: any) => {
+    const name = node.label || node.name || '';
+    return name.indexOf(keyword) >= 0;
+  };
+  //搜索时展开所有节点，让匹配结果可见
+  treeRef.value?.setExpanded(collectAllIds(categoryTree.value));
+};
+//找到节点到根节点的路径id，回显时展开，让用户能看到已选分类位置
+const findPathToRoot = (nodes: any[], targetId: number, path: number[] = []): number[] => {
+  for (const node of nodes) {
+    const newPath = [...path, node.id];
+    if (node.id === targetId) return newPath;
+    if (node.children?.length) {
+      const found = findPathToRoot(node.children, targetId, newPath);
+      if (found.length) return found;
+    }
+  }
+  return [];
+};
+//展开指定id及其祖先链
+const expandPaths = (targetIds: number[]) => {
+  const pathIds = new Set<number>();
+  targetIds.forEach(id => {
+    findPathToRoot(categoryTree.value, id).forEach(x => pathIds.add(x));
+  });
+  nextTick(() => treeRef.value?.setExpanded([...pathIds]));
+};
 //已有的规则回显
 const loadExistingRange = async () => {
   if (!props.couponInfo.id) return;
   try {
     const res = await couponApi.getRangeList(props.couponInfo.id);
     const list = res?.data || [];
+    console.log("已有的规则回显", res);
     if (props.couponInfo.rangeType === 'SKU') {
       selectedSkuIds.value = list.map((r: any) => r.rangeId);
-
     } else if (props.couponInfo.rangeType === 'CATEGORY') {
       selectedCategoryIds.value = list.map((r: any) => r.rangeId);
+      //回显后展开选中分类的祖先链，让用户能看到已选位置
+      expandPaths(selectedCategoryIds.value);
     }
   } catch (e) {
   }
 }
 const loadSkuList = async () => {
   try {
-    const res = await productApi.getProductLists({pageNum: 1, pageSize: 200});
+    const res = await productApi.getProductList({pageNum: 1, pageSize: 200});
     skuList.value = (res?.list || res?.data?.list || []).map((item: any) => ({
       id: item.id,
       skuName: item.skuName || item.spuName || `商品${item.id}`
@@ -49,11 +103,16 @@ const loadCategoryTree = async () => {
   try {
     const res = await categoryApi.getCategoryTree();
     categoryTree.value = res?.data || res || [];
-
+    //默认只展开第一级，避免一次性渲染全部分类导致卡顿
+    const firstLevelIds = (categoryTree.value || []).map((n: any) => n.id);
+    nextTick(() => {
+      treeRef.value?.setExpanded(firstLevelIds);
+    });
   } catch (e) {
   }
 }
 watch(() => props.modelValue, (val) => {
+  console.log("当前props是什么", props)
   if (!val) return;
   if (props.couponInfo.rangeType === "SKU") loadSkuList();
   else if (props.couponInfo.rangeType === "CATEGORY")
@@ -108,12 +167,19 @@ const handleClose = () => {
     </div>
     <!--    分类适用范围-->
     <div v-else-if="couponInfo.rangeType==='CATEGORY'" class="range-category">
+      <t-input v-model="filterText" placeholder="请输入分类名称搜索" clearable @change="onCategoryInput">
+        <template #suffix-icon>
+          <search-icon size="20px"/>
+        </template>
+      </t-input>
       <t-tree
+        ref="treeRef"
         v-model="selectedCategoryIds"
         :data="categoryTree"
         checkable
-        expand-all
+        expand-on-click-node
         value-mode="all"
+        :filter="filterByText"
         :keys="{label:'name',value:'id'}"
       >
       </t-tree>
@@ -122,5 +188,9 @@ const handleClose = () => {
 </template>
 
 <style scoped lang="less">
-
+.range-category {
+  :deep(.t-input) {
+    margin-bottom: 12px;
+  }
+}
 </style>
