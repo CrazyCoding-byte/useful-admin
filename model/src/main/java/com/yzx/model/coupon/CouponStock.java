@@ -1,5 +1,8 @@
 package com.yzx.model.coupon;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 /**
@@ -29,7 +32,9 @@ import lombok.Data;
  **
  */
 @Data
+@TableName("coupon_stock")
 public class CouponStock {
+    @TableId(type = IdType.AUTO)
     private Long id;
     private Long couponId;
     private Integer remainCount;  // 剩余库存

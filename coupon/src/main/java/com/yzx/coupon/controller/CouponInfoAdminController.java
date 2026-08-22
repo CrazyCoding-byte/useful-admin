@@ -12,6 +12,7 @@ import com.yzx.model.coupon.CouponRange;
 import com.yzx.model.order.enums.CouponRangeType;
 import com.yzx.model.order.enums.CouponType;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -114,6 +115,7 @@ public class CouponInfoAdminController {
      * 保存优惠卷规则范围
      * @return
      */
+    @Transactional(rollbackFor = Exception.class)
     @PostMapping("/{couponId}/range")
     public AjaxResult saveRange(@PathVariable Long couponId, @RequestBody List<CouponRange> rangeList) {
         //先删除旧有的规则
@@ -133,6 +135,8 @@ public class CouponInfoAdminController {
                 ((Map<?, ?>) data).forEach((k, v) -> descendantMap.put(Long.valueOf(k.toString()), (List<Long>) v));
             } else {
                 descendantMap = Collections.emptyMap();
+                //展开失败不能静默降级，否则分类规则会存成只有锚点
+                return AjaxResult.error("分类展开失败，请重试");
             }
         } else {
             descendantMap = Collections.emptyMap();
@@ -165,7 +169,6 @@ public class CouponInfoAdminController {
                             r.setRangeId(cid);
                             couponRangeMapper.insert(r);
                         }
-
                     }
                     break;
                 default:

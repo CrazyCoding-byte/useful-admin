@@ -32,8 +32,8 @@ import java.util.Date;
 public class CouponObtainRecord {
     @TableId(type = IdType.AUTO)
     private Long id;
-    @TableField("use_id")
-    private Long useId;
+    @TableField("user_id")
+    private Long userId;
     @TableField("coupon_id")
     private Long couponId;
     @TableField("obtain_id")

@@ -10,6 +10,8 @@ import com.yzx.model.coupon.CouponObtainRecord;
 import com.yzx.model.coupon.CouponStock;
 import com.yzx.model.coupon.CouponUse;
 import com.yzx.model.coupon.eunms.CouponStatus;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -90,7 +92,7 @@ public class CouponObtainServiceImpl {
         try {
             //插入领取流水
             CouponObtainRecord record = new CouponObtainRecord();
-            record.setUseId(userId);
+            record.setUserId(userId);
             record.setCouponId(couponId);
             record.setObtainTime(new Date());
             record.setSource("MANUAL");
@@ -136,32 +138,10 @@ public class CouponObtainServiceImpl {
     }
 
 
+    @Getter
+    @AllArgsConstructor
     public static class CouponObtainMessage {
         private Long userId;
         private Long couponId;
-
-        public CouponObtainMessage() {
-        }
-
-        public CouponObtainMessage(Long userId, Long couponId) {
-            this.userId = userId;
-            this.couponId = couponId;
-        }
-
-        public Long getUserId() {
-            return userId;
-        }
-
-        public void setUserId(Long userId) {
-            this.userId = userId;
-        }
-
-        public Long getCouponId() {
-            return couponId;
-        }
-
-        public void setCouponId(Long couponId) {
-            this.couponId = couponId;
-        }
     }
 }
