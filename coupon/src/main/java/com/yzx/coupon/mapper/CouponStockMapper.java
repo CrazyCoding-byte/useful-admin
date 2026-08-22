@@ -12,6 +12,5 @@ import org.springframework.stereotype.Repository;
  * @Version: 1.0
  * @description:
  */
-@Repository
 public interface CouponStockMapper extends BaseMapper<CouponStock> {
 }

@@ -11,6 +11,5 @@ import org.springframework.stereotype.Repository;
  * @Version: 1.0
  * @description:
  */
-@Repository
 public interface CouponObtainRecordMapper extends BaseMapper<CouponObtainRecord> {
 }

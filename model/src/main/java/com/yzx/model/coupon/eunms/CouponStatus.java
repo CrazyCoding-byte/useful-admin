@@ -7,7 +7,7 @@ import lombok.Getter;
 public enum CouponStatus {
     NOT_USED(1, "未使用"),
     USED(2, "已使用"),
-
+    
     LOCKED(0, "已锁定");
 
     @EnumValue

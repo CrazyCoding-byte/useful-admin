@@ -12,7 +12,6 @@ import org.springframework.stereotype.Repository;
  * @author atguigu
  * @since 2023-04-07
  */
-@Repository
 public interface ActivitySkuMapper extends BaseMapper<ActivitySku> {
 
 }

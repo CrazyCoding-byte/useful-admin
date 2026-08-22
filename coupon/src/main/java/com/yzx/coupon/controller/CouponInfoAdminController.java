@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yzx.apiclient.api.ProductFeignService;
 import com.yzx.coupon.mapper.CouponRangeMapper;
 import com.yzx.coupon.service.CouponInfoService;
+import com.yzx.coupon.service.CouponRangeService;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.coupon.CouponInfo;
 import com.yzx.model.coupon.CouponRange;
@@ -14,6 +15,7 @@ import com.yzx.model.order.enums.CouponType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.alibaba.fastjson.TypeReference;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -31,18 +33,27 @@ public class CouponInfoAdminController {
     private CouponRangeMapper couponRangeMapper;
     @Autowired
     private ProductFeignService productFeignService;
+    @Autowired
+    private CouponRangeService couponRangeService;
 
     /**
      * 分页列表
      */
     @GetMapping("/list")
-    public AjaxResult list(@RequestParam(defaultValue = "1") Long pageNum, @RequestParam(defaultValue = "10") Long pageSize, @RequestParam(required = false) String couponName, @RequestParam(required = false) String couponType, @RequestParam(required = false) String rangeType, @RequestParam(required = false) Boolean publishStatus) {
+    public AjaxResult list(@RequestParam(defaultValue = "1") Long pageNum,
+                           @RequestParam(defaultValue = "10") Long pageSize, @RequestParam(required = false) String couponName,
+                           @RequestParam(required = false) String couponType, @RequestParam(required = false) String rangeType,
+                           @RequestParam(required = false) Boolean publishStatus) {
 
         CouponType couponTypeEnum = StringUtils.isNotBlank(couponType) ? CouponType.valueOf(couponType) : null;
         CouponRangeType rangeTypeEnum = StringUtils.isNotBlank(rangeType) ? CouponRangeType.valueOf(rangeType) : null;
 
         LambdaQueryWrapper<CouponInfo> wrapper = new LambdaQueryWrapper<>();
-        wrapper.like(StringUtils.isNotBlank(couponName), CouponInfo::getCouponName, couponName).eq(couponTypeEnum != null, CouponInfo::getCouponType, couponTypeEnum).eq(rangeTypeEnum != null, CouponInfo::getRangeType, rangeTypeEnum).eq(publishStatus != null, CouponInfo::getPublishStatus, publishStatus).orderByDesc(CouponInfo::getCreateTime);
+        wrapper.like(StringUtils.isNotBlank(couponName), CouponInfo::getCouponName, couponName)
+                .eq(couponTypeEnum != null, CouponInfo::getCouponType, couponTypeEnum)
+                .eq(rangeTypeEnum != null, CouponInfo::getRangeType, rangeTypeEnum)
+                .eq(publishStatus != null, CouponInfo::getPublishStatus, publishStatus)
+                .orderByDesc(CouponInfo::getCreateTime);
 
         Page<CouponInfo> page = couponInfoService.page(new Page<>(pageNum, pageSize), wrapper);
 
@@ -102,79 +113,104 @@ public class CouponInfoAdminController {
 
     /**
      * 获取优惠卷已经配置的规则范围列表
+     *
      * @param couponId
      * @return
      */
     @GetMapping("/{couponId}/range")
     public AjaxResult getRangeList(@PathVariable Long couponId) {
-        List<CouponRange> couponRanges = couponRangeMapper.selectList(new LambdaQueryWrapper<CouponRange>().eq(CouponRange::getCouponId, couponId));
+        List<CouponRange> couponRanges = couponRangeMapper
+                .selectList(new LambdaQueryWrapper<CouponRange>().eq(CouponRange::getCouponId, couponId));
         return AjaxResult.success(couponRanges);
     }
 
     /**
      * 保存优惠卷规则范围
+     *
      * @return
      */
     @Transactional(rollbackFor = Exception.class)
     @PostMapping("/{couponId}/range")
     public AjaxResult saveRange(@PathVariable Long couponId, @RequestBody List<CouponRange> rangeList) {
-        //先删除旧有的规则
-        couponRangeMapper.delete(new LambdaQueryWrapper<CouponRange>().eq(CouponRange::getCouponId, couponId));
-        if (rangeList == null || rangeList.isEmpty()) return AjaxResult.success();
-        //收集所偶分类锚点,远程展开 自己+所有子孙
-        List<Long> categoryAnchorIds = rangeList.stream().filter(r -> r.getRangeType() == CouponRangeType.CATEGORY)
-                .map(CouponRange::getRangeId)
-                .distinct()
-                .collect(Collectors.toList());
-        Map<Long, List<Long>> descendantMap;
-        if (!categoryAnchorIds.isEmpty()) {
-            AjaxResult res = productFeignService.getCategoryDescendantIds(categoryAnchorIds);
-            Object data = res.get("data");
-            if (data instanceof Map) {
-                descendantMap = new HashMap<>();
-                ((Map<?, ?>) data).forEach((k, v) -> descendantMap.put(Long.valueOf(k.toString()), (List<Long>) v));
-            } else {
-                descendantMap = Collections.emptyMap();
-                //展开失败不能静默降级，否则分类规则会存成只有锚点
-                return AjaxResult.error("分类展开失败，请重试");
+        CouponInfo couponInfo = couponInfoService.getById(couponId);
+        if (couponInfo == null)
+            return AjaxResult.error("优惠卷不存在");
+        CouponRangeType couponRangeType = couponInfo.getRangeType();
+        if (couponRangeType == null)
+            return AjaxResult.error("优惠卷适用的范围类型不能为空");
+        if (couponRangeType == CouponRangeType.ALL) {
+            if (rangeList != null && !rangeList.isEmpty()) {
+                return AjaxResult.error("通用卷不能配置具体商品或分类");
             }
-        } else {
-            descendantMap = Collections.emptyMap();
+            couponRangeMapper.delete(new LambdaQueryWrapper<CouponRange>().eq(CouponRange::getCouponId, couponId));
+            return AjaxResult.success("通用卷规则保存成功");
         }
-        //3.按照类型分别处理
-        Set<Long> inserted = new HashSet<>();
+
+        if (rangeList == null || rangeList.isEmpty())
+            return AjaxResult.error("请至少选择一个适用范围");
+
+        // 5. 校验前端提交的数据
         for (CouponRange range : rangeList) {
-            CouponRangeType type = range.getRangeType();
-            if (type == null) continue;
-            switch (type) {
-                //通用卷
-                case ALL:
-                    break;
-                //指定商品
-                case SKU:
-                    if (inserted.add(range.getRangeId())) {
-                        range.setCouponId(couponId);
-                        couponRangeMapper.insert(range);
-                    }
-                    //指定分类
-                    break;
-                case CATEGORY:
-                    List<Long> expanded = descendantMap.
-                            getOrDefault(range.getRangeId(), Collections.singletonList(range.getRangeId()));
-                    for (Long cid : expanded) {
-                        if (inserted.add(cid)) {
-                            CouponRange r = new CouponRange();
-                            r.setCouponId(couponId);
-                            r.setRangeType(CouponRangeType.CATEGORY);
-                            r.setRangeId(cid);
-                            couponRangeMapper.insert(r);
-                        }
-                    }
-                    break;
-                default:
-                    break;
+            if (range == null) {
+                return AjaxResult.error("适用范围数据不能为空");
+            }
+
+            if (range.getRangeType() == null) {
+                return AjaxResult.error("适用范围类型不能为空");
+            }
+
+            if (range.getRangeId() == null || range.getRangeId() <= 0) {
+                return AjaxResult.error("适用范围ID不能为空");
+            }
+
+            if (range.getRangeType() != couponRangeType) {
+                return AjaxResult.error("提交的适用范围类型与优惠券类型不一致");
             }
         }
+        List<CouponRange> newRangeList = new ArrayList<>();
+
+        if (couponRangeType == CouponRangeType.SKU) {
+            Set<Long> skuIdSet = new HashSet();
+            for (CouponRange range : rangeList) {
+                Long skuId = range.getRangeId();
+                if (skuIdSet.add(skuId)) {
+                    CouponRange newRange = new CouponRange();
+                    newRange.setCouponId(couponId);
+                    newRange.setRangeType(CouponRangeType.SKU);
+                    newRange.setRangeId(skuId);
+                    newRangeList.add(newRange);
+                }
+            }
+        }
+
+        if (couponRangeType == CouponRangeType.CATEGORY) {
+            List<Long> categoryIdList = rangeList.stream().map(CouponRange::getRangeId).distinct()
+                    .collect(Collectors.toList());
+            AjaxResult result = productFeignService.getCategoryDescendantIds(categoryIdList);
+            Map<Long, List<Long>> descendantMap = result.getData("data", new TypeReference<Map<Long, List<Long>>>() {
+            });
+            if (descendantMap == null)
+                return AjaxResult.error("分类信息查询失败,请重试");
+            Set<Long> categoryISet = new HashSet<>();
+            for (Long categoryId : categoryIdList) {
+                List<Long> descendantIds = descendantMap.get(categoryId);
+                if (descendantIds == null)
+                    return AjaxResult.error("分类" + categoryId + "的子分类查询失败");
+                for (Long descendantId : descendantIds) {
+                    if (descendantId == null)
+                        continue;
+                    if (categoryISet.add(descendantId)) {
+                        CouponRange newRange = new CouponRange();
+                        newRange.setCouponId(couponId);
+                        newRange.setRangeType(CouponRangeType.CATEGORY);
+                        newRange.setRangeId(descendantId);
+                        newRangeList.add(newRange);
+                    }
+                }
+            }
+        }
+        couponRangeMapper.delete(new LambdaQueryWrapper<CouponRange>().eq(CouponRange::getCouponId, couponId));
+        couponRangeService.saveBatch(newRangeList);
         return AjaxResult.success();
     }
 }

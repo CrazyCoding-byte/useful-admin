@@ -2,7 +2,6 @@ package com.yzx.coupon.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.yzx.model.coupon.CouponRange;
-import org.springframework.stereotype.Repository;
 
 /**
  * <p>
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Repository;
  * @author atguigu
  * @since 2023-04-07
  */
-@Repository
 public interface CouponRangeMapper extends BaseMapper<CouponRange> {
 
 }

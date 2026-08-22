@@ -14,7 +14,7 @@ import java.util.List;
  * @Version: 1.0
  * @description:
  */
-@FeignClient("product-service")
+@FeignClient("product-server")
 public interface ProductFeignService {
     /**
      * 根据skuId查询sku信息

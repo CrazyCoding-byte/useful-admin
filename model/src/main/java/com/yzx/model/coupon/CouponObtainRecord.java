@@ -36,7 +36,7 @@ public class CouponObtainRecord {
     private Long userId;
     @TableField("coupon_id")
     private Long couponId;
-    @TableField("obtain_id")
+    @TableField("obtain_time")
     private Date obtainTime;
     /** MANUAL-手动领取  ACTIVITY-活动发放  SYSTEM-系统补偿 */
     @TableField("source")
