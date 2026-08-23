@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * @className: PmsCategory
@@ -30,9 +32,9 @@ public class PmsCategoryController {
     @Autowired
     private SpuInfoService spuInfoService;
 
-
     /**
-     *  分类列表接口
+     * 分类列表接口
+     * 
      * @param params
      * @return
      */
@@ -44,6 +46,7 @@ public class PmsCategoryController {
 
     /**
      * 根据分类id查询属性
+     * 
      * @param id
      * @return
      */
@@ -56,24 +59,25 @@ public class PmsCategoryController {
 
     /**
      * 保存修改
+     * 
      * @param category
      * @return
      */
     @PostMapping("/category/save")
     @CacheEvict(value = "category", allEntries = true)
     public AjaxResult save(@RequestBody PmsCategory category) {
-        //判断是否修改+父类是否变了
+        // 判断是否修改+父类是否变了
         if (category.getCatId() != null) {
             PmsCategory old = productCateGoryService.getById(category.getCatId());
             if (old != null && !Objects.equals(old.getParentCid(), category.getCatId())) {
-                //父类变了+计算新层级
+                // 父类变了+计算新层级
                 int newLevel = calcLevel(category.getParentCid());
                 category.setCatLevel(newLevel);
-                //同步更新所有子孙层级
+                // 同步更新所有子孙层级
                 productCateGoryService.updateChildrenLevel(category.getCatId(), newLevel);
             }
         } else {
-// 新增时自动算层级
+            // 新增时自动算层级
             int newLevel = calcLevel(category.getParentCid());
             category.setCatLevel(newLevel);
         }
@@ -82,7 +86,8 @@ public class PmsCategoryController {
     }
 
     private int calcLevel(Long parentCid) {
-        if (parentCid == null || parentCid == 0) return 1;
+        if (parentCid == null || parentCid == 0)
+            return 1;
         PmsCategory parent = productCateGoryService.getById(parentCid);
         return parent != null ? parent.getCatLevel() + 1 : 0;
     }
@@ -116,13 +121,25 @@ public class PmsCategoryController {
     }
 
     /**
-     *根据catIds 获取子分类
+     * 根据catIds 获取子分类
+     * 
      * @param catIds
      * @return 返回父 它下面子分类的map
      */
     @PostMapping("/category/descendantIds")
     public AjaxResult getCategoryDescendantIds(@RequestBody List<Long> catIds) {
         return AjaxResult.success(productCateGoryService.findCategoryDescendantIds(catIds));
+    }
+
+    /**
+     * 查询指定分类的直接子分类
+     * @param parentCid 父分类ID,0标识一级分类
+     * @return 子分类列表
+     */
+    @GetMapping("/category/children/{parentCid}")
+    public AjaxResult getCategoryChildren(@PathVariable Long parentCid) {
+
+        return AjaxResult.success(productCateGoryService.findChildren(parentCid));
     }
 
 }

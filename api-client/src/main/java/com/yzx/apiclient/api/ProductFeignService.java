@@ -18,6 +18,7 @@ import java.util.List;
 public interface ProductFeignService {
     /**
      * 根据skuId查询sku信息
+     * 
      * @param skuId
      * @return
      */
@@ -26,6 +27,7 @@ public interface ProductFeignService {
 
     /**
      * 根据skuId查询pms_sku_sale_attr_value表中的信息
+     * 
      * @param skuId
      * @return
      */
@@ -34,6 +36,7 @@ public interface ProductFeignService {
 
     /**
      * 根据skuId查询当前商品的最新价格
+     * 
      * @param skuId
      * @return
      */
@@ -42,6 +45,7 @@ public interface ProductFeignService {
 
     /**
      * 根据skuId查询spu的信息
+     * 
      * @param skuId
      * @return
      */
@@ -49,10 +53,14 @@ public interface ProductFeignService {
     public AjaxResult getSpuInfoBySkuId(@PathVariable("skuId") Long skuId);
 
     /**
-     *根据catIds 获取子分类
+     * 根据catIds 获取子分类
+     * 
      * @param catIds
      * @return 返回父 它下面子分类的map
      */
     @PostMapping(value = "/product/category/descendantIds")
     AjaxResult getCategoryDescendantIds(@RequestBody List<Long> catIds);
+
+    @GetMapping(value = "/product/category/children/{parentCid}")
+    AjaxResult getCategoryChildren(@PathVariable("parentCid") Long parentCid);
 }

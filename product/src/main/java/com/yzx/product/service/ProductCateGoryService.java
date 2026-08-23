@@ -3,7 +3,7 @@ package com.yzx.product.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yzx.model.AjaxResult;
 import com.yzx.model.product.PmsCategory;
-
+import com.yzx.model.product.vo.CategoryVo;
 import java.util.List;
 import java.util.Map;
 
@@ -22,4 +22,6 @@ public interface ProductCateGoryService extends IService<PmsCategory> {
     void updateChildrenLevel(Long catId, int newLevel);
 
     Map<Long, List<Long>> findCategoryDescendantIds(List<Long> catIds);
+
+    List<CategoryVo> findChildren(Long parentCid);
 }

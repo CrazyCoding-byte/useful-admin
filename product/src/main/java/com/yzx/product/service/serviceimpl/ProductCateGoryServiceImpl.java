@@ -24,7 +24,10 @@ import java.util.stream.Collectors;
  * @description:
  */
 @Service
-public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, PmsCategory> implements ProductCateGoryService {
+public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, PmsCategory>
+        implements ProductCateGoryService {
+    private CategoryVo categoryVo;
+
     public static void main(String[] args) {
         HashMap<String, List<String>> map = new HashMap<>();
         map.computeIfAbsent("高三一班", k -> new ArrayList<>()).add("张三");
@@ -34,9 +37,10 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
 
     public Map<Long, List<Long>> findCategoryDescendantIds(List<Long> catIds) {
         Map<Long, List<Long>> result = new HashMap<>();
-        if (CollectionUtils.isEmpty(catIds)) return result;
+        if (CollectionUtils.isEmpty(catIds))
+            return result;
         List<PmsCategory> categories = this.list();
-        //父->子
+        // 父->子
         Map<Long, List<Long>> childrenMap = new HashMap<>();
         for (PmsCategory cat : categories) {
             if (cat.getParentCid() != null && cat.getParentCid() > 0) {
@@ -45,7 +49,8 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
         }
         // 从每个锚点 BFS 向下展开（含自己）
         for (Long catId : catIds) {
-            if (catId == null) continue;
+            if (catId == null)
+                continue;
             List<Long> descendants = new ArrayList<>();
             Deque<Long> queue = new ArrayDeque<>();
             queue.offer(catId);
@@ -53,7 +58,8 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
                 Long cur = queue.poll();
                 descendants.add(cur);
                 List<Long> children = childrenMap.get(cur);
-                if (children != null) queue.addAll(children);
+                if (children != null)
+                    queue.addAll(children);
             }
             result.put(catId, descendants);
         }
@@ -61,7 +67,8 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
     }
 
     public Map<Long, List<Long>> getChild(List<Long> catIds) {
-        if (CollectionUtils.isEmpty(catIds)) return new HashMap<>();
+        if (CollectionUtils.isEmpty(catIds))
+            return new HashMap<>();
         Map<Long, List<Long>> result = new HashMap<>();
         List<PmsCategory> categories = this.list();
         Map<Long, List<Long>> childrenMap = new HashMap<>();
@@ -71,7 +78,8 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
             }
         }
         for (Long catId : catIds) {
-            if (catId == null) continue;
+            if (catId == null)
+                continue;
             List<Long> descendants = new ArrayList<>();
             Deque<Long> queue = new ArrayDeque<>();
             queue.offer(catId);
@@ -79,7 +87,8 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
                 Long cur = queue.poll();
                 descendants.add(cur);
                 List<Long> children = childrenMap.get(cur);
-                if (children != null) queue.addAll(children);
+                if (children != null)
+                    queue.addAll(children);
             }
             result.put(catId, descendants);
         }
@@ -91,7 +100,8 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
         LambdaQueryWrapper<PmsCategory> pmsCategoryLambdaQueryWrapper = new LambdaQueryWrapper<>();
         pmsCategoryLambdaQueryWrapper.eq(PmsCategory::getParentCid, catId);
         List<PmsCategory> pmsCategories = this.baseMapper.selectList(pmsCategoryLambdaQueryWrapper);
-        if (CollectionUtils.isEmpty(pmsCategories)) return;
+        if (CollectionUtils.isEmpty(pmsCategories))
+            return;
         for (PmsCategory child : pmsCategories) {
             child.setCatLevel(newLevel + 1);
             this.baseMapper.updateById(child);
@@ -109,7 +119,6 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
         }
         return AjaxResult.success(categoryVos);
     }
-
 
     private List<CategoryVo> filterNodeAndDescendants(List<CategoryVo> categoryVos, Long catId) {
         return categoryVos.stream().filter(node -> !node.getCatId().equals(catId)).map(node -> {
@@ -133,9 +142,9 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
         return AjaxResult.success(buildCategoryTree(0L, categoryEntities));
     }
 
-
     private List<CategoryVo> buildCategoryTree(Long parentId, List<PmsCategory> entities) {
-        List<PmsCategory> childCategories = entities.stream().filter(category -> parentId.equals(category.getParentCid())).collect(Collectors.toList());
+        List<PmsCategory> childCategories = entities.stream()
+                .filter(category -> parentId.equals(category.getParentCid())).collect(Collectors.toList());
         List<CategoryVo> categoryVos = new ArrayList<>();
         for (PmsCategory entity : childCategories) {
             CategoryVo vo = new CategoryVo();
@@ -150,5 +159,36 @@ public class ProductCateGoryServiceImpl extends ServiceImpl<PmsCategoryMapper, P
             categoryVos.add(vo);
         }
         return categoryVos;
+    }
+
+    @Override
+    public List<CategoryVo> findChildren(Long parentCid) {
+        if (parentCid == null) {
+            parentCid = 0l;
+        }
+        List<PmsCategory> pmsCategories = this.lambdaQuery().eq(PmsCategory::getParentCid, parentCid)
+                .eq(PmsCategory::getShowStatus, 1)
+                .orderByAsc(PmsCategory::getSort)
+                .list();
+        List<CategoryVo> result = pmsCategories.stream().map(item -> {
+            CategoryVo categoryVo = new CategoryVo();
+            categoryVo.setCatId(item.getCatId());
+            categoryVo.setName(item.getName());
+            categoryVo.setParentCid(item.getParentCid());
+            categoryVo.setCatLevel(item.getCatLevel());
+            categoryVo.setShowStatus(item.getShowStatus());
+            categoryVo.setIcon(item.getIcon());
+            categoryVo.setProductUnit(item.getProductUnit());
+            boolean hasChildren = this.lambdaQuery().eq(PmsCategory::getParentCid, item.getCatId())
+                    .eq(PmsCategory::getShowStatus, 1)
+                    .count() > 0;
+            if (hasChildren) {
+                categoryVo.setChildren(new ArrayList());
+            } else {
+                categoryVo.setChildren(null);
+            }
+            return categoryVo;
+        }).collect(Collectors.toList());
+        return result;
     }
 }
