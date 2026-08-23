@@ -1,4 +1,4 @@
-import {request} from '@/utils/request';
+import { request } from '@/utils/request';
 
 // 分类接口
 export const categoryApi = {
@@ -44,7 +44,13 @@ export const categoryApi = {
    */
   getCategoryTree: (catId?: number) => {
     return request.get({
-      url: catId?`/product/category/parentTree/${catId}`:"/product/category/parentTree"
+      url: catId ? `/product/category/parentTree/${catId}` : "/product/category/parentTree"
     });
+  },
+
+  getCategoryChildren: (parentCid: number) => {
+    return request.get({
+      url: `/product/category/children/${parentCid}`,
+    })
   }
 };

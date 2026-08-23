@@ -18,3 +18,10 @@ export interface CategoryTree {
   name?: string;
   children?: CategoryTree[];
 }
+
+export interface CategoryNode{
+  catId:number;
+  name:string;
+  parentCid:number;
+  children?:CategoryNode[]
+}

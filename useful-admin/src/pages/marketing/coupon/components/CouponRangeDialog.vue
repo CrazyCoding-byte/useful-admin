@@ -5,6 +5,7 @@ import { MessagePlugin } from "tdesign-vue-next";
 import { couponApi } from "@/api/marketing/coupon";
 import { productApi } from "@/api/product";
 import { categoryApi } from '@/api/shop/category';
+import { CategoryNode } from '@/api/model/categoryModel'
 
 const props = defineProps<{ modelValue: boolean; couponInfo: Record<string, any>; }>();
 const emit = defineEmits<{ (e: "update:modelValue", val: boolean): void; (e: 'saved'): void }>()
@@ -16,13 +17,42 @@ watch(visible, (v) => emit('update:modelValue', v));
 const submitLoading = ref(false);
 const skuList = ref<any[]>([]);
 const selectedSkuIds = ref<number[]>([]);
-const categoryTree = ref<any>([]);
+const categoryTree = ref<CategoryNode[]>([]);
 const selectedCategoryIds = ref<number[]>([]);
 //分类树搜索过滤
 const filterText = ref('');
 const filterByText = ref();
 const treeRef = ref<any>();
-//收集树中所有节点id（搜索时展开全部，让匹配结果可见）
+
+//加载一级分类
+const loadRootCategories = async () => {
+  try {
+    const res = await categoryApi.getCategoryChildren(0);
+    const tree = Array.isArray(res) ? res : res?.data || [];
+    categoryTree.value = tree;
+  } catch (e: any) {
+    console.error("加载一级分类失败:", e);
+    MessagePlugin.error(e?.message || '分类加载失败')
+  }
+}
+//点击展开时加载子分类
+const loadCategoryChildren = async (node: CategoryNode) => {
+  try {
+    const res = await categoryApi.getCategoryChildren(node.catId);
+    const children = Array.isArray(res) ? res : res?.data || [];
+    node.children = children;
+  } catch (e: any) {
+    console.error(
+      `加载分类 ${node.catId} 的子分类失败：`,
+      e
+    );
+
+    MessagePlugin.error(
+      e?.message || '子分类加载失败'
+    );
+  }
+}
+//收集树中所有节点id（搜索时展开全部，让匹配结果可见
 const collectAllIds = (nodes: any[]): number[] => {
   const result: number[] = [];
   const walk = (list: any[]) => {
@@ -34,20 +64,25 @@ const collectAllIds = (nodes: any[]): number[] => {
   walk(nodes);
   return result;
 };
-const onCategoryInput = (value?: string) => {
+const onCategoryInput = async (value?: string) => {
   const keyword = (value ?? filterText.value ?? '').trim();
+  if (!treeRef.value) return;
   if (!keyword) {
     //清空搜索：恢复只展开第一级
     filterByText.value = undefined;
-    treeRef.value?.setExpanded([]);
     return;
   }
   filterByText.value = (node: any) => {
-    const name = node.label || node.name || '';
+    const name = node.name || '';
     return name.indexOf(keyword) >= 0;
   };
+  await nextTick();
+  try {
+    treeRef.value?.setExpanded(collectAllIds(categoryTree.value));
+  } catch (e) {
+    MessagePlugin.error("展开分类树失败" + e);
+  }
   //搜索时展开所有节点，让匹配结果可见
-  treeRef.value?.setExpanded(collectAllIds(categoryTree.value));
 };
 
 //找到节点到根节点的路径id，回显时展开，让用户能看到已选分类位置
@@ -64,12 +99,18 @@ const findPathToRoot = (nodes: any[], targetId: number, path: number[] = []): nu
 };
 
 //展开指定id及其祖先链
-const expandPaths = (targetIds: number[]) => {
+const expandPaths = async (targetIds: number[]) => {
   const pathIds = new Set<number>();
   targetIds.forEach(id => {
     findPathToRoot(categoryTree.value, id).forEach(x => pathIds.add(x));
   });
-  nextTick(() => treeRef.value?.setExpanded([...pathIds]));
+  await nextTick();
+  if (!treeRef.value || pathIds.size === 0) return;
+  try {
+    treeRef.value.setExpanded([...pathIds]);
+  } catch (e) {
+    console.error('展开已选分类失败：', e);
+  }
 };
 
 //已有的规则回显
@@ -77,17 +118,17 @@ const loadExistingRange = async () => {
   if (!props.couponInfo.id) return;
   try {
     const res = await couponApi.getRangeList(props.couponInfo.id);
-    const list = res?.data || [];
-    console.log("已有的规则回显", res);
-    if (props.couponInfo.rangeType === 'SKU') {
-      selectedSkuIds.value = list.map((item: any) => item.rangeId);
+    console.log("已有规则回显", res);
+    const list = Array.isArray(res) ? res : res?.data || [];
+    if (props.couponInfo.rangeType === "SKU") {
+      selectedSkuIds.value = list.map((item: any) => item.rangeId)
     }
     if (props.couponInfo.rangeType === 'CATEGORY') {
       selectedCategoryIds.value = list.map((item: any) => item.rangeId);
-      await nextTick();
-      expandPaths(selectedCategoryIds.value);
     }
+    await expandPaths(selectedCategoryIds.value);
   } catch (e) {
+    console.log("已有规则加载失败", e);
     MessagePlugin.error("已有规则加载失败");
   }
 }
@@ -109,13 +150,20 @@ const loadSkuList = async () => {
 const loadCategoryTree = async () => {
   try {
     const res = await categoryApi.getCategoryTree();
-    categoryTree.value = res?.data || res || [];
-    //默认只展开第一级，避免一次性渲染全部分类导致卡顿
-    const firstLevelIds = (categoryTree.value || []).map((n: any) => n.id);
-    await nextTick();
-    treeRef.value?.setExpanded(firstLevelIds);
-  } catch (e) {
-    MessagePlugin.error("分类加载失败");
+    console.log('分类接口返回结果：', res);
+    const tree = Array.isArray(res) ? res : res?.data || [];
+    if (!Array.isArray(tree)) {
+      throw new Error('分类接口返回的数据不是数组');
+    }
+    categoryTree.value = tree;
+  } catch (e: any) {
+    console.error('分类树请求失败：', e);
+    console.error('响应数据：', e?.response?.data);
+    console.error('错误信息：', e?.message);
+
+    MessagePlugin.error(
+      e?.message || '分类加载失败'
+    );
   }
 }
 
@@ -123,9 +171,13 @@ watch(() => props.modelValue, async (val) => {
   console.log("当前props是什么", props)
   if (!val) return;
   resetSelectRange();
-  if (props.couponInfo.rangeType === "SKU") await loadSkuList();
-  else if (props.couponInfo.rangeType === "CATEGORY")
+  if (props.couponInfo.rangeType === 'SKU') {
+    await loadSkuList();
+  }
+  if (props.couponInfo.rangeType === 'CATEGORY') {
     await loadCategoryTree();
+  }
+  await nextTick();
   await loadExistingRange();
 })
 const handleSave = async () => {
@@ -194,7 +246,7 @@ const resetSelectRange = () => {
         </template>
       </t-input>
       <t-tree ref="treeRef" v-model="selectedCategoryIds" :data="categoryTree" checkable expand-on-click-node
-        value-mode="all" :filter="filterByText" :keys="{ label: 'name', value: 'catId' }">
+        value-mode="only" :filter="filterByText" :keys="{ label: 'name', value: 'catId' ,children:'children'}" :load="loadCategoryChildren">
       </t-tree>
     </div>
   </t-dialog>
