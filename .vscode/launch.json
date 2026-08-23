@@ -2,13 +2,21 @@
   "configurations": [
     {
       "type": "java",
+      "name": "ProductCateGoryServiceImpl",
+      "request": "launch",
+      "mainClass": "com.yzx.product.service.serviceimpl.ProductCateGoryServiceImpl",
+      "projectName": "product"
+    },
+    {
+      "type": "java",
       "name": "Spring Boot-AuthServerApplication<auth-server>",
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "mainClass": "cn.poile.ucs.auth.AuthServerApplication",
       "projectName": "auth-server",
       "args": "",
-      "envFile": "${workspaceFolder}/.env"
+      "envFile": "${workspaceFolder}/.env",
+      "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=43880 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=auth-server"
     },
     {
       "type": "java",
@@ -18,7 +26,8 @@
       "mainClass": "com.yzx.system.SystemApplication",
       "projectName": "system",
       "args": "",
-      "envFile": "${workspaceFolder}/.env"
+      "envFile": "${workspaceFolder}/.env",
+      "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=13499 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=system"
     },
     {
       "name": "C/C++ Runner: Debug Session",
@@ -38,6 +47,59 @@
           "ignoreFailures": true
         }
       ]
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-EurekaServerApplication<eureka-server>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "cn.poile.ucs.eureka.EurekaServerApplication",
+      "projectName": "eureka-server",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env",
+      "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=12620 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=eureka-server"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-CouponApplication<coupon>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.yzx.coupon.CouponApplication",
+      "projectName": "coupon",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env",
+      "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=14329 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=coupon"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-ProductApplication<product>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.yzx.product.ProductApplication",
+      "projectName": "product",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env",
+      "vmArgs": " -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=24077 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dspring.jmx.enabled=true -Djava.rmi.server.hostname=localhost -Dspring.application.admin.enabled=true -Dspring.boot.project.name=product"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-WmsApplication<wms>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.yzx.wms.WmsApplication",
+      "projectName": "wms",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-GatewayApplication<gateway>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "cn.poile.ucs.auth.GatewayApplication",
+      "projectName": "gateway",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
     }
   ]
 }

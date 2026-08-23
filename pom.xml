@@ -19,6 +19,7 @@
         <module>wms</module>
         <module>product</module>
         <module>coupon</module>
+       <module>gateway</module>
     </modules>
 
     <parent>
