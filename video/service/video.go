@@ -11,9 +11,12 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,21 +26,25 @@ import (
 	"video/config"
 	"video/model"
 	"video/repository"
+
+	"github.com/google/uuid"
 )
 
 // VideoService 视频业务服务。
 type VideoService struct {
-	repos  *repository.Repositories // 数据仓库集合
-	cfg    *config.VideoConfig      // 视频相关配置（切片时长、试看秒数、工作目录等）
-	server *config.ServerConfig     // 服务地址配置（用于拼接回调/播放地址）
+	repos    *repository.Repositories // 数据仓库集合
+	cfg      *config.VideoConfig      // 视频相关配置（切片时长、试看秒数、工作目录等）
+	server   *config.ServerConfig     // 服务地址配置（用于拼接回调/播放地址）
+	uploader *repository.ChunkUploader // 分片上传器（复用 IM 已验证的 Multipart 方案）
 }
 
 // NewVideoService 创建视频业务服务实例。
-func NewVideoService(repos *repository.Repositories, cfg *config.Config) *VideoService {
+func NewVideoService(repos *repository.Repositories, cfg *config.Config, uploader *repository.ChunkUploader) *VideoService {
 	return &VideoService{
-		repos:  repos,
-		cfg:    &cfg.Video,
-		server: &cfg.Server,
+		repos:    repos,
+		cfg:      &cfg.Video,
+		server:   &cfg.Server,
+		uploader: uploader,
 	}
 }
 
@@ -118,111 +125,204 @@ func (s *VideoService) UploadVideo(courseID uint64, chapterID uint64, title stri
 	return video, nil
 }
 
-// transcode 调用 ffmpeg 对原始视频切片，生成完整版和试看版 HLS，并上传回 MinIO。
+// hlsRendition 一档清晰度（多码率转码的产物）。
+type hlsRendition struct {
+	Name      string // 档位标识，如 full_1080
+	Height    int    // 目标高度
+	Bandwidth int    // master.m3u8 里的 BANDWIDTH（用于播放器自适应选档）
+}
+
+// 多码率档位：从高到低，超过原片分辨率的档会被跳过。
+var hlsRenditions = []hlsRendition{
+	{Name: "full_1080", Height: 1080, Bandwidth: 2800000},
+	{Name: "full_720", Height: 720, Bandwidth: 1400000},
+	{Name: "full_480", Height: 480, Bandwidth: 600000},
+}
+
+// transcode 调用 ffmpeg 对原始视频做多码率 HLS 切片（AES-128 加密），并上传回 MinIO。
+//
+// 产物结构（HlsPath 前缀下）：
+//
+//	master.m3u8             多码率主清单（播放器入口）
+//	full_1080.m3u8/.ts      1080p 档（加密）
+//	full_720.m3u8/.ts       720p 档（加密）
+//	full_480.m3u8/.ts       480p 档（加密，原片分辨率不足则跳过）
+//	trial.m3u8/.ts          试看版（单档 720p，只含前 N 秒，独立密钥）
+//	keys/{keyId}.key        16 字节 AES-128 密钥（私有，仅供密钥接口读取）
+//
 // 这是一个耗时操作，必须在后台 goroutine 中执行。
 func (s *VideoService) transcode(video *model.CourseVideo) {
 	ctx := context.Background()
-	// 每个视频一个独立工作目录，转码完成后删除
 	workDir := filepath.Join(s.cfg.WorkDir, fmt.Sprintf("%d_%d", video.CourseID, video.ID))
+	// 转成绝对路径：keyinfo 文件里的密钥路径会被 ffmpeg 直接读取，
+	// 相对路径会受 ffmpeg 启动目录影响，绝对路径最稳妥（跨平台）。
+	if abs, err := filepath.Abs(workDir); err == nil {
+		workDir = abs
+	}
 	_ = os.MkdirAll(workDir, 0755)
 	defer os.RemoveAll(workDir)
+
+	fail := func(err error) {
+		slog.Error("转码失败", "error", err, "videoId", video.ID)
+		_ = s.repos.VideoRepo.UpdateStatus(video.ID, 2)
+	}
 
 	// 1. 从 MinIO 下载原始视频到本地
 	localRaw := filepath.Join(workDir, "raw"+filepath.Ext(video.OriginalObject))
 	obj, err := s.repos.MinioRepo.Download(ctx, video.OriginalObject)
 	if err != nil {
-		slog.Error("下载原始视频失败", "error", err, "videoId", video.ID)
-		_ = s.repos.VideoRepo.UpdateStatus(video.ID, 2) // 2=转码失败
+		fail(fmt.Errorf("下载原始视频失败: %w", err))
 		return
 	}
-	defer obj.Close()
-
 	out, err := os.Create(localRaw)
 	if err != nil {
-		slog.Error("创建本地文件失败", "error", err)
-		_ = s.repos.VideoRepo.UpdateStatus(video.ID, 2)
+		obj.Close()
+		fail(fmt.Errorf("创建本地文件失败: %w", err))
 		return
 	}
 	_, err = io.Copy(out, obj)
 	out.Close()
+	obj.Close()
 	if err != nil {
-		slog.Error("写入本地文件失败", "error", err)
-		_ = s.repos.VideoRepo.UpdateStatus(video.ID, 2)
+		fail(fmt.Errorf("写入本地文件失败: %w", err))
 		return
 	}
 
-	// 2. 使用 ffprobe 获取视频总时长
-	duration, err := s.getVideoDuration(localRaw)
-	if err != nil {
-		slog.Error("获取视频时长失败", "error", err)
-		duration = 0
-	}
-
-	// 3. ffmpeg 切完整版 HLS
-	fullM3u8Name := "full.m3u8"
-	fullM3u8Path := filepath.Join(workDir, fullM3u8Name)
+	// 2. ffprobe 获取时长与分辨率
+	duration, _ := s.getVideoDuration(localRaw)
+	_, srcHeight := s.getVideoResolution(localRaw)
 	segmentTime := strconv.Itoa(s.cfg.HlsSegmentTime)
-	// -codec: copy 表示不重新编码，速度最快；如果是特殊格式可能需要重新编码
-	cmd := exec.Command("ffmpeg", "-i", localRaw, "-codec:", "copy", "-start_number", "0",
-		"-hls_time", segmentTime, "-hls_list_size", "0", "-f", "hls", fullM3u8Path)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		slog.Error("ffmpeg 完整版切片失败", "error", err, "output", string(output))
-		_ = s.repos.VideoRepo.UpdateStatus(video.ID, 2)
+
+	// 3. 生成完整版/试看版的 AES-128 密钥（16 字节，keyId 用 UUID 保证不可枚举）
+	fullKeyID := uuid.NewString()
+	trialKeyID := uuid.NewString()
+	keyDir := filepath.Join(workDir, "keys")
+	_ = os.MkdirAll(keyDir, 0755)
+	fullKeyPath := filepath.Join(keyDir, fullKeyID+".key")
+	trialKeyPath := filepath.Join(keyDir, trialKeyID+".key")
+	fullKey, err := generateAESKey(fullKeyPath)
+	if err != nil {
+		fail(fmt.Errorf("生成完整版密钥失败: %w", err))
+		return
+	}
+	trialKey, err := generateAESKey(trialKeyPath)
+	if err != nil {
+		fail(fmt.Errorf("生成试看版密钥失败: %w", err))
+		return
+	}
+	_ = fullKey
+	_ = trialKey
+
+	// 4. keyinfo 文件：ffmpeg 据此给切片加密，并把 key URI 写进 m3u8
+	keyURIPrefix := strings.TrimRight(s.server.BaseURL, "/") + "/api/video/key/"
+	fullKeyInfo := filepath.Join(workDir, "keyinfo_full")
+	if err := writeKeyInfo(fullKeyInfo, keyURIPrefix+fullKeyID, fullKeyPath); err != nil {
+		fail(fmt.Errorf("生成完整版 keyinfo 失败: %w", err))
+		return
+	}
+	trialKeyInfo := filepath.Join(workDir, "keyinfo_trial")
+	if err := writeKeyInfo(trialKeyInfo, keyURIPrefix+trialKeyID, trialKeyPath); err != nil {
+		fail(fmt.Errorf("生成试看版 keyinfo 失败: %w", err))
 		return
 	}
 
-	// 4. ffmpeg 切试看版 HLS：只取前 trialSeconds 秒
+	// 5. 逐档重编码完整版（跳过超过原片分辨率的档位）
+	renditions := make([]hlsRendition, 0, len(hlsRenditions))
+	for _, r := range hlsRenditions {
+		if srcHeight > 0 && srcHeight < r.Height {
+			slog.Info("原片分辨率低于目标档，跳过", "videoId", video.ID, "target", r.Height, "src", srcHeight)
+			continue
+		}
+		renditions = append(renditions, r)
+	}
+	if len(renditions) == 0 {
+		renditions = []hlsRendition{{Name: "full_480", Height: 480, Bandwidth: 600000}}
+	}
+
+	for _, r := range renditions {
+		m3u8Path := filepath.Join(workDir, r.Name+".m3u8")
+		cmd := exec.Command("ffmpeg", "-y", "-i", localRaw,
+			"-vf", fmt.Sprintf("scale=-2:%d", r.Height),
+			"-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+			"-c:a", "aac", "-b:a", "128k",
+			"-start_number", "0", "-hls_time", segmentTime, "-hls_list_size", "0",
+			"-hls_key_info_file", fullKeyInfo,
+			"-hls_segment_filename", filepath.Join(workDir, r.Name+"_%05d.ts"),
+			"-f", "hls", m3u8Path)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			fail(fmt.Errorf("ffmpeg 转码档 %s 失败: %w, output=%s", r.Name, err, string(output)))
+			return
+		}
+		slog.Info("完整版档位转码完成", "videoId", video.ID, "rendition", r.Name)
+	}
+
+	// 6. 生成多码率主清单 master.m3u8
+	masterPath := filepath.Join(workDir, "master.m3u8")
+	if err := os.WriteFile(masterPath, []byte(buildMasterPlaylist(renditions)), 0644); err != nil {
+		fail(fmt.Errorf("生成 master.m3u8 失败: %w", err))
+		return
+	}
+
+	// 7. 试看版：前 N 秒，720p 单档，独立密钥
 	trialSeconds := video.TrialSeconds
 	if trialSeconds <= 0 {
 		trialSeconds = s.cfg.DefaultTrialSeconds
 	}
-	trialM3u8Name := "trial.m3u8"
-	trialM3u8Path := filepath.Join(workDir, trialM3u8Name)
-	cmd = exec.Command("ffmpeg", "-i", localRaw, "-t", strconv.Itoa(trialSeconds), "-codec:", "copy",
-		"-start_number", "0", "-hls_time", segmentTime, "-hls_list_size", "0", "-f", "hls", trialM3u8Path)
+	trialM3u8Path := filepath.Join(workDir, "trial.m3u8")
+	cmd := exec.Command("ffmpeg", "-y", "-i", localRaw, "-t", strconv.Itoa(trialSeconds),
+		"-vf", "scale=-2:720",
+		"-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+		"-c:a", "aac", "-b:a", "128k",
+		"-start_number", "0", "-hls_time", segmentTime, "-hls_list_size", "0",
+		"-hls_key_info_file", trialKeyInfo,
+		"-hls_segment_filename", filepath.Join(workDir, "trial_%05d.ts"),
+		"-f", "hls", trialM3u8Path)
 	if output, err := cmd.CombinedOutput(); err != nil {
-		slog.Error("ffmpeg 试看版切片失败", "error", err, "output", string(output))
-		_ = s.repos.VideoRepo.UpdateStatus(video.ID, 2)
+		fail(fmt.Errorf("ffmpeg 试看版切片失败: %w, output=%s", err, string(output)))
 		return
 	}
 
-	// 5. 把切片和 m3u8 上传到 MinIO
+	// 8. 递归上传 workDir 下所有文件（含 keys/ 子目录）到 MinIO
 	prefix := repository.BuildHlsPrefix(video.CourseID, video.ID)
-	files, err := os.ReadDir(workDir)
-	if err != nil {
-		slog.Error("读取工作目录失败", "error", err)
-		_ = s.repos.VideoRepo.UpdateStatus(video.ID, 2)
+	if err := filepath.Walk(workDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		rel, err := filepath.Rel(workDir, path)
+		if err != nil {
+			return err
+		}
+		objectName := prefix + filepath.ToSlash(rel)
+		contentType := "video/MP2T"
+		switch {
+		case strings.HasSuffix(rel, ".m3u8"):
+			contentType = "application/vnd.apple.mpegurl"
+		case strings.HasSuffix(rel, ".key"):
+			contentType = "application/octet-stream"
+		}
+		if err := s.repos.MinioRepo.UploadFile(ctx, objectName, path, contentType); err != nil {
+			return fmt.Errorf("上传 %s 失败: %w", objectName, err)
+		}
+		return nil
+	}); err != nil {
+		fail(err)
 		return
 	}
-	for _, f := range files {
-		if f.IsDir() {
-			continue
-		}
-		localPath := filepath.Join(workDir, f.Name())
-		objectName := prefix + f.Name()
-		contentType := "video/MP2T"
-		if strings.HasSuffix(f.Name(), ".m3u8") {
-			contentType = "application/vnd.apple.mpegurl"
-		}
-		if err := s.repos.MinioRepo.UploadFile(ctx, objectName, localPath, contentType); err != nil {
-			slog.Error("上传切片失败", "error", err, "object", objectName)
-			_ = s.repos.VideoRepo.UpdateStatus(video.ID, 2)
-			return
-		}
-	}
 
-	// 6. 更新数据库：时长、HLS 路径、状态=已转码
+	// 9. 更新数据库：时长、HLS 路径、密钥 ID、状态=已转码
 	video.Duration = int(duration)
 	video.HlsPath = prefix
-	video.FullM3u8 = fullM3u8Name
-	video.TrialM3u8 = trialM3u8Name
+	video.FullM3u8 = "master.m3u8"
+	video.TrialM3u8 = "trial.m3u8"
+	video.FullKeyID = fullKeyID
+	video.TrialKeyID = trialKeyID
 	video.Status = 1
 	if err := s.repos.VideoRepo.Update(video); err != nil {
-		slog.Error("更新视频状态失败", "error", err)
-		_ = s.repos.VideoRepo.UpdateStatus(video.ID, 2)
+		fail(fmt.Errorf("更新视频状态失败: %w", err))
 		return
 	}
-	slog.Info("视频转码完成", "videoId", video.ID, "duration", duration)
+	slog.Info("视频转码完成", "videoId", video.ID, "duration", duration,
+		"renditions", len(renditions), "encrypted", true)
 }
 
 // getVideoDuration 调用 ffprobe 获取视频时长（秒）。
@@ -258,12 +358,14 @@ func (s *VideoService) GetPlayInfo(videoID uint64, userID uint64) (map[string]an
 		}
 	}
 
-	// 根据权限选择 m3u8 文件
-	var m3u8Object string
+	// 根据权限选择 m3u8 文件（完整版 = 多码率 master.m3u8；试看版 = trial.m3u8）
+	var m3u8Object, keyID string
 	if canWatchFull {
 		m3u8Object = video.HlsPath + video.FullM3u8
+		keyID = video.FullKeyID
 	} else {
 		m3u8Object = video.HlsPath + video.TrialM3u8
+		keyID = video.TrialKeyID
 	}
 
 	// 生成 MinIO 预签名 URL，有效期 2 小时
@@ -280,6 +382,7 @@ func (s *VideoService) GetPlayInfo(videoID uint64, userID uint64) (map[string]an
 		"trialSeconds": video.TrialSeconds,
 		"canWatchFull": canWatchFull,
 		"m3u8Url":      m3u8URL,
+		"keyId":        keyID,
 	}, nil
 }
 
@@ -287,4 +390,232 @@ func (s *VideoService) GetPlayInfo(videoID uint64, userID uint64) (map[string]an
 func (s *VideoService) GetTsUrl(objectName string) (string, error) {
 	ctx := context.Background()
 	return s.repos.MinioRepo.PresignedGetURL(ctx, objectName, 2*time.Hour)
+}
+
+// -------------------------- HLS AES-128 加密密钥 --------------------------
+
+// GetPlayKey 根据 keyId 返回 16 字节 AES-128 解密密钥。
+//
+// 说明：
+//   - m3u8 里的 EXT-X-KEY URI 指向 GET /api/video/key/{keyId}；
+//   - 播放器（小程序 video 组件/H5 播放器）拉取该 URI 时不会带 Authorization header，
+//     因此该接口不强制 Bearer 鉴权，安全依赖 keyId 的随机不可枚举性 + m3u8 预签名 URL；
+//   - keyId 必须属于某个视频（full_key_id 或 trial_key_id），否则 404。
+func (s *VideoService) GetPlayKey(keyID string) ([]byte, error) {
+	video, err := s.repos.VideoRepo.GetByKeyID(keyID)
+	if err != nil {
+		return nil, fmt.Errorf("密钥不存在: %w", err)
+	}
+	objectName := video.HlsPath + "keys/" + keyID + ".key"
+	ctx := context.Background()
+	obj, err := s.repos.MinioRepo.Download(ctx, objectName)
+	if err != nil {
+		return nil, err
+	}
+	defer obj.Close()
+	return io.ReadAll(obj)
+}
+
+// getVideoResolution 调用 ffprobe 获取视频分辨率（宽、高）。
+// 探测失败时返回 0,0，调用方据此跳过档位判断。
+func (s *VideoService) getVideoResolution(filePath string) (int, int) {
+	cmd := exec.Command("ffprobe", "-v", "error", "-select_streams", "v:0",
+		"-show_entries", "stream=width,height", "-of", "csv=p=0", filePath)
+	output, err := cmd.Output()
+	if err != nil {
+		slog.Warn("探测视频分辨率失败", "err", err, "file", filePath)
+		return 0, 0
+	}
+	parts := strings.Split(strings.TrimSpace(string(output)), ",")
+	if len(parts) < 2 {
+		return 0, 0
+	}
+	w, errW := strconv.Atoi(strings.TrimSpace(parts[0]))
+	h, errH := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if errW != nil || errH != nil {
+		return 0, 0
+	}
+	return w, h
+}
+
+// generateAESKey 生成 16 字节 AES-128 密钥并写入本地文件，返回密钥字节。
+func generateAESKey(filePath string) ([]byte, error) {
+	key := make([]byte, 16)
+	if _, err := rand.Read(key); err != nil {
+		return nil, fmt.Errorf("生成随机密钥失败: %w", err)
+	}
+	if err := os.WriteFile(filePath, key, 0600); err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+// writeKeyInfo 生成 ffmpeg -hls_key_info_file 所需的密钥信息文件。
+//
+//	格式（每行一个）：
+//	  第 1 行：key URI（原样写入 m3u8 的 EXT-X-KEY），播放器据此请求密钥；
+//	  第 2 行：本地密钥文件路径；
+//	  第 3 行：IV（32 位 hex），不写则由 ffmpeg 按分片序号派生。
+func writeKeyInfo(infoPath, keyURI, keyFilePath string) error {
+	iv := make([]byte, 16)
+	if _, err := rand.Read(iv); err != nil {
+		return fmt.Errorf("生成随机 IV 失败: %w", err)
+	}
+	content := fmt.Sprintf("%s\n%s\n%s\n", keyURI, keyFilePath, hex.EncodeToString(iv))
+	return os.WriteFile(infoPath, []byte(content), 0600)
+}
+
+// buildMasterPlaylist 生成多码率主清单 master.m3u8 内容。
+// 子清单用相对路径（与 master.m3u8 同目录），播放器自动按带宽/分辨率自适应。
+func buildMasterPlaylist(renditions []hlsRendition) string {
+	var b strings.Builder
+	b.WriteString("#EXTM3U\n")
+	b.WriteString("#EXT-X-VERSION:3\n")
+	for _, r := range renditions {
+		height := r.Height
+		width := 0
+		switch height {
+		case 1080:
+			width = 1920
+		case 720:
+			width = 1280
+		case 480:
+			width = 854
+		}
+		fmt.Fprintf(&b, "#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%dx%d\n", r.Bandwidth, width, height)
+		b.WriteString(r.Name + ".m3u8\n")
+	}
+	return b.String()
+}
+
+// -------------------------- 分片上传（切片上传 + 断点续传） --------------------------
+
+// InitChunkUploadResult InitChunkUpload 的返回结果。
+type InitChunkUploadResult struct {
+	VideoID     uint64 `json:"videoId"`     // 视频记录 ID
+	UploadID    string `json:"uploadID"`    // MinIO Multipart UploadID（秒传时为空）
+	ObjectKey   string `json:"objectKey"`   // MinIO 对象名
+	TotalChunks int    `json:"totalChunks"` // 总分片数
+	ChunkSize   int64  `json:"chunkSize"`   // 单分片大小（字节），前端按此切片
+	Instant     bool   `json:"instant"`     // true 表示秒传命中，无需再上传
+}
+
+// InitChunkUpload 初始化分片上传。
+// 流程：
+//  1. 先创建 CourseVideo 记录（状态=待转码），拿到自增 videoID；
+//  2. 用 videoID 构造 MinIO 对象名 course/{courseId}/video/{videoId}/original/{videoId}.mp4；
+//  3. 调用分片上传器创建 Multipart 任务（内部会先做秒传查重）。
+//
+// 秒传命中时 Instant=true，此时 UploadID 为空，ObjectKey 指向已存在的文件，
+// 前端可直接提示"文件已存在"，或由后端直接进入转码流程。
+func (s *VideoService) InitChunkUpload(courseID, chapterID uint64, title string, trialSeconds int, fileName, mimeType string, fileSize int64, fileHash string) (*InitChunkUploadResult, error) {
+	// 1. 先建视频记录（分片上传阶段状态为 0=待转码）
+	video := &model.CourseVideo{
+		CourseID:     courseID,
+		ChapterID:    chapterID,
+		Title:        title,
+		TrialSeconds: trialSeconds,
+		Status:       0,
+	}
+	if err := s.repos.VideoRepo.Create(video); err != nil {
+		return nil, err
+	}
+
+	// 2. 构造 MinIO 对象名（保留原始扩展名，默认 .mp4）
+	ext := filepath.Ext(fileName)
+	if ext == "" || len(ext) > 10 {
+		ext = ".mp4"
+	}
+	objectKey := fmt.Sprintf("%soriginal/%d%s", repository.BuildHlsPrefix(courseID, video.ID), video.ID, ext)
+
+	// 3. 创建 Multipart 任务（秒传命中时返回 file_exists|<objectKey>）
+	uploadID, err := s.uploader.InitUpload(context.Background(), objectKey, fileName, mimeType, fileSize, fileHash)
+	if err != nil {
+		// 秒传：文件已存在，直接使用已有对象，并触发转码
+		if strings.HasPrefix(err.Error(), "file_exists|") {
+			existingKey := strings.TrimPrefix(err.Error(), "file_exists|")
+			video.OriginalObject = existingKey
+			_ = s.repos.VideoRepo.Update(video)
+			// 异步转码（会为这个新 videoId 生成独立的 HLS 目录）
+			go s.transcode(video)
+			return &InitChunkUploadResult{
+				VideoID:     video.ID,
+				ObjectKey:   existingKey,
+				TotalChunks: 0,
+				ChunkSize:   s.uploader.ChunkSize(),
+				Instant:     true,
+			}, nil
+		}
+		// 失败：删除刚创建的记录，避免残留脏数据
+		_ = s.repos.VideoRepo.Delete(video.ID)
+		return nil, err
+	}
+
+	// 4. 把 objectKey 写回 video 记录（之前漏掉，导致 CompleteChunkUpload 时 GetByObjectKey 找不到）
+	//    注意：必须 Update，否则后续 CompleteChunkUpload 调 GetByObjectKey(objectKey) 会失败。
+	video.OriginalObject = objectKey
+	if err := s.repos.VideoRepo.Update(video); err != nil {
+		// 写库失败也要继续 —— 前端有 uploadID 还能传，complete 时再补救
+		slog.Error("InitChunkUpload: 写 video.OriginalObject 失败", "err", err, "videoID", video.ID)
+	}
+
+	// 4. 计算总分片数（与 uploader 内部算法一致）
+	totalChunks := int(math.Ceil(float64(fileSize) / float64(s.uploader.ChunkSize())))
+	if totalChunks <= 0 {
+		totalChunks = 1
+	}
+	return &InitChunkUploadResult{
+		VideoID:     video.ID,
+		UploadID:    uploadID,
+		ObjectKey:   objectKey,
+		TotalChunks: totalChunks,
+		ChunkSize:   s.uploader.ChunkSize(),
+		Instant:     false,
+	}, nil
+}
+
+// UploadChunk 上传单个分片（断点续传：已上传且 hash 一致的分片会跳过）。
+func (s *VideoService) UploadChunk(uploadID string, chunkIndex int, chunkData []byte) error {
+	return s.uploader.UploadChunk(context.Background(), uploadID, chunkIndex, chunkData)
+}
+
+// ChunkProgress 查询分片上传进度。
+func (s *VideoService) ChunkProgress(uploadID string) (float64, []int, int, error) {
+	return s.uploader.QueryProgress(context.Background(), uploadID)
+}
+
+// CompleteChunkUpload 合并分片，更新视频记录并触发异步转码。
+// 返回合并后的视频记录。
+func (s *VideoService) CompleteChunkUpload(uploadID string) (*model.CourseVideo, error) {
+	// 1. 合并分片（内部校验分片完整性 + 写秒传元数据）
+	objectKey, err := s.uploader.CompleteUpload(context.Background(), uploadID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. 用 objectKey 反查 InitChunkUpload 阶段创建的记录
+	video, err := s.repos.VideoRepo.GetByObjectKey(objectKey)
+	if err != nil {
+		return nil, fmt.Errorf("找不到对应的视频记录: %w", err)
+	}
+
+	// 3. 更新记录并异步转码
+	video.OriginalObject = objectKey
+	if err := s.repos.VideoRepo.Update(video); err != nil {
+		return nil, err
+	}
+	go s.transcode(video)
+	return video, nil
+}
+
+// AbortChunkUpload 取消分片上传，并清理 InitChunkUpload 阶段创建的视频记录。
+func (s *VideoService) AbortChunkUpload(uploadID string) error {
+	// 先取元数据拿到 objectKey，用于反查并删除视频记录
+	meta, err := s.uploader.GetUploadMeta(context.Background(), uploadID)
+	if err == nil && meta.ObjectKey != "" {
+		if video, err := s.repos.VideoRepo.GetByObjectKey(meta.ObjectKey); err == nil {
+			_ = s.repos.VideoRepo.Delete(video.ID)
+		}
+	}
+	return s.uploader.AbortUpload(context.Background(), uploadID)
 }

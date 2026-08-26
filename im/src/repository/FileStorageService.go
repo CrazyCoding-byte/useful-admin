@@ -25,6 +25,7 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 /**
@@ -174,8 +175,11 @@ func (u *MinioCoreChunkUploader) saveUploadMeta(ctx context.Context, meta *model
 	}
 
 	// 2. 保存到DB（持久化，Redis丢失后可恢复）
-	if err := u.Db.WithContext(ctx).Save(meta).Error; err != nil {
-		slog.Warn("保存DB元数据失败（Redis已保存，不影响核心流程）", "err", err)
+	// 注意：必须用 UPSERT（Clauses(clause.OnConflict{UpdateAll: true}).Create）。
+	// 之前用 Save(meta) 是 GORM 经典陷阱：主键有值时只 UPDATE 不 INSERT，
+	// 新任务记录不存在时 0 rows affected 静默成功，元数据永远写不进 DB。
+	if err := u.Db.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(meta).Error; err != nil {
+		slog.Error("保存DB元数据失败（Redis已保存，DB兜底失效）", "err", err, "uploadID", meta.UploadID)
 		// 仅日志，不返回错误（Redis可用即可继续上传）
 	}
 

@@ -58,6 +58,22 @@ func (r *VideoRepository) ListByChapter(chapterID uint64) ([]model.CourseVideo, 
 	return list, err
 }
 
+// GetByObjectKey 根据 MinIO 原始视频对象名反查视频记录。
+// 分片上传合并后只返回 objectKey，用它找回 InitChunkUpload 阶段创建的记录。
+func (r *VideoRepository) GetByObjectKey(objectKey string) (*model.CourseVideo, error) {
+	var video model.CourseVideo
+	err := r.db.Where("original_object = ?", objectKey).First(&video).Error
+	return &video, err
+}
+
+// GetByKeyID 根据 HLS AES-128 密钥 ID 反查视频记录。
+// keyId 命中完整版或试看版密钥均返回该视频。
+func (r *VideoRepository) GetByKeyID(keyID string) (*model.CourseVideo, error) {
+	var video model.CourseVideo
+	err := r.db.Where("full_key_id = ? OR trial_key_id = ?", keyID, keyID).First(&video).Error
+	return &video, err
+}
+
 // UpdateStatus 只更新视频转码状态。
 // 转码是异步操作，后台 goroutine 通过此方法快速标记成功或失败，避免使用 Save 覆盖其他字段。
 func (r *VideoRepository) UpdateStatus(id uint64, status int) error {

@@ -41,6 +41,8 @@ func NewRepositories(db *gorm.DB, minioRepo *MinioRepository) (*Repositories, er
 		&model.Danmaku{},
 		&model.LiveRoom{},
 		&model.LiveBan{},
+		&model.MinioUploadMeta{},
+		&model.FileStorage{},
 	); err != nil {
 		return nil, err
 	}

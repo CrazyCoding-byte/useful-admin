@@ -4,19 +4,18 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
-	"time"
 
-	"github.com/gin-gonic/gin"
 	"local/pkg/config"
 	"local/pkg/utils"
+	"log"
+
+	"github.com/gin-gonic/gin"
 )
 
 // AuthMiddleware 基于 Token 的鉴权中间件。
 // 支持从 URL 参数或 Authorization Header 提取 Token，并缓存解析结果。
 type AuthMiddleware struct {
-	aeskey     string
-	tokenCache sync.Map
+	aeskey string
 }
 
 // UserClaims 解析后的用户信息缓存。
@@ -39,38 +38,21 @@ func (m *AuthMiddleware) HandlerFunc(token string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, err := m.extraToken(c)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "未授权"})
+			log.Printf("Token提取失败: %v, Authorization=%q", err, c.GetHeader("Authorization"))
+			c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": err.Error()})
 			c.Abort() // 终止请求
-			return
-		}
-
-		// 先从缓存获取，避免重复解析
-		if claim, ok := m.tokenCache.Load(token); ok {
-			userClaims := claim.(*UserClaims)
-			if userClaims.ExpireAt < time.Now().Unix() {
-				c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "未授权"})
-				c.Abort()
-				return
-			}
-			c.Set("user_id", userClaims.UserId)
-			c.Set("username", userClaims.UserName)
-			c.Next()
 			return
 		}
 
 		userId, username, err := utils.ParseAndVerifyToken(token, m.aeskey)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": "未授权"})
+			log.Printf("Token解析失败: %v", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": err.Error()})
 			c.Abort()
 			return
 		}
+		log.Printf("Token解析成功: user_id=%s, username=%s", userId, username)
 
-		// 存入缓存
-		userClaims := &UserClaims{
-			UserId:   userId,
-			UserName: username,
-		}
-		m.tokenCache.Store(token, userClaims)
 		c.Set("user_id", userId)
 		c.Set("username", username)
 		c.Next()
@@ -88,8 +70,8 @@ func (m *AuthMiddleware) extraToken(c *gin.Context) (string, error) {
 	// 从 header 获取
 	authHeader := c.GetHeader("Authorization")
 	if authHeader != "" {
-		parts := strings.Split(authHeader, " ")
-		if len(parts) == 2 && parts[0] == "Bearer" {
+		parts := strings.Fields(authHeader)
+		if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
 			return parts[1], nil
 		}
 		return "", fmt.Errorf("无效的 Authorization header 格式")

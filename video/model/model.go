@@ -100,6 +100,13 @@ type CourseVideo struct {
 	// TrialM3u8 试看版 m3u8 文件名，例如 trial.m3u8。
 	TrialM3u8 string `gorm:"size:200" json:"trialM3u8"`
 
+	// FullKeyID 完整版 HLS AES-128 加密密钥的随机 ID（不可枚举）。
+	// 播放器通过 GET /api/video/key/{FullKeyID} 获取 16 字节密钥解密。
+	FullKeyID string `gorm:"size:64" json:"fullKeyId"`
+
+	// TrialKeyID 试看版 HLS AES-128 加密密钥的随机 ID。
+	TrialKeyID string `gorm:"size:64" json:"trialKeyId"`
+
 	// Status 转码状态：0=待转码，1=已转码，2=转码失败。
 	Status int `gorm:"default:0" json:"status"`
 

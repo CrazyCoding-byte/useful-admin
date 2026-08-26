@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"io"
 	"net/http"
 	"strconv"
 	"video/middleware"
@@ -136,4 +137,158 @@ func (h *VideoHandler) PlayInfo(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, model.Success(info))
+}
+
+// GetPlayKey 下发 HLS AES-128 解密密钥（16 字节原始数据）。
+//
+// 说明：
+//   - m3u8 的 EXT-X-KEY URI 指向本接口，播放器解密切片时自动请求；
+//   - 播放器原生请求不带 Authorization header，故本接口不强制 Bearer 鉴权，
+//     安全依赖 keyId 随机不可枚举 + m3u8 预签名 URL 双重保护；
+//   - 路由：GET /api/video/key/:keyId（注意在鉴权组之外注册）。
+func (h *VideoHandler) GetPlayKey(c *gin.Context) {
+	keyID := c.Param("keyId")
+	if keyID == "" {
+		c.JSON(http.StatusOK, model.Fail("缺少 keyId"))
+		return
+	}
+	key, err := h.service.GetPlayKey(keyID)
+	if err != nil {
+		c.JSON(http.StatusOK, model.Fail(err.Error()))
+		return
+	}
+	c.Data(http.StatusOK, "application/octet-stream", key)
+}
+
+// InitChunkUpload 初始化分片上传（切片上传第一步）。
+//
+// 请求体：JSON
+//   - courseId：课程 ID（必填）
+//   - chapterId：章节 ID（可选，0 表示不归属章节）
+//   - title：视频标题（必填）
+//   - trialSeconds：试看秒数（可选）
+//   - fileName：原始文件名（必填，用于推断扩展名）
+//   - mimeType：文件 MIME 类型（必填）
+//   - fileSize：文件总大小（字节，必填）
+//   - fileHash：文件 SHA-256 哈希（必填，用于秒传）
+//
+// 返回 data 字段：
+//   - videoId / uploadID / objectKey / totalChunks / chunkSize / instant
+//   - instant=true 表示秒传命中，无需继续上传。
+func (h *VideoHandler) InitChunkUpload(c *gin.Context) {
+	var req struct {
+		CourseID     uint64 `json:"courseId" binding:"required"`
+		ChapterID    uint64 `json:"chapterId"`
+		Title        string `json:"title" binding:"required"`
+		TrialSeconds int    `json:"trialSeconds"`
+		FileName     string `json:"fileName" binding:"required"`
+		MimeType     string `json:"mimeType" binding:"required"`
+		FileSize     int64  `json:"fileSize" binding:"required"`
+		FileHash     string `json:"fileHash" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, model.Fail("参数错误: "+err.Error()))
+		return
+	}
+	result, err := h.service.InitChunkUpload(req.CourseID, req.ChapterID, req.Title, req.TrialSeconds,
+		req.FileName, req.MimeType, req.FileSize, req.FileHash)
+	if err != nil {
+		c.JSON(http.StatusOK, model.Fail(err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, model.Success(result))
+}
+
+// UploadChunk 上传单个分片。
+//
+// 请求方式：multipart/form-data
+//   - uploadId：InitChunkUpload 返回的 uploadID（必填）
+//   - chunkIndex：分片索引，从 0 开始（必填）
+//   - file：分片二进制数据（必填）
+//
+// 断点续传：同一 uploadId + chunkIndex 重复上传且内容一致时，服务端直接跳过并返回成功。
+func (h *VideoHandler) UploadChunk(c *gin.Context) {
+	uploadID := c.PostForm("uploadId")
+	chunkIndexStr := c.PostForm("chunkIndex")
+	if uploadID == "" || chunkIndexStr == "" {
+		c.JSON(http.StatusOK, model.Fail("参数错误: uploadId 和 chunkIndex 不能为空"))
+		return
+	}
+	chunkIndex, err := strconv.Atoi(chunkIndexStr)
+	if err != nil {
+		c.JSON(http.StatusOK, model.Fail("参数错误: chunkIndex 格式错误"))
+		return
+	}
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusOK, model.Fail("请上传分片文件"))
+		return
+	}
+	defer file.Close()
+	chunkData, err := io.ReadAll(file)
+	if err != nil {
+		c.JSON(http.StatusOK, model.Fail("读取分片数据失败: "+err.Error()))
+		return
+	}
+	if err := h.service.UploadChunk(uploadID, chunkIndex, chunkData); err != nil {
+		c.JSON(http.StatusOK, model.Fail(err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, model.Success(nil))
+}
+
+// ChunkProgress 查询分片上传进度（断点续传第二步）。
+// 查询参数：upload=<uploadID>
+// 返回 data：{progress, uploadedChunks, totalChunks}
+func (h *VideoHandler) ChunkProgress(c *gin.Context) {
+	uploadID := c.Query("upload")
+	if uploadID == "" {
+		c.JSON(http.StatusOK, model.Fail("缺少参数 upload"))
+		return
+	}
+	progress, uploadedChunks, totalChunks, err := h.service.ChunkProgress(uploadID)
+	if err != nil {
+		c.JSON(http.StatusOK, model.Fail(err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, model.Success(gin.H{
+		"progress":       progress,
+		"uploadedChunks": uploadedChunks,
+		"totalChunks":    totalChunks,
+	}))
+}
+
+// CompleteChunkUpload 完成分片上传（合并分片并触发转码）。
+// 请求体：JSON {uploadId}
+func (h *VideoHandler) CompleteChunkUpload(c *gin.Context) {
+	var req struct {
+		UploadID string `json:"uploadId" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, model.Fail("参数错误: "+err.Error()))
+		return
+	}
+	video, err := h.service.CompleteChunkUpload(req.UploadID)
+	if err != nil {
+		c.JSON(http.StatusOK, model.Fail(err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, model.Success(video))
+}
+
+// AbortChunkUpload 取消分片上传（清理 Multipart 任务和视频记录）。
+// 请求体：JSON {uploadID}
+func (h *VideoHandler) AbortChunkUpload(c *gin.Context) {
+	var req struct {
+		UploadID string `json:"uploadID" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, model.Fail("参数错误: "+err.Error()))
+		return
+	}
+	if err := h.service.AbortChunkUpload(req.UploadID); err != nil {
+		c.JSON(http.StatusOK, model.Fail(err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, model.Success(nil))
 }
