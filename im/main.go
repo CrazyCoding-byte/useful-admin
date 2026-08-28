@@ -5,6 +5,7 @@ import (
 	"local/im/src/handler"
 	"local/im/src/repository"
 	"local/pkg/config"
+	authmiddleware "local/pkg/middleware"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -117,24 +118,26 @@ func main() {
 
 	// 10. 创建文件处理器
 	fileHandler := handler.NewFileHandler(fileService, chunkUploader, redisClient)
+	authMiddleware := authmiddleware.NewAuthMiddleWare(cfg)
+
 	fileGroup := r.Group("/api/file")
 	{
-		//单文件上传接口
-		fileGroup.POST("/upload", fileHandler.UploadFile)
-		//分片初始化接口
-		fileGroup.POST("/chunk/init", fileHandler.InitChunkUpload)
-		fileGroup.POST("/chunk/upload", fileHandler.UploadChunk)
-		//查询分片上传进度
-		fileGroup.GET("/chunk/progress", fileHandler.QueryProgress)
-		//完成分片上传
-		fileGroup.POST("/chunk/complete", fileHandler.CompleteChunkUpload)
-		//取消分片上传
-		fileGroup.POST("/chunk/abort", fileHandler.AbortChunkUpload)
+		// 上传相关接口必须登录，防止匿名用户消耗存储空间。
+		privateFileGroup := fileGroup.Group("")
+		privateFileGroup.Use(authMiddleware.HandlerFunc(""))
+		{
+			// 单文件上传接口
+			privateFileGroup.POST("/upload", fileHandler.UploadFile)
+			// 分片上传接口
+			privateFileGroup.POST("/chunk/init", fileHandler.InitChunkUpload)
+			privateFileGroup.POST("/chunk/upload", fileHandler.UploadChunk)
+			privateFileGroup.GET("/chunk/progress", fileHandler.QueryProgress)
+			privateFileGroup.POST("/chunk/complete", fileHandler.CompleteChunkUpload)
+			privateFileGroup.POST("/chunk/abort", fileHandler.AbortChunkUpload)
+		}
 
-		//下载文件接口
+		// 下载和预览是否公开由具体业务决定，暂时保持原行为。
 		fileGroup.GET("/download", fileHandler.DownloadFile)
-
-		//预览文件接口
 		fileGroup.GET("/preview", fileHandler.PreviewFile)
 	}
 	fmt.Println("✓ 路由创建成功")

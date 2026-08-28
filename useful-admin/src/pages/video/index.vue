@@ -74,9 +74,18 @@
               variant="text"
               size="small"
               :disabled="row.status !== 1"
-              @click="() => playVideo(row)"
+              @click="() => playVideo(row, 'trial')"
             >
               播放
+            </t-button>
+            <t-button
+              variant="text"
+              theme="primary"
+              size="small"
+              :disabled="row.status !== 1"
+              @click="() => playVideo(row, 'full')"
+            >
+              VIP 播放
             </t-button>
             <t-button variant="text" size="small" @click="() => openUploadDialog(row)">重新上传</t-button>
             <t-popconfirm content="确定删除该视频？" @confirm="() => deleteVideo(row)">
@@ -175,10 +184,37 @@
       <div class="player-wrap">
         <video ref="playerRef" class="player-video" controls autoplay playsinline />
         <div v-if="playLoading" class="player-loading">正在加载视频…</div>
+        <div v-if="qualityLevels.length > 0" class="player-quality">
+          <span class="player-quality-label">清晰度：</span>
+          <button
+            class="quality-btn"
+            :class="{ active: currentQuality === -1 }"
+            @click="switchQuality(-1)"
+          >自动</button>
+          <button
+            v-for="lv in qualityLevels"
+            :key="lv.value"
+            class="quality-btn"
+            :class="{ active: currentQuality === lv.value }"
+            @click="switchQuality(lv.value)"
+          >{{ lv.label }}</button>
+        </div>
         <t-alert
           v-if="!playingCanWatchFull && playingTitle"
           theme="warning"
           :message="`试看模式：前 ${playingTrialSeconds || 30} 秒可观看，VIP/购买后解锁完整版`"
+          class="player-tip"
+        />
+        <t-alert
+          v-else-if="playingCanWatchFull && playingMode === 'trial'"
+          theme="info"
+          :message="`管理员视角（试看路径）：仍能播完整版，仅用于验证试看链路`"
+          class="player-tip"
+        />
+        <t-alert
+          v-else-if="playingCanWatchFull && playingMode === 'full'"
+          theme="success"
+          :message="`管理员视角（完整版）：已开启 master.m3u8 多码率，可在清晰度按钮切换`"
           class="player-tip"
         />
       </div>
@@ -325,7 +361,11 @@ async function deleteVideo(video: Video) {
   }
 }
 
-function playVideo(video: Video) {
+/**
+ * 打开播放弹窗。
+ * @param mode 'trial' 试看；'full' VIP 完整版（仅 admin 实际能拿到 master.m3u8，普通用户走后端 GetPlayInfo 仍返回 trial）
+ */
+function playVideo(video: Video, mode: 'trial' | 'full' = 'trial') {
   videoApi
     .playInfo(video.id!)
     .then((info: any) => {
@@ -333,8 +373,8 @@ function playVideo(video: Video) {
         playingTitle.value = info.title || video.title || '';
         playingTrialSeconds.value = info.trialSeconds || 0;
         playingCanWatchFull.value = !!info.canWatchFull;
+        playingMode.value = mode;
         playDialogVisible.value = true;
-        // 等弹窗渲染出 video 元素后再加载
         nextTick(() => initPlayer(info.m3u8Url));
       } else {
         MessagePlugin.warning('暂无播放地址');
@@ -350,15 +390,28 @@ const playDialogVisible = ref(false);
 const playingTitle = ref('');
 const playingTrialSeconds = ref(0);
 const playingCanWatchFull = ref(true);
+const playingMode = ref<'trial' | 'full'>('trial');
+// 清晰度档位列表（hls.js 解析 master.m3u8 后填入）
+const qualityLevels = ref<Array<{ label: string; value: number; height: number }>>([]);
+const currentQuality = ref<number>(-1); // -1 = 自动
 const playLoading = ref(false);
 const playerRef = ref<HTMLVideoElement | null>(null);
 let hls: Hls | null = null;
+
+/** 手动切换清晰度。value = -1 表示恢复自动（hls.js 按带宽自适应）。 */
+function switchQuality(value: number) {
+  if (!hls) return;
+  currentQuality.value = value;
+  hls.currentLevel = value; // -1 自动；>=0 强制该档
+}
 
 function initPlayer(url: string) {
   destroyPlayer();
   const videoEl = playerRef.value;
   if (!videoEl) return;
   playLoading.value = true;
+  qualityLevels.value = [];
+  currentQuality.value = -1;
 
   if (Hls.isSupported()) {
     hls = new Hls();
@@ -366,6 +419,12 @@ function initPlayer(url: string) {
     hls.attachMedia(videoEl);
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
       playLoading.value = false;
+      // master.m3u8 解析后填入档位列表
+      qualityLevels.value = (hls?.levels || []).map((lvl, idx) => ({
+        label: `${lvl.height || '?'}p`,
+        value: idx,
+        height: lvl.height || 0,
+      }));
       videoEl.play().catch(() => {});
     });
     hls.on(Hls.Events.ERROR, (_e, data) => {
@@ -593,5 +652,40 @@ onMounted(() => {
 
 .player-tip {
   margin-top: 10px;
+}
+
+.player-quality {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 4px;
+  flex-wrap: wrap;
+}
+
+.player-quality-label {
+  color: var(--td-text-color-secondary);
+  font-size: 13px;
+  margin-right: 4px;
+}
+
+.quality-btn {
+  background: var(--td-bg-color-component);
+  border: 1px solid var(--td-component-border);
+  color: var(--td-text-color-primary);
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.quality-btn:hover {
+  background: var(--td-bg-color-component-hover);
+}
+
+.quality-btn.active {
+  background: var(--brand-color, #0052d9);
+  color: #fff;
+  border-color: var(--brand-color, #0052d9);
 }
 </style>

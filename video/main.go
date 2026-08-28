@@ -10,6 +10,8 @@ import (
 	"video/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	// 复用公共模块的鉴权中间件，video 不再自己实现 Token 解析
 	pkgmiddleware "local/pkg/middleware"
 )
@@ -54,6 +56,17 @@ func main() {
 	}
 	fmt.Println("✓ MinIO 连接成功")
 
+	// 5.5 创建 MinIO Core + 分片上传器（切片上传/断点续传，复用 IM 已验证的 Multipart 方案）
+	minioCore, err := minio.NewCore(cfg.MinIO.Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.MinIO.AccessKeyID, cfg.MinIO.SecretAccessKey, ""),
+		Secure: cfg.MinIO.UseSSL,
+	})
+	if err != nil {
+		log.Fatalf("初始化 MinIO Core 失败: %v", err)
+	}
+	chunkUploader := repository.NewChunkUploader(minioCore, minioClient, redisClient, db, cfg.MinIO, cfg.Retry)
+	fmt.Println("✓ 分片上传器初始化成功")
+
 	// 6. 初始化仓库
 	minioRepo := repository.NewMinioRepository(minioClient, &cfg.MinIO)
 	repos, err := repository.NewRepositories(db, minioRepo)
@@ -64,7 +77,7 @@ func main() {
 
 	// 7. 初始化服务
 	courseService := service.NewCourseService(repos)
-	videoService := service.NewVideoService(repos, cfg)
+	videoService := service.NewVideoService(repos, cfg, chunkUploader)
 	danmakuHub := service.NewDanmakuHub(repos, redisClient, cfg)
 	// 初始化直播服务：LiveHub 负责实时聊天，LiveService 负责直播间业务与 ZLMediaKit 信令
 	liveHub := service.NewLiveHub(repos, redisClient, cfg)
@@ -118,10 +131,26 @@ func main() {
 			video.DELETE("/:id", videoHandler.DeleteVideo)
 			video.GET("/:id", videoHandler.GetVideo)
 			video.GET("/course/:courseId", videoHandler.ListByCourse)
+
+			// 分片上传（切片上传 + 断点续传）
+			video.POST("/chunk/init", videoHandler.InitChunkUpload)
+			video.POST("/chunk/upload", videoHandler.UploadChunk)
+			video.GET("/chunk/progress", videoHandler.ChunkProgress)
+			video.POST("/chunk/complete", videoHandler.CompleteChunkUpload)
+			video.POST("/chunk/abort", videoHandler.AbortChunkUpload)
 		}
 
 		// 播放接口（可选登录，未登录只能试看）
 		api.GET("/play/:id", middleware.OptionalAuth(cfg.AES.Key), videoHandler.PlayInfo)
+
+		// HLS AES-128 解密密钥下发。
+		// 播放器拉取 m3u8 里的 EXT-X-KEY URI 时不带 Authorization header，
+		// 因此放在鉴权组之外；安全依赖 keyId 随机不可枚举 + m3u8 预签名 URL。
+		api.GET("/key/:keyId", videoHandler.GetPlayKey)
+
+		// m3u8 代理：浏览器拉 m3u8 时走 video 服务，video 服务会把每个 .ts 替换成 presigned URL。
+		// 不走 MinIO 原始 m3u8 URL（ts 相对路径没签名，浏览器会 AccessDenied）。
+		api.GET("/m3u8/:id/:kind", videoHandler.ProxyM3U8)
 
 		// 用户权限绑定（管理接口）
 		api.POST("/permission/bind", authMiddleware.HandlerFunc(""), courseHandler.BindUserPermission)

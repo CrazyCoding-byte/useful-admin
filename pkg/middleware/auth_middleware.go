@@ -44,7 +44,7 @@ func (m *AuthMiddleware) HandlerFunc(token string) gin.HandlerFunc {
 			return
 		}
 
-		userId, username, err := utils.ParseAndVerifyToken(token, m.aeskey)
+		userId, username, _, err := utils.ParseAndVerifyTokenWithAuthorities(token, m.aeskey)
 		if err != nil {
 			log.Printf("Token解析失败: %v", err)
 			c.JSON(http.StatusUnauthorized, gin.H{"code": 401, "message": err.Error()})
@@ -55,6 +55,7 @@ func (m *AuthMiddleware) HandlerFunc(token string) gin.HandlerFunc {
 
 		c.Set("user_id", userId)
 		c.Set("username", username)
+		// 暂存 authorities（handler 内会再次解析拿 authorities；这里为兼容老调用方暂不存）
 		c.Next()
 	}
 }
@@ -103,6 +104,30 @@ func GetUsername(c *gin.Context) string {
 	return s
 }
 
+// GetAuthorities 从 Gin 上下文中获取当前用户角色列表（OptionalAuth 中间件设置）。
+// 用于服务按角色做权限 bypass，例如 admin 角色直接给完整版视频。
+func GetAuthorities(c *gin.Context) []string {
+	v, exists := c.Get("authorities")
+	if !exists {
+		return nil
+	}
+	arr, ok := v.([]string)
+	if !ok {
+		return nil
+	}
+	return arr
+}
+
+// IsAdmin 判定当前用户是否包含 admin 角色（兼容 "admin" 和 "ROLE_admin"）。
+func IsAdmin(c *gin.Context) bool {
+	for _, a := range GetAuthorities(c) {
+		if a == "admin" || a == "ROLE_admin" {
+			return true
+		}
+	}
+	return false
+}
+
 // OptionalAuth 可选鉴权中间件。
 // 如果请求带了合法 Token，则解析并设置用户信息；未携带或非法也不拦截，继续执行。
 func OptionalAuth(aesKey string) gin.HandlerFunc {
@@ -118,10 +143,11 @@ func OptionalAuth(aesKey string) gin.HandlerFunc {
 			}
 		}
 		if token != "" {
-			userId, username, err := utils.ParseAndVerifyToken(token, aesKey)
+			userId, username, authorities, err := utils.ParseAndVerifyTokenWithAuthorities(token, aesKey)
 			if err == nil {
 				c.Set("user_id", userId)
 				c.Set("username", username)
+				c.Set("authorities", authorities)
 			}
 		}
 		c.Next()

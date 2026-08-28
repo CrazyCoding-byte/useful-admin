@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -337,8 +338,13 @@ func (s *VideoService) getVideoDuration(filePath string) (float64, error) {
 }
 
 // GetPlayInfo 获取视频播放信息。
-// 如果课程免费、用户已购买、或用户是有效会员，返回完整版 m3u8；否则返回试看版 m3u8。
-func (s *VideoService) GetPlayInfo(videoID uint64, userID uint64) (map[string]any, error) {
+// GetPlayInfo 获取播放信息。
+// 如果课程免费、用户已购买、用户是有效会员，或用户是管理员角色，返回完整版 m3u8；否则返回试看版。
+//
+// 管理员 bypass 规则：isAdmin=true 时无视课程付费/会员/购买状态，直接 canWatchFull=true。
+// 这样 useful-admin 后台点播放永远拿到完整版（方便验证多码率 + 加密 + 转码全链路），
+// 而普通用户在小程序/web 端走原有权限链路。
+func (s *VideoService) GetPlayInfo(videoID uint64, userID uint64, isAdmin bool) (map[string]any, error) {
 	video, err := s.repos.VideoRepo.GetByID(videoID)
 	if err != nil {
 		return nil, err
@@ -348,10 +354,10 @@ func (s *VideoService) GetPlayInfo(videoID uint64, userID uint64) (map[string]an
 		return nil, err
 	}
 
-	// 免费课程直接放行
-	canWatchFull := course.IsFree
+	// 管理员或免费课程：直接放行完整版
+	canWatchFull := course.IsFree || isAdmin
 	// 已登录且非免费课程，再判断会员/购买
-	if userID > 0 && !canWatchFull {
+	if !isAdmin && !canWatchFull && userID > 0 {
 		canWatchFull, err = s.repos.PermissionRepo.CanWatchFull(userID, course)
 		if err != nil {
 			return nil, err
@@ -368,28 +374,94 @@ func (s *VideoService) GetPlayInfo(videoID uint64, userID uint64) (map[string]an
 		keyID = video.TrialKeyID
 	}
 
-	// 生成 MinIO 预签名 URL，有效期 2 小时
-	ctx := context.Background()
-	m3u8URL, err := s.repos.MinioRepo.PresignedGetURL(ctx, m3u8Object, 2*time.Hour)
-	if err != nil {
-		return nil, err
-	}
-
+	// m3u8Url 走 video 服务的代理端点（不走 MinIO presigned），
+	// 因为 m3u8 里的 ts 切片是 ffmpeg 生成的相对路径，浏览器用 m3u8 base URL
+	// 解析出来的 ts 没带 X-Amz- 签名，MinIO 会拒绝。
+	// 代理端点会把每个 ts 替换成独立 presigned URL 后返回给浏览器。
 	return map[string]any{
 		"videoId":      video.ID,
 		"title":        video.Title,
 		"duration":     video.Duration,
 		"trialSeconds": video.TrialSeconds,
 		"canWatchFull": canWatchFull,
-		"m3u8Url":      m3u8URL,
+		"m3u8Url":      s.m3u8ProxyURL(video.ID, m3u8Object),
 		"keyId":        keyID,
 	}, nil
+}
+
+// m3u8ProxyURL 构造 video 服务自己的 m3u8 代理 URL（不走 MinIO presigned）。
+// kind 是 m3u8 文件前缀（不含 .m3u8），例如 "master" / "trial" / "full_1080"。
+func (s *VideoService) m3u8ProxyURL(videoID uint64, m3u8Object string) string {
+	// 从完整 objectKey 提取文件名前缀（如 "course/1/video/17/master.m3u8" → "master"）
+	name := m3u8Object[strings.LastIndex(m3u8Object, "/")+1:]
+	prefix := strings.TrimSuffix(name, ".m3u8")
+	return fmt.Sprintf("%s/api/video/m3u8/%d/%s", s.server.BaseURL, videoID, prefix)
 }
 
 // GetTsUrl 获取 ts 切片的预签名 URL（可选，用于更严格鉴权场景）。
 func (s *VideoService) GetTsUrl(objectName string) (string, error) {
 	ctx := context.Background()
 	return s.repos.MinioRepo.PresignedGetURL(ctx, objectName, 2*time.Hour)
+}
+
+// ProxyM3U8 读取 m3u8 文件内容，把里面每个 .ts 切片替换成独立的 presigned URL，
+// 把每个 .m3u8 子清单（master.m3u8 里的 full_1080.m3u8 之类）替换为 video 服务的代理 URL（递归）。
+//
+// 为什么需要这个代理：ffmpeg 生成的 m3u8 内部 ts 用相对路径，浏览器解析时不会继承
+// m3u8 URL 的查询参数（X-Amz- 签名），导致 ts 请求被 MinIO 拒绝（AccessDenied）。
+// 改为由 video 服务代理：拉 m3u8 内容 → 正则替换每个 .ts 为带签名的绝对 URL，
+// 把每个子 m3u8 也指向 video 代理（递归）→ 返回给浏览器。
+//
+// kind 是 m3u8 文件名前缀（不含 .m3u8），允许值：master / trial / full_1080 / full_720 / full_480。
+func (s *VideoService) ProxyM3U8(videoID uint64, kind string) (string, error) {
+	video, err := s.repos.VideoRepo.GetByID(videoID)
+	if err != nil {
+		return "", fmt.Errorf("视频不存在: %w", err)
+	}
+	if video.Status != 1 {
+		return "", fmt.Errorf("视频尚未转码完成")
+	}
+
+	// 白名单校验，避免任意路径拼接
+	allowed := map[string]bool{
+		"master":     true,
+		"trial":      true,
+		"full_1080":  true,
+		"full_720":   true,
+		"full_480":   true,
+	}
+	if !allowed[kind] {
+		return "", fmt.Errorf("不支持的 m3u8 类型: %s", kind)
+	}
+	m3u8Object := video.HlsPath + kind + ".m3u8"
+
+	ctx := context.Background()
+	body, err := s.repos.MinioRepo.DownloadObject(ctx, m3u8Object)
+	if err != nil {
+		return "", fmt.Errorf("读取 m3u8 失败: %w", err)
+	}
+
+	prefix := video.HlsPath
+	// 子 m3u8 路径 → 指向 video 服务代理（递归），保证下一级 m3u8 也走 video 注入 ts 签名
+	re := regexp.MustCompile(`(?m)^([^#\s]+\.m3u8)\s*$`)
+	bodyStr := re.ReplaceAllStringFunc(string(body), func(line string) string {
+		rel := strings.TrimSpace(line)
+		childName := strings.TrimSuffix(rel, ".m3u8")
+		return fmt.Sprintf("%s/api/video/m3u8/%d/%s", s.server.BaseURL, videoID, childName)
+	})
+
+	// ts 切片 → MinIO presigned URL（2 小时）
+	tsRe := regexp.MustCompile(`(?m)^([^#\s]+\.ts)\s*$`)
+	signed := tsRe.ReplaceAllStringFunc(bodyStr, func(line string) string {
+		rel := strings.TrimSpace(line)
+		fullObj := prefix + rel
+		u, err := s.repos.MinioRepo.PresignedGetURL(ctx, fullObj, 2*time.Hour)
+		if err != nil {
+			return line
+		}
+		return u
+	})
+	return signed, nil
 }
 
 // -------------------------- HLS AES-128 加密密钥 --------------------------

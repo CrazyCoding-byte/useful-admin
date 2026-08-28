@@ -124,6 +124,8 @@ func (h *VideoHandler) ListByCourse(c *gin.Context) {
 //
 //	该接口使用可选鉴权中间件。未登录用户 userID=0，只能试看；
 //	已登录用户根据会员/购买情况返回完整版或试看版 m3u8 预签名 URL。
+//	m3u8Url 是 video 服务自己的代理地址（/api/video/m3u8/:id/:kind），
+//	不走 MinIO presigned，因为 m3u8 内 ts 是相对路径，浏览器解析不到签名会 AccessDenied。
 func (h *VideoHandler) PlayInfo(c *gin.Context) {
 	videoID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -131,12 +133,32 @@ func (h *VideoHandler) PlayInfo(c *gin.Context) {
 		return
 	}
 	userID, _ := middleware.GetUserID(c)
-	info, err := h.service.GetPlayInfo(videoID, userID)
+	isAdmin := middleware.IsAdmin(c)
+	info, err := h.service.GetPlayInfo(videoID, userID, isAdmin)
 	if err != nil {
 		c.JSON(http.StatusOK, model.Fail(err.Error()))
 		return
 	}
 	c.JSON(http.StatusOK, model.Success(info))
+}
+
+// ProxyM3U8 代理 m3u8 请求：拉 MinIO 原始 m3u8，把每个 .ts / .m3u8 相对路径替换成带签名的绝对 URL 后返回。
+// 路由：GET /api/video/m3u8/:id/:kind   kind = full | trial
+func (h *VideoHandler) ProxyM3U8(c *gin.Context) {
+	videoID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.String(http.StatusBadRequest, "ID 错误")
+		return
+	}
+	kind := c.Param("kind")
+	body, err := h.service.ProxyM3U8(videoID, kind)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.Header("Content-Type", "application/vnd.apple.mpegurl")
+	c.Header("Cache-Control", "no-store")
+	c.String(http.StatusOK, body)
 }
 
 // GetPlayKey 下发 HLS AES-128 解密密钥（16 字节原始数据）。

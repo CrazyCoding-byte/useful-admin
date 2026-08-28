@@ -80,16 +80,42 @@ func IsWebsocketRequest(c *gin.Context) bool {
 	return strings.Contains(strings.ToLower(c.GetHeader("Upgrade")), "websocket")
 }
 
-// OptionalAuth 返回一个“可选鉴权”中间件。
+// IsAdmin 判定当前用户是否包含 admin 角色（兼容 "admin" 和 "ROLE_admin"）。
+// 角色列表在 OptionalAuth 解析时从 JWT 的 authorities claim 解密后写入 context。
+// 用于 video 服务让管理员账号天然 bypass 付费/会员/购买权限（方便后台验证完整版）。
+func IsAdmin(c *gin.Context) bool {
+	for _, a := range GetAuthorities(c) {
+		if a == "admin" || a == "ROLE_admin" {
+			return true
+		}
+	}
+	return false
+}
+
+// GetAuthorities 从 Gin 上下文中获取当前用户角色列表。
+// 未登录或 OptionalAuth 解析失败时返回 nil。
+func GetAuthorities(c *gin.Context) []string {
+	v, ok := c.Get("authorities")
+	if !ok {
+		return nil
+	}
+	arr, ok := v.([]string)
+	if !ok {
+		return nil
+	}
+	return arr
+}
+
+// OptionalAuth 返回一个"可选鉴权"中间件。
 //
 // 使用场景：
 //
 //	视频播放、直播观看等接口允许游客访问，但如果用户已登录，
-//	则解析 Token 并把 user_id/username 写入上下文，用于后续个性化推荐或权限判断。
+//	则解析 Token 并把 user_id/username/authorities 写入上下文，用于后续个性化推荐或权限判断。
 //
 // 实现：
 //
-//	直接调用公共模块的 ParseAndVerifyToken 解析 RSA+AES Token；
+//	直接调用公共模块的 ParseAndVerifyTokenWithAuthorities 解析 RSA+AES Token；
 //	解析失败时不中断请求，只是不设置用户信息。
 func OptionalAuth(aesKey string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -108,8 +134,8 @@ func OptionalAuth(aesKey string) gin.HandlerFunc {
 			return
 		}
 
-		// 调用公共模块的解析方法：RSA 验签 + AES 解密 user_id/username
-		userID, username, err := pkgutils.ParseAndVerifyToken(tokenStr, aesKey)
+		// 调用公共模块的解析方法：RSA 验签 + AES 解密 user_id/username/authorities
+		userID, username, authorities, err := pkgutils.ParseAndVerifyTokenWithAuthorities(tokenStr, aesKey)
 		if err != nil {
 			// 可选鉴权：解析失败也放行，只是当成游客
 			c.Next()
@@ -118,6 +144,7 @@ func OptionalAuth(aesKey string) gin.HandlerFunc {
 
 		c.Set("user_id", userID)
 		c.Set("username", username)
+		c.Set("authorities", authorities)
 		c.Next()
 	}
 }

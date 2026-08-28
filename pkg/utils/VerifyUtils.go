@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -53,16 +54,28 @@ func VerifyToken(tokenStr string, pubKey *rsa.PublicKey) (jwt.MapClaims, error) 
 //     适配 Windows/Linux 与不同部署目录；
 //   - 同一 Token 只解析一次签名，复用 claims，避免重复 jwt.Parse 带来的不一致风险。
 func ParseAndVerifyToken(tokenStr, aesKey string) (userID, username string, err error) {
+	uid, uname, _, err := parseAndVerifyToken(tokenStr, aesKey)
+	return uid, uname, err
+}
+
+// ParseAndVerifyTokenWithAuthorities 同 ParseAndVerifyToken，但额外返回解密后的 authorities（角色权限列表）。
+// 用于需要按角色（admin/普通用户）做不同处理的场景，例如 video 服务的管理员权限 bypass。
+func ParseAndVerifyTokenWithAuthorities(tokenStr, aesKey string) (userID, username string, authorities []string, err error) {
+	return parseAndVerifyToken(tokenStr, aesKey)
+}
+
+// parseAndVerifyToken 内部实现，返回解密后的 authorities。
+func parseAndVerifyToken(tokenStr, aesKey string) (userID, username string, authorities []string, err error) {
 	// 1. 加载公钥（路径自动解析，不再依赖硬编码绝对路径）
 	key, err := LoadPublicKey(resolvePublicKeyPath())
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
 	// 2. 一次性完成 RSA 签名校验 + claims 提取
 	claims, err := VerifyToken(tokenStr, key)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
 	// Spring Security OAuth 会把 additionalInformation 合并到 JWT 顶层；
@@ -78,11 +91,11 @@ func ParseAndVerifyToken(tokenStr, aesKey string) (userID, username string, err 
 		encryptedUid, ok = encryptedClaim(additionalInfo, "id")
 	}
 	if !ok {
-		return "", "", fmt.Errorf("JWT 中缺少 u_id/id 字段，实际类型: u_id=%T, id=%T", additionalInfo["u_id"], additionalInfo["id"])
+		return "", "", nil, fmt.Errorf("JWT 中缺少 u_id/id 字段，实际类型: u_id=%T, id=%T", additionalInfo["u_id"], additionalInfo["id"])
 	}
 	uid, err := AesDecrypt(encryptedUid, aesKey)
 	if err != nil {
-		return "", "", fmt.Errorf("解密 u_id 失败: %v", err)
+		return "", "", nil, fmt.Errorf("解密 u_id 失败: %v", err)
 	}
 
 	// 解密 username
@@ -92,14 +105,66 @@ func ParseAndVerifyToken(tokenStr, aesKey string) (userID, username string, err 
 		encryptedUsername, ok = encryptedClaim(additionalInfo, "username")
 	}
 	if !ok {
-		return "", "", fmt.Errorf("JWT 中缺少 userName/username 字段，实际类型: userName=%T, username=%T", additionalInfo["userName"], additionalInfo["username"])
+		return "", "", nil, fmt.Errorf("JWT 中缺少 userName/username 字段，实际类型: userName=%T, username=%T", additionalInfo["userName"], additionalInfo["username"])
 	}
 	uname, err := AesDecrypt(encryptedUsername, aesKey)
 	if err != nil {
-		return "", "", fmt.Errorf("解密 username 失败: %v", err)
+		return "", "", nil, fmt.Errorf("解密 username 失败: %v", err)
 	}
 
-	return uid, uname, nil
+	// 解密 authorities（角色权限列表）。Java auth-server 写入的是 AES 加密的 JSON 字符串。
+	// 拿不到 / 解密失败不算致命错误，降级为空列表（按普通用户处理）。
+	if encAuth, ok := encryptedClaim(additionalInfo, "authorities"); ok && encAuth != "" {
+		plain, decErr := AesDecrypt(encAuth, aesKey)
+		if decErr == nil {
+			authorities = parseAuthoritiesJSON(plain)
+		}
+	}
+
+	return uid, uname, authorities, nil
+}
+
+// parseAuthoritiesJSON 解析 Java 端 AES 加密前的 authorities JSON 字符串。
+// 兼容两种格式：
+//  1) ["admin", "ROLE_user"]   标准 JSON 数组
+//  2) [{"authority": "admin"}] Spring Security GrantedAuthority 反序列化格式
+func parseAuthoritiesJSON(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	// 用最轻量的解析：去掉方括号，按引号切分，简单识别 "admin" / "ROLE_admin"。
+	// 不引入 encoding/json 依赖（避免循环 import 风险）。
+	var out []string
+	parts := strings.Split(s, ",")
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		p = strings.Trim(p, "[")
+		p = strings.Trim(p, "]")
+		p = strings.Trim(p, "{")
+		p = strings.Trim(p, "}")
+		// 提取 "xxx" 之间的内容
+		if i := strings.Index(p, "\""); i >= 0 {
+			p = p[i+1:]
+			if j := strings.Index(p, "\""); j >= 0 {
+				p = p[:j]
+			}
+		}
+		// 提取 "authority":"xxx" 里的 xxx
+		if k := strings.Index(p, "authority"); k >= 0 {
+			rest := p[k+len("authority"):]
+			rest = strings.TrimLeft(rest, ": ")
+			rest = strings.Trim(rest, "\"")
+			if j := strings.Index(rest, "\""); j >= 0 {
+				rest = rest[:j]
+			}
+			p = rest
+		}
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // encryptedClaim 读取 Java auth-server 写入的 AES 密文。

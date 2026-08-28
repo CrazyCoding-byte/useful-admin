@@ -52,6 +52,16 @@ func (r *MinioRepository) Download(ctx context.Context, objectName string) (*min
 	return r.client.GetObject(ctx, r.bucket, objectName, minio.GetObjectOptions{})
 }
 
+// DownloadObject 把对象完整读到内存返回 []byte（适合 m3u8/小文件这种整文件读的场景）。
+func (r *MinioRepository) DownloadObject(ctx context.Context, objectName string) ([]byte, error) {
+	obj, err := r.Download(ctx, objectName)
+	if err != nil {
+		return nil, err
+	}
+	defer obj.Close()
+	return io.ReadAll(obj)
+}
+
 // PresignedGetURL 生成一个带签名的临时下载 URL，有效期由 expiry 参数指定。
 // 前端/小程序拿到该 URL 后可直接访问 MinIO 下载视频或 HLS 切片，无需再次经过 video 服务。
 func (r *MinioRepository) PresignedGetURL(ctx context.Context, objectName string, expiry time.Duration) (string, error) {
