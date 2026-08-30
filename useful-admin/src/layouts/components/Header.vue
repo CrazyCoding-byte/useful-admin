@@ -61,7 +61,7 @@
       </template>
     </t-head-menu>
     <!-- 面包屑 -->
-    <div class="breadcrumb-container" style="padding: 0 24px; border-bottom: 1px solid var(--td-border-level-1-color); background-color: var(--td-bg-color-container); height: 40px; display: flex; align-items: center;">
+    <div class="breadcrumb-container">
       <l-breadcrumb />
     </div>
   </div>
@@ -86,8 +86,8 @@ const userStore = useUserStore();
 
 const props = defineProps({
   theme: {
-    type: String,
-    default: '',
+    type: String as PropType<'light' | 'dark'>,
+    default: 'dark',
   },
   layout: {
     type: String,
@@ -119,7 +119,7 @@ const router = useRouter();
 const settingStore = useSettingStore();
 
 const currentUserName = computed(() => {
-  return userStore.userInfo?.name || '未登录';
+  return (userStore.userInfo as { name?: string })?.name || '未登录';
 });
 
 const toggleSettingPanel = () => {
@@ -261,10 +261,6 @@ const navToHelper = () => {
 }
 
 .breadcrumb-container {
-  padding: 0 24px;
-  border-bottom: 1px solid var(--td-border-level-1-color);
-  background-color: var(--td-bg-color-container);
-  height: 40px;
   display: flex;
   align-items: center;
 }
@@ -280,7 +276,7 @@ const navToHelper = () => {
 }
 
 :deep(.t-head-menu__inner) {
-  border-bottom: 1px solid var(--td-border-level-1-color);
+  border-bottom: 0;
 }
 
 .t-menu--light {
@@ -290,7 +286,7 @@ const navToHelper = () => {
 }
 .t-menu--dark {
   .t-head-menu__inner {
-    border-bottom: 1px solid var(--td-gray-color-10);
+    border-bottom: 0;
   }
   .header-user-account {
     color: rgba(255, 255, 255, 0.55);

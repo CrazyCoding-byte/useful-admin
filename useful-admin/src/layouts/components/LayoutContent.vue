@@ -1,15 +1,10 @@
 <template>
   <t-layout :class="`${prefix}-layout`">
-    <!-- 🔥 调试：显示标签页状态 -->
-    <div v-if="settingStore.isUseTabsRouter" style="background: yellow; padding: 5px;">
-      isUseTabsRouter: {{ settingStore.isUseTabsRouter }}, tabRouters数量: {{ tabRouters.length }}
-    </div>
     <t-tabs
       v-if="settingStore.isUseTabsRouter"
       theme="card"
       :class="`${prefix}-layout-tabs-nav`"
       :value="$route.path"
-      :style="{ position: 'sticky', top: 0, width: '100%' }"
       @change="handleChangeCurrentTab"
       @remove="handleRemove"
     >
@@ -77,7 +72,6 @@ import { prefix } from '@/config/global';
 import type { TRouterInfo } from '@/types/interface';
 
 import LContent from './Content.vue';
-import LBreadcrumb from './Breadcrumb.vue';
 import LFooter from './Footer.vue';
 
 const route = useRoute();

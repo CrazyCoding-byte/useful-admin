@@ -62,24 +62,28 @@ func (s *CourseService) DeleteChapter(id uint64) error {
 	return s.repos.ChapterRepo.Delete(id)
 }
 
-// ListChapters 查询某课程下的所有章节。
-func (s *CourseService) ListChapters(courseID uint64) ([]model.CourseChapter, error) {
-	return s.repos.ChapterRepo.ListByCourse(courseID)
+// ListChapters 查询某课程下指定父章节的子章节（parentID=0 表示顶层章节）。
+func (s *CourseService) ListChapters(courseID, parentID uint64) ([]model.CourseChapter, error) {
+	return s.repos.ChapterRepo.ListByCourseAndParent(courseID, parentID)
 }
 
-// CourseDetail 查询课程详情，包含课程基本信息、章节列表和视频列表。
+// CourseDetail 查询课程详情，包含课程基本信息、章节树和视频列表。
 //
 // 返回结构：
 //
 //	{
 //	  "course": { ... },
 //	  "chapters": [
-//	    { "id": 1, "title": "第一章", "videos": [ ... ] },
-//	    ...
+//	    {
+//	      "id": 1,
+//	      "title": "第一章",
+//	      "children": [ { "id": 2, "title": "1.1 节", "children": [], "videos": [ ... ] } ],
+//	      "videos": [ ... ]
+//	    }
 //	  ]
 //	}
 //
-// 前端拿到后可直接按章节渲染课程大纲。
+// 章节支持 parent_id 自引用，这里按 parent_id 组织成树；parent_id=0 的节点为顶层。
 func (s *CourseService) CourseDetail(courseID uint64) (map[string]any, error) {
 	course, err := s.repos.CourseRepo.GetByID(courseID)
 	if err != nil {
@@ -94,25 +98,51 @@ func (s *CourseService) CourseDetail(courseID uint64) (map[string]any, error) {
 		return nil, err
 	}
 
-	// 按章节 ID 把视频分组，便于前端按章节展示
+	// 按章节 ID 把视频分组
 	videoMap := make(map[uint64][]model.CourseVideo)
 	for _, v := range videos {
 		videoMap[v.ChapterID] = append(videoMap[v.ChapterID], v)
 	}
 
-	chapterList := make([]map[string]any, 0, len(chapters))
-	for _, ch := range chapters {
-		chapterList = append(chapterList, map[string]any{
-			"id":     ch.ID,
-			"title":  ch.Title,
-			"videos": videoMap[ch.ID],
-		})
-	}
+	// 把章节列表构建成树
+	tree := buildChapterTree(chapters, videoMap)
 
 	return map[string]any{
 		"course":   course,
-		"chapters": chapterList,
+		"chapters": tree,
 	}, nil
+}
+
+// buildChapterTree 把扁平的章节列表按 parent_id 组织成树。
+func buildChapterTree(chapters []model.CourseChapter, videoMap map[uint64][]model.CourseVideo) []map[string]any {
+	nodeMap := make(map[uint64]map[string]any, len(chapters))
+	for _, ch := range chapters {
+		nodeMap[ch.ID] = map[string]any{
+			"id":        ch.ID,
+			"courseId":  ch.CourseID,
+			"parentId":  ch.ParentID,
+			"title":     ch.Title,
+			"sortOrder": ch.SortOrder,
+			"children":  make([]map[string]any, 0),
+			"videos":    videoMap[ch.ID],
+		}
+	}
+
+	var roots []map[string]any
+	for _, ch := range chapters {
+		node := nodeMap[ch.ID]
+		if ch.ParentID == 0 {
+			roots = append(roots, node)
+			continue
+		}
+		if parent, ok := nodeMap[ch.ParentID]; ok {
+			parent["children"] = append(parent["children"].([]map[string]any), node)
+		} else {
+			// 父节点不存在时降级为顶层，避免数据异常导致丢失
+			roots = append(roots, node)
+		}
+	}
+	return roots
 }
 
 // BindVip 给用户开通会员。

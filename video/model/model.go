@@ -47,13 +47,18 @@ type Course struct {
 }
 
 // CourseChapter 课程章节实体。
-// 一个课程下可以有多个章节，章节下再挂视频，形成“课程 -> 章节 -> 视频”三级结构。
+// 一个课程下可以有多个章节；章节支持 parent_id 自引用，可形成
+// “课程 -> 章 -> 节 -> 视频”多级结构；parent_id=0 表示顶层章节。
 type CourseChapter struct {
 	// ID 主键，自增。
 	ID uint64 `gorm:"primaryKey;autoIncrement" json:"id"`
 
 	// CourseID 所属课程 ID，建立索引加速按课程查询章节。
 	CourseID uint64 `gorm:"not null;index" json:"courseId"`
+
+	// ParentID 父章节 ID。0 表示顶层章节；非 0 表示该章节是另一个章节的子级
+	// （可用于表达“章 -> 节”或“合集 -> 分集”）。
+	ParentID uint64 `gorm:"default:0;index" json:"parentId"`
 
 	// Title 章节标题，必填。
 	Title string `gorm:"size:200;not null" json:"title"`

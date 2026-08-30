@@ -14,6 +14,22 @@ export const CONTRACT_TYPES = {
   SUPPLEMENT: 2,
 };
 
+// 合同状态下拉选项
+export const CONTRACT_STATUS_OPTIONS = [
+  { label: '审核失败', value: CONTRACT_STATUS.FAIL },
+  { label: '待审核', value: CONTRACT_STATUS.AUDIT_PENDING },
+  { label: '待履行', value: CONTRACT_STATUS.EXEC_PENDING },
+  { label: '履行中', value: CONTRACT_STATUS.EXECUTING },
+  { label: '已完成', value: CONTRACT_STATUS.FINISH },
+];
+
+// 合同类型下拉选项
+export const CONTRACT_TYPE_OPTIONS = [
+  { label: '主合同', value: CONTRACT_TYPES.MAIN },
+  { label: '子合同', value: CONTRACT_TYPES.SUB },
+  { label: '补充协议', value: CONTRACT_TYPES.SUPPLEMENT },
+];
+
 // 合同收付类型枚举
 export const CONTRACT_PAYMENT_TYPES = {
   PAYMENT: 0,

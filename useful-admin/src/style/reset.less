@@ -1,11 +1,37 @@
 // 对部分样式进行重置
 body {
   color: var(--td-text-color-secondary);
-  font-family: -apple-system, BlinkMacSystemFont, var(--td-font-family);
-  font: var(--td-font-body-medium);
+  font-family: Inter, 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   padding: 0;
   margin: 0;
+  background: var(--app-bg);
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+#app {
+  position: relative;
+  z-index: 1;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  background-image: linear-gradient(rgba(129, 191, 218, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(129, 191, 218, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+  z-index: 0;
 }
 
 pre {
@@ -67,4 +93,21 @@ a {
   &:last-child {
     margin-right: 0;
   }
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  color: #06131f;
+  background: var(--app-cyan);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--app-cyan);
+  outline-offset: 2px;
 }

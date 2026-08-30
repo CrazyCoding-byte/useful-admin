@@ -2,7 +2,7 @@ export default {
   showFooter: true,
   isSidebarCompact: false,
   showBreadcrumb: true,
-  mode: 'light',
+  mode: 'dark',
   layout: 'side',
   splitMenu: false,
   isFooterAside: false,

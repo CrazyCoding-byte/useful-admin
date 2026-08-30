@@ -134,7 +134,10 @@ func (h *VideoHandler) PlayInfo(c *gin.Context) {
 	}
 	userID, _ := middleware.GetUserID(c)
 	isAdmin := middleware.IsAdmin(c)
-	info, err := h.service.GetPlayInfo(videoID, userID, isAdmin)
+	// 管理后台的“播放”和“VIP 播放”共用此接口，通过 mode 明确请求试看或完整版。
+	// 普通用户即使传 full 也仍受后端权限判断约束，不能绕过购买校验。
+	mode := c.Query("mode")
+	info, err := h.service.GetPlayInfo(videoID, userID, isAdmin, mode)
 	if err != nil {
 		c.JSON(http.StatusOK, model.Fail(err.Error()))
 		return

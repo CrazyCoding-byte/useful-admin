@@ -5,9 +5,6 @@
         {{ item.title }}
       </t-breadcrumbItem>
     </t-breadcrumb>
-    <div style="font-size: 12px; color: #999; margin-left: 10px;">
-      路径: {{ route.path }}
-    </div>
   </div>
 </template>
 
@@ -18,9 +15,6 @@ import { useRoute } from 'vue-router';
 const route = useRoute();
 
 const crumbs = computed(() => {
-  console.log('[Breadcrumb] route:', route);
-  console.log('[Breadcrumb] route.matched:', route.matched);
-
   const pathArray = route.path.split('/');
   pathArray.shift();
 
@@ -38,7 +32,6 @@ const crumbs = computed(() => {
     return breadcrumbArray;
   }, []);
   
-  console.log('[Breadcrumb] breadcrumbs:', breadcrumbs);
   return breadcrumbs;
 });
 </script>

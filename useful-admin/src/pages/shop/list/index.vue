@@ -490,9 +490,4 @@ onMounted(() => {
     font-weight: 600;
   }
 }
-  .price-text {
-    color: #e34d59;
-    font-weight: 600;
-  }
-}
 </style>

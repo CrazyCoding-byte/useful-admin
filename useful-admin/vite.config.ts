@@ -74,6 +74,12 @@ export default ({ mode }: ConfigEnv): UserConfig => {
           target: 'http://127.0.0.1:9100/',
           changeOrigin: true,
         },
+        // 教学视频服务（Go 服务，独立于网关）
+        '/video': {
+          target: 'http://127.0.0.1:8890/',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/video/, ''),
+        },
         '/api': {
           target: 'http://127.0.0.1:9100/',
           changeOrigin: true,

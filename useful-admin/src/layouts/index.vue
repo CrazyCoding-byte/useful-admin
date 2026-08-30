@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="tdesign-starter-wrapper">
     <template v-if="setting.layout?.value === 'side'">
       <t-layout key="side" :class="mainLayoutCls">
         <t-aside :width="settingStore.isSidebarCompact ? '64px' : '232px'">
@@ -37,8 +37,6 @@ import LayoutContent from './components/LayoutContent.vue';
 import LayoutSideNav from './components/LayoutSideNav.vue';
 
 import { prefix } from '@/config/global';
-
-import '@/style/layout.less';
 
 const route = useRoute();
 const settingStore = useSettingStore();

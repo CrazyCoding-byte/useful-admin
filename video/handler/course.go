@@ -169,14 +169,16 @@ func (h *CourseHandler) DeleteChapter(c *gin.Context) {
 	c.JSON(http.StatusOK, model.Success(nil))
 }
 
-// ListChapter 查询某课程下的所有章节。
+// ListChapter 查询某课程下指定父章节的子章节。
+// 查询参数：parentId（默认 0，表示顶层章节）。
 func (h *CourseHandler) ListChapter(c *gin.Context) {
 	courseID, err := strconv.ParseUint(c.Param("courseId"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusOK, model.Fail("课程ID 错误"))
 		return
 	}
-	list, err := h.service.ListChapters(courseID)
+	parentID, _ := strconv.ParseUint(c.DefaultQuery("parentId", "0"), 10, 64)
+	list, err := h.service.ListChapters(courseID, parentID)
 	if err != nil {
 		c.JSON(http.StatusOK, model.Fail(err.Error()))
 		return

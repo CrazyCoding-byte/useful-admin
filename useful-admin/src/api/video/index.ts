@@ -15,12 +15,15 @@ export interface Course {
   status?: number; // 0下架 1上架
 }
 
-/** 章节 */
+/** 章节（支持 parentId 自引用，可表达章→节→视频多级结构） */
 export interface Chapter {
   id?: number;
   courseId: number;
+  parentId?: number; // 0=顶层章节
   title: string;
   sortOrder?: number;
+  children?: Chapter[]; // 树形结构时后端返回
+  videos?: Video[];     // course detail 返回时携带
 }
 
 /** 视频 */
@@ -54,8 +57,9 @@ export const courseApi = {
 };
 
 export const chapterApi = {
-  listByCourse: (courseId: number) =>
-    request.get({ url: `/video/api/video/chapter/course/${courseId}` }),
+  /** 查询某课程下指定父章节的子章节（默认 parentId=0，查顶层章节） */
+  listByCourse: (courseId: number, parentId = 0) =>
+    request.get({ url: `/video/api/video/chapter/course/${courseId}`, params: { parentId } }),
 
   create: (data: Chapter) => request.post({ url: '/video/api/video/chapter', data }),
 
@@ -78,7 +82,8 @@ export const videoApi = {
   remove: (id: number) => request.delete({ url: `/video/api/video/video/${id}` }),
 
   // 播放接口在 main.go 里是 api.GET("/play/:id")，路径不带额外 /video/
-  playInfo: (id: number) => request.get({ url: `/video/api/video/play/${id}` }),
+  playInfo: (id: number, mode?: 'trial' | 'full') =>
+    request.get({ url: `/video/api/video/play/${id}`, params: mode ? { mode } : undefined }),
 
   // ---------- 分片上传（都在 video 子组下） ----------
   /** 初始化分片上传 */

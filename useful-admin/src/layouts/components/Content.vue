@@ -41,12 +41,45 @@ const isRefreshing = computed(() => {
 });
 </script>
 <style lang="less" scoped>
-.fade-leave-active,
-.fade-enter-active {
-  transition: opacity @anim-duration-slow @anim-time-fn-easing;
+/*
+ * 路由切换过渡。
+ * 重要：本项目是 Vue 3，进入动画的"起始状态"类名必须是 .fade-enter-from。
+ * 原来沿用了 Vue 2 的 .fade-enter，在 Vue 3 中不会命中，导致新页面没有淡入起始态，
+ * 表现为切换时新页面"直接出来"、很生硬。这里修正为 -from 并补上轻微上浮位移。
+ */
+.fade-leave-active {
+  transition:
+    opacity 0.16s @anim-time-fn-ease-out,
+    transform 0.16s @anim-time-fn-ease-out;
 }
-.fade-enter,
+
+.fade-enter-active {
+  transition:
+    opacity 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fade-enter-from {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+}
+
 .fade-leave-to {
   opacity: 0;
+  transform: translate3d(0, -6px, 0);
+}
+
+/* 尊重系统"减少动态效果"设置 */
+@media (prefers-reduced-motion: reduce) {
+  .fade-leave-active,
+  .fade-enter-active {
+    transition-duration: 0.01ms;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    opacity: 1;
+    transform: none;
+  }
 }
 </style>

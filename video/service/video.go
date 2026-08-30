@@ -33,9 +33,9 @@ import (
 
 // VideoService 视频业务服务。
 type VideoService struct {
-	repos    *repository.Repositories // 数据仓库集合
-	cfg      *config.VideoConfig      // 视频相关配置（切片时长、试看秒数、工作目录等）
-	server   *config.ServerConfig     // 服务地址配置（用于拼接回调/播放地址）
+	repos    *repository.Repositories  // 数据仓库集合
+	cfg      *config.VideoConfig       // 视频相关配置（切片时长、试看秒数、工作目录等）
+	server   *config.ServerConfig      // 服务地址配置（用于拼接回调/播放地址）
 	uploader *repository.ChunkUploader // 分片上传器（复用 IM 已验证的 Multipart 方案）
 }
 
@@ -246,7 +246,11 @@ func (s *VideoService) transcode(video *model.CourseVideo) {
 			"-vf", fmt.Sprintf("scale=-2:%d", r.Height),
 			"-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
 			"-c:a", "aac", "-b:a", "128k",
+			// 各档使用相同的强制关键帧时间点，切换时才能保持音视频时间轴一致。
+			"-force_key_frames", fmt.Sprintf("expr:gte(t,n_forced*%s)", segmentTime),
+			"-sc_threshold", "0",
 			"-start_number", "0", "-hls_time", segmentTime, "-hls_list_size", "0",
+			"-hls_flags", "independent_segments",
 			"-hls_key_info_file", fullKeyInfo,
 			"-hls_segment_filename", filepath.Join(workDir, r.Name+"_%05d.ts"),
 			"-f", "hls", m3u8Path)
@@ -274,7 +278,10 @@ func (s *VideoService) transcode(video *model.CourseVideo) {
 		"-vf", "scale=-2:720",
 		"-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
 		"-c:a", "aac", "-b:a", "128k",
+		"-force_key_frames", fmt.Sprintf("expr:gte(t,n_forced*%s)", segmentTime),
+		"-sc_threshold", "0",
 		"-start_number", "0", "-hls_time", segmentTime, "-hls_list_size", "0",
+		"-hls_flags", "independent_segments",
 		"-hls_key_info_file", trialKeyInfo,
 		"-hls_segment_filename", filepath.Join(workDir, "trial_%05d.ts"),
 		"-f", "hls", trialM3u8Path)
@@ -341,10 +348,9 @@ func (s *VideoService) getVideoDuration(filePath string) (float64, error) {
 // GetPlayInfo 获取播放信息。
 // 如果课程免费、用户已购买、用户是有效会员，或用户是管理员角色，返回完整版 m3u8；否则返回试看版。
 //
-// 管理员 bypass 规则：isAdmin=true 时无视课程付费/会员/购买状态，直接 canWatchFull=true。
-// 这样 useful-admin 后台点播放永远拿到完整版（方便验证多码率 + 加密 + 转码全链路），
-// 而普通用户在小程序/web 端走原有权限链路。
-func (s *VideoService) GetPlayInfo(videoID uint64, userID uint64, isAdmin bool) (map[string]any, error) {
+// 管理员 bypass 规则：isAdmin=true 时无视课程付费/会员/购买状态，默认 canWatchFull=true。
+// 管理后台仍可通过 mode=trial 显式验证试看路径；普通用户在小程序/web 端走原有权限链路。
+func (s *VideoService) GetPlayInfo(videoID uint64, userID uint64, isAdmin bool, modes ...string) (map[string]any, error) {
 	video, err := s.repos.VideoRepo.GetByID(videoID)
 	if err != nil {
 		return nil, err
@@ -364,14 +370,31 @@ func (s *VideoService) GetPlayInfo(videoID uint64, userID uint64, isAdmin bool) 
 		}
 	}
 
-	// 根据权限选择 m3u8 文件（完整版 = 多码率 master.m3u8；试看版 = trial.m3u8）
+	// 根据权限选择 m3u8 文件（完整版 = 多码率 master.m3u8；试看版 = trial.m3u8）。
+	// mode=trial 是后台“播放”按钮的显式试看请求，即使管理员也不能拿到完整版。
 	var m3u8Object, keyID string
-	if canWatchFull {
+	mode := ""
+	if len(modes) > 0 {
+		mode = modes[0]
+	}
+	forceTrial := mode == "trial"
+	if canWatchFull && !forceTrial {
 		m3u8Object = video.HlsPath + video.FullM3u8
 		keyID = video.FullKeyID
 	} else {
 		m3u8Object = video.HlsPath + video.TrialM3u8
 		keyID = video.TrialKeyID
+	}
+	maxPlaySeconds := 0
+	if forceTrial || !canWatchFull {
+		maxPlaySeconds = video.TrialSeconds
+		if maxPlaySeconds <= 0 {
+			maxPlaySeconds = s.cfg.DefaultTrialSeconds
+		}
+	}
+	playMode := "full"
+	if forceTrial || !canWatchFull {
+		playMode = "trial"
 	}
 
 	// m3u8Url 走 video 服务的代理端点（不走 MinIO presigned），
@@ -379,13 +402,15 @@ func (s *VideoService) GetPlayInfo(videoID uint64, userID uint64, isAdmin bool) 
 	// 解析出来的 ts 没带 X-Amz- 签名，MinIO 会拒绝。
 	// 代理端点会把每个 ts 替换成独立 presigned URL 后返回给浏览器。
 	return map[string]any{
-		"videoId":      video.ID,
-		"title":        video.Title,
-		"duration":     video.Duration,
-		"trialSeconds": video.TrialSeconds,
-		"canWatchFull": canWatchFull,
-		"m3u8Url":      s.m3u8ProxyURL(video.ID, m3u8Object),
-		"keyId":        keyID,
+		"videoId":        video.ID,
+		"title":          video.Title,
+		"duration":       video.Duration,
+		"trialSeconds":   video.TrialSeconds,
+		"canWatchFull":   canWatchFull,
+		"playMode":       playMode,
+		"maxPlaySeconds": maxPlaySeconds,
+		"m3u8Url":        s.m3u8ProxyURL(video.ID, m3u8Object),
+		"keyId":          keyID,
 	}, nil
 }
 
@@ -424,11 +449,11 @@ func (s *VideoService) ProxyM3U8(videoID uint64, kind string) (string, error) {
 
 	// 白名单校验，避免任意路径拼接
 	allowed := map[string]bool{
-		"master":     true,
-		"trial":      true,
-		"full_1080":  true,
-		"full_720":   true,
-		"full_480":   true,
+		"master":    true,
+		"trial":     true,
+		"full_1080": true,
+		"full_720":  true,
+		"full_480":  true,
 	}
 	if !allowed[kind] {
 		return "", fmt.Errorf("不支持的 m3u8 类型: %s", kind)
@@ -543,6 +568,7 @@ func buildMasterPlaylist(renditions []hlsRendition) string {
 	var b strings.Builder
 	b.WriteString("#EXTM3U\n")
 	b.WriteString("#EXT-X-VERSION:3\n")
+	b.WriteString("#EXT-X-INDEPENDENT-SEGMENTS\n")
 	for _, r := range renditions {
 		height := r.Height
 		width := 0

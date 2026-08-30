@@ -37,11 +37,17 @@ const navToHelper = () => {
 
 <style lang="less" scoped>
 .login-header {
-  padding: 0 24px;
+  position: relative;
+  z-index: 2;
+  height: 76px;
+  padding: 0 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  backdrop-filter: blur(5px);
+  border-bottom: 1px solid var(--app-line);
+  background: var(--app-glass-soft);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   color: var(--td-text-color-primary);
 
   .logo {
@@ -53,6 +59,12 @@ const navToHelper = () => {
     align-items: center;
     .t-button {
       margin-left: 16px;
+      color: var(--td-text-color-secondary);
+
+      &:hover {
+        color: var(--app-cyan);
+        background: rgba(100, 229, 224, 0.1);
+      }
     }
 
     .icon {

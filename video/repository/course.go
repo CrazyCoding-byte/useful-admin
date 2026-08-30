@@ -103,3 +103,12 @@ func (r *ChapterRepository) ListByCourse(courseID uint64) ([]model.CourseChapter
 		Find(&list).Error
 	return list, err
 }
+
+// ListByCourseAndParent 查询某课程下指定父章节的子章节。
+func (r *ChapterRepository) ListByCourseAndParent(courseID, parentID uint64) ([]model.CourseChapter, error) {
+	var list []model.CourseChapter
+	err := r.db.Where("course_id = ? AND parent_id = ?", courseID, parentID).
+		Order("sort_order ASC, id ASC").
+		Find(&list).Error
+	return list, err
+}

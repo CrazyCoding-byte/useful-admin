@@ -20,7 +20,7 @@ log:
   format: "text"          # 日志格式（text/json）
   max_size: 10            # 单个文件最大大小（MB，可选，用于切割）
 aseKey:
-  key: "yangzhixuan944166810@qq.com1150614966@qq.com13735713859" # 对称加密密钥（需安全存储，如配置中心）
+  key: "yangzhixuan94416" # 必须与 Java auth-server 的 AES.key 完全一致
 file:
   upload-baseUrl: "file-storage" # 文件下载基础 URL
   max-file-size: 200

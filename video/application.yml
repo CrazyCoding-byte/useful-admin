@@ -9,7 +9,7 @@ database:
   port: 3306
   username: "root"
   password: "password"
-  dbname: "education"
+  dbname: "xz"
   charset: "utf8mb4"
 
 # 日志配置（复用 IM 模块的 LogConfig 结构）
@@ -22,20 +22,24 @@ log:
 # 对称加密密钥（复用 IM 模块的 AESConfig 结构）。
 # 注意：IM 模块 YAML 节点名是 aseKey（历史拼写），所以这里必须与 IM 保持一致，
 # 否则 IM 的鉴权中间件读取不到密钥。
+# 密钥必须与 auth-server 的 AES.key 完全一致（16 字节 AES-128），
+# 之前配置的 41 字符长字符串不是合法 AES 密钥，会导致 Token 解密失败。
 aseKey:
-  key: "yangzhixuan944166810@qq.com1150614966@qq.com13735713859"
+  key: "yangzhixuan94416"
 
 # MinIO 配置（复用 IM 模块的 MinIOConfig 结构）。
-# video 模块不再自己实现 MinIO 初始化，而是调用 IM 的 InitMinIO() 方法。
+# 指向虚拟机上的 MinIO（AIStor，与 im 模块共用同一实例）。
 minio:
-  endpoint: "localhost:19000"
+  endpoint: "192.168.56.129:19000"
   access-key-id: "minio"
   secret-access-key: "QWEasd123"
   bucket-name: "video"
   use-ssl: false
-  # 以下字段属于 IM 的 MinIOConfig，video 点播/直播业务本身不用，但保留默认配置避免解析为空
-  chunk-size: 10485760      # 单分片大小 10MB
-  max-file-size: 209715200  # 最大文件大小 200MB
+  # 注意：chunk-size / max-file-size 单位是 **MB**（代码内部会 *1024*1024 转字节），
+  # 之前误填成字节（10485760 / 209715200），导致 chunkSizeBytes 被算成 10TB，
+  # 总分片数变成 1，单片上传反而失败。
+  chunk-size: 10            # 单分片大小 10MB
+  max-file-size: 2048      # 最大文件大小 2048MB（2GB，覆盖绝大多数教学视频）
   redis-prefix: "minio:"
   expire-time: 24h
 
