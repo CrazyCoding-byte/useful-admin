@@ -6,6 +6,7 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import yzx.iot.deviceneum.CmdType;
 import yzx.iot.protocol.TcpMessage;
+import yzx.iot.utils.Crc16Util;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -20,11 +21,11 @@ import java.util.List;
 public class TcpMessageDecoder extends ByteToMessageDecoder {
 
     @Override
-    protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> list) throws Exception {
+    protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> out) throws Exception {
 
         short magic = byteBuf.readShort();
         if (magic != TcpMessage.MAGIC) return;
-        int version = byteBuf.readInt();
+        byte version = byteBuf.readByte();
         byte cmdCode = byteBuf.readByte();
         CmdType cmdType = CmdType.getByCode(cmdCode);
         if (cmdType == null) return;
@@ -40,7 +41,25 @@ public class TcpMessageDecoder extends ByteToMessageDecoder {
 
         byte[] payload = new byte[payloadLen];
         byteBuf.readBytes(payload);
-
+        //crc校验
         short receivedCrc = byteBuf.readShort();
+        ByteBuf calcBuf = byteBuf.copy(byteBuf.readerIndex() - (deviceIdLen + payloadLen + 14), deviceIdLen + payloadLen + 14);
+        byte[] calcBytes = new byte[calcBuf.readableBytes()];
+        calcBuf.readBytes(calcBytes);
+        calcBuf.release();
+        short calcCrc = Crc16Util.calculateCrc16(calcBytes);
+        if (receivedCrc != calcCrc) {
+            // CRC校验失败，丢弃报文
+            return;
+        }
+// 4. 封装业务对象
+        TcpMessage message = new TcpMessage();
+        message.setVersion(version);
+        message.setCmdType(cmdType);
+        message.setSeqId(seqId);
+        message.setDeviceId(deviceId);
+        message.setPayload(payload);
+
+        out.add(message);
     }
 }

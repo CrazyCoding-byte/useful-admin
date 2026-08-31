@@ -1,5 +1,10 @@
 package yzx.iot.session;
 
+import io.netty.channel.Channel;
+import io.netty.util.AttributeKey;
+
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * @className: SessionManager
  * @author: yzx
@@ -8,4 +13,15 @@ package yzx.iot.session;
  * @description:
  */
 public class SessionManager {
+    /**deviceId->会话**/
+    private final ConcurrentHashMap<String, DeviceSession> sessions = new ConcurrentHashMap();
+    /**channId->deviceId反向银蛇**/
+    private final ConcurrentHashMap<String, String> channelToDevice = new ConcurrentHashMap<>();
+
+    public void register(String deviceId, Channel channel) {
+        DeviceSession deviceSession = new DeviceSession(deviceId, channel);
+        sessions.put(deviceId, deviceSession);
+        channelToDevice.put(channel.id().asLongText(), deviceId);
+        channel.attr(AttributeKey).set(deviceSession);
+    }
 }
