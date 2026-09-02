@@ -4,6 +4,10 @@ import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
+import yzx.iot.deviceneum.CmdType;
+import yzx.iot.protocol.TcpMessage;
+import yzx.iot.session.DeviceSession;
+import yzx.iot.session.SessionManager;
 
 /**
  * @className: HeartbeatHandler
@@ -28,8 +32,20 @@ public class HeartbeatHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-
+        TcpMessage message = (TcpMessage) msg;
+        if (message.getCmdType() == CmdType.HEARTBEAT_REQ) {
+            DeviceSession session = SessionManager.INSTANCE.getByChannel(ctx.channel());
+            if (session != null) {
+                session.setLastHeartbeatTime(System.currentTimeMillis());
+            }
+            //响应心跳
+            TcpMessage heartbeat = new TcpMessage(CmdType.HEARTBEAT_RESP,
+                    message.getSeqId(),
+                    message.getDeviceId(),
+                    null);
+            ctx.writeAndFlush(heartbeat);
+            return;
+        }
+        super.channelRead(ctx, msg);
     }
-
-
 }

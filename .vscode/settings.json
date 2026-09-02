@@ -59,5 +59,7 @@
   "java.configuration.updateBuildConfiguration": "interactive",
   "java.project.sourcePaths": [
     "video"
-  ]
+  ],
+  "postman.settings.dotenv-detection-notification-visibility": false,
+  "java.compile.nullAnalysis.mode": "disabled"
 }

@@ -1,6 +1,7 @@
 package yzx.iot.session;
 
 import io.netty.channel.Channel;
+import lombok.Data;
 
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -13,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @Version: 1.0
  * @description: 设备会话管理
  */
+@Data
 public class DeviceSession {
     private String deviceId;
     private Channel channel;
