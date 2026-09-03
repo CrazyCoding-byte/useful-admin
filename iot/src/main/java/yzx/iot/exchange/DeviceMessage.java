@@ -1,6 +1,8 @@
 package yzx.iot.exchange;
 
 
+import java.awt.*;
+
 /**
  * @className: DeviceMessage
  * @author: yzx
@@ -9,6 +11,6 @@ package yzx.iot.exchange;
  * @description: 统一设备协议
  */
 public class DeviceMessage {
-    private MessageType type;
+    private TrayIcon.MessageType type;
 
 }
