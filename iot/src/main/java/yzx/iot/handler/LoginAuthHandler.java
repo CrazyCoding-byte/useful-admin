@@ -1,9 +1,11 @@
 package yzx.iot.handler;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import yzx.iot.deviceneum.CmdType;
 import yzx.iot.protocol.TcpMessage;
+import yzx.iot.session.DeviceSession;
 import yzx.iot.session.SessionManager;
 
 /**
@@ -18,6 +20,14 @@ public class LoginAuthHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         TcpMessage message = (TcpMessage) msg;
+        //处理deviceId重复登录
+        DeviceSession deviceSession = SessionManager.INSTANCE.get(message.getDeviceId());
+        if (deviceSession != null && deviceSession.getChannel() == ctx.channel()) {
+            if (message.getCmdType() == CmdType.LOGIN_REQ) {
+                sendLoginResp(ctx, message, (byte) 0x02, "重复登录");
+                return;
+            }
+        }
         //未登录状态下只处理登录请求
         if (SessionManager.INSTANCE.getByChannel(ctx.channel()) == null) {
             if (message.getCmdType() != CmdType.LOGIN_REQ) {
@@ -27,7 +37,8 @@ public class LoginAuthHandler extends ChannelInboundHandlerAdapter {
             //简单认证:校验设备ID格式,生产环境对接设备台账
             String deviceId = message.getDeviceId();
             if (deviceId == null || deviceId.length() < 5) {
-                sendLoginResp(ctx, message, (byte) 0x00, "登录成功");
+                sendLoginResp(ctx, message, (byte) 0x01, "设备ID非法");
+                ctx.close();
                 return;
             }
             //注册会话

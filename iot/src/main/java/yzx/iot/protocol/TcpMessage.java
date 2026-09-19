@@ -19,9 +19,9 @@ public class TcpMessage {
     /** 固定帧头长度 */
     public static final int HEADER_FIX_LEN = 14;
     /** 校验位长度 */
-    public static final int CRC_LEN = 2;
+    public static final int CRC_LEN = 2; 
 
-    private byte version = VERSION;
+    private byte version = VERSION; 
     private CmdType cmdType;
     private int seqId;
     private String deviceId;

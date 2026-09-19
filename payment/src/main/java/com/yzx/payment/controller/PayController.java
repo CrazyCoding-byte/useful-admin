@@ -64,7 +64,7 @@ public class PayController {
             }
             log.info("通知验签成功");
             //处理订单 todo 发送消息给mq 实际扣库存 并且修改订单位已支付
-            rabbitTemplate.convertAndSend();
+//            rabbitTemplate.convertAndSend();
             //成功应答
             response.setStatus(200);
             map.put("code", "SUCCESS");

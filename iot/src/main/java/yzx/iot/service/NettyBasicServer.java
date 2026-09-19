@@ -6,9 +6,14 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
-import io.netty.util.CharsetUtil;
+import io.netty.handler.timeout.IdleStateHandler;
+import yzx.iot.Codec.TcpFrameDecoder;
+import yzx.iot.Codec.TcpMessageDecoder;
+import yzx.iot.Codec.TcpMessageEncoder;
+import yzx.iot.handler.BusinessHandler;
+import yzx.iot.handler.FlowControlHandler;
+import yzx.iot.handler.HeartbeatHandler;
+import yzx.iot.handler.LoginAuthHandler;
 
 /**
  * @className: NettyBasicServer
@@ -33,33 +38,24 @@ public class NettyBasicServer {
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {
-                            // 以下编解码、业务Handler API完全没变
-                            ch.pipeline().addLast(new StringDecoder(CharsetUtil.UTF_8));
-                            ch.pipeline().addLast(new StringEncoder(CharsetUtil.UTF_8));
-                            ch.pipeline().addLast(new BusinessServerHandler());
+                            ch.pipeline().addLast("frameDecoder", new TcpFrameDecoder());
+                            ch.pipeline().addLast("messageDecoder", new TcpMessageDecoder());
+                            ch.pipeline().addLast("messageEncoder", new TcpMessageEncoder());
+                            ch.pipeline().addLast("idleState", new IdleStateHandler(30, 0, 0));
+                            ch.pipeline().addLast("flowControl", new FlowControlHandler());
+                            ch.pipeline().addLast("loginAuth", new LoginAuthHandler());
+                            ch.pipeline().addLast("heartbeat", new HeartbeatHandler());
+                            ch.pipeline().addLast("business", new BusinessHandler());
                         }
                     });
             ChannelFuture channelFuture = serverBootstrap.bind(8080).sync();
             System.out.println(channelFuture.channel().localAddress());
             channelFuture.channel().closeFuture().sync();
         } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
             boosGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
-        }
-    }
-
-    // 业务Handler代码和4.1完全兼容，无需修改
-    static class BusinessServerHandler extends SimpleChannelInboundHandler<String> {
-        @Override
-        protected void channelRead0(ChannelHandlerContext ctx, String msg) {
-            System.out.println("收到消息：" + msg);
-            ctx.writeAndFlush("服务端响应：" + msg);
-        }
-
-        @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            cause.printStackTrace();
-            ctx.close();
         }
     }
 }

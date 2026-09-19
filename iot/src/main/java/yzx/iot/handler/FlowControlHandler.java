@@ -1,5 +1,6 @@
 package yzx.iot.handler;
 
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import com.google.common.util.concurrent.RateLimiter;
@@ -19,9 +20,14 @@ public class FlowControlHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+//        CompositeByteBuf byteBufs = ctx.alloc().compositeBuffer(); //多段缓冲区拼接 CompositeByteBuf（零拷贝拼接）
+//        byteBufs.addComponent(true,xxbuffer);
+//        byteBufs.addComponent(true,xx1buffer);
+
         String channelId = ctx.channel().id().asLongText();
         RateLimiter rateLimiter = rateLimitermap.computeIfAbsent(channelId, k -> RateLimiter.create(MAX_QPS_PER_DEVICE));
         if (rateLimiter.tryAcquire()) {
+            //入站流转
             super.channelRead(ctx, msg);
         } else {
             //触发限流,直接丢弃报文不响应

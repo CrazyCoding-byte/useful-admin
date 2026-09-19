@@ -22,7 +22,8 @@ public class TcpMessageDecoder extends ByteToMessageDecoder {
 
     @Override
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> out) throws Exception {
-
+        //netty获取每次提交的初始位置
+        int frameStart = byteBuf.readerIndex();
         short magic = byteBuf.readShort();
         if (magic != TcpMessage.MAGIC) return;
         byte version = byteBuf.readByte();
@@ -31,7 +32,7 @@ public class TcpMessageDecoder extends ByteToMessageDecoder {
         if (cmdType == null) return;
 
         int seqId = byteBuf.readInt();
-        short deviceIdLen = byteBuf.readShort();
+        int deviceIdLen = byteBuf.readUnsignedShort();
         int payloadLen = byteBuf.readInt();
 
         // 2. 读取变长字段
@@ -42,11 +43,10 @@ public class TcpMessageDecoder extends ByteToMessageDecoder {
         byte[] payload = new byte[payloadLen];
         byteBuf.readBytes(payload);
         //crc校验
+        int crcIndex = byteBuf.readerIndex();
         short receivedCrc = byteBuf.readShort();
-        ByteBuf calcBuf = byteBuf.copy(byteBuf.readerIndex() - (deviceIdLen + payloadLen + 14), deviceIdLen + payloadLen + 14);
-        byte[] calcBytes = new byte[calcBuf.readableBytes()];
-        calcBuf.readBytes(calcBytes);
-        calcBuf.release();
+        byte[] calcBytes = new byte[crcIndex - frameStart];
+        byteBuf.getBytes(frameStart, calcBytes);
         short calcCrc = Crc16Util.calculateCrc16(calcBytes);
         if (receivedCrc != calcCrc) {
             // CRC校验失败，丢弃报文

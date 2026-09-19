@@ -27,6 +27,14 @@ SessionManager {
      * @param channel
      */
     public void register(String deviceId, Channel channel) {
+        DeviceSession oldSession = sessions.get(deviceId);
+        if (oldSession != null) {
+            Channel oldChannel = oldSession.getChannel();
+            if (oldChannel != channel) {
+                oldChannel.close();
+                channelToDevice.remove(oldChannel.id().asLongText());
+            }
+        }
         DeviceSession deviceSession = new DeviceSession(deviceId, channel);
         sessions.put(deviceId, deviceSession);
         channelToDevice.put(channel.id().asLongText(), deviceId); //解决只有channel的情况
@@ -35,12 +43,15 @@ SessionManager {
 
     /**
      * 移除会话
-     * @param channel
+     * @param channel 如果是同一个deviceId  这个处理可能会导致以前的channel被删除
      */
     public void remove(Channel channel) {
         String deviceId = channelToDevice.remove(channel.id().asLongText());
         if (deviceId != null) {
-            sessions.remove(deviceId);
+            DeviceSession currentSession = sessions.get(deviceId);
+            if (currentSession != null && currentSession.getChannel() == channel) {
+                sessions.remove(deviceId, currentSession);
+            }
         }
     }
 

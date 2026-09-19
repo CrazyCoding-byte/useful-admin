@@ -17,6 +17,10 @@ import yzx.iot.session.SessionManager;
  * @description: 心跳处理器 读超时30秒断开连接,心跳请求直接在io线响应,不进业务池
  */
 public class HeartbeatHandler extends ChannelDuplexHandler {
+    
+    /**
+     * 连接长时间没有任何入站数据时，主动断开连接
+     */
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         if (evt instanceof IdleStateEvent) {
