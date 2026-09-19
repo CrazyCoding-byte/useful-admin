@@ -13,6 +13,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * @date: 2026/8/30 15:55
  * @Version: 1.0
  * @description: 单设备限流器
+ *
+ * ### 1. 放在 pipeline 位置问题
+ *
+ * ❌ 不要放在业务 handler 后面！
+ * 如果前面有阻塞 / 耗时 handler，`channelRead` 被卡住，IdleState 计时会不准。
+ * ✅ 推荐顺序：`IdleStateHandler → 编解码器 → 业务handler`
  */
 public class FlowControlHandler extends ChannelInboundHandlerAdapter {
     private static final int MAX_QPS_PER_DEVICE = 100;

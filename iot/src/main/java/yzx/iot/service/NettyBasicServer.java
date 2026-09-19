@@ -41,6 +41,11 @@ public class NettyBasicServer {
                             ch.pipeline().addLast("frameDecoder", new TcpFrameDecoder());
                             ch.pipeline().addLast("messageDecoder", new TcpMessageDecoder());
                             ch.pipeline().addLast("messageEncoder", new TcpMessageEncoder());
+                            /**
+                             * readerIdleTime  = 30 秒
+                               writerIdleTime  = 0，不检测写空闲
+                               allIdleTime     = 0，不检测总空闲
+                             */
                             ch.pipeline().addLast("idleState", new IdleStateHandler(30, 0, 0));
                             ch.pipeline().addLast("flowControl", new FlowControlHandler());
                             ch.pipeline().addLast("loginAuth", new LoginAuthHandler());

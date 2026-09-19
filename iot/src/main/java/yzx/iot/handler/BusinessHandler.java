@@ -81,7 +81,7 @@ public class BusinessHandler extends SimpleChannelInboundHandler<TcpMessage> {
                     tcpMessage.getSeqId(),
                     tcpMessage.getDeviceId(),
                     new byte[]{0x00} // 成功
-            );
+                    );
             ctx.writeAndFlush(resp);
         });
     }
@@ -103,7 +103,7 @@ public class BusinessHandler extends SimpleChannelInboundHandler<TcpMessage> {
      */
     private static void sendCommand(String deviceId, byte[] cmdData) {
         DeviceSession session = SessionManager.INSTANCE.get(deviceId);
-        if (session == null || session.getChannel().isActive()) {
+        if (session == null || !session.getChannel().isActive()) {
             //设备离线,存入离线消息队列
             if (session != null) {
                 session.addofflineMsg(cmdData);
@@ -116,6 +116,6 @@ public class BusinessHandler extends SimpleChannelInboundHandler<TcpMessage> {
                 deviceId,
                 cmdData
         );
-        //
+        session.getChannel().writeAndFlush(tcpMessage);
     }
 }

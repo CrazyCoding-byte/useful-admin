@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-
+import java.util.concurrent.CompletableFuture;
 /**
  * @className: DeviceSession
  * @author: yzx
@@ -24,6 +24,11 @@ public class DeviceSession {
     private Queue<byte[]> offlineMsgQueue = new LinkedBlockingQueue<>(100);
     /**请求序列号生成器**/
     private AtomicInteger seqGenerator = new AtomicInteger(0);
+    /**
+     * seqId->等待设备响应的future
+     * 
+     */
+    private final ConcurrentHashMap<Integer,CompletableFuture<TcpMessage>> pendingRequests=new ConcurrentHashMap<>();
 
     public DeviceSession(String deviceId, Channel channel) {
         this.deviceId = deviceId;
@@ -31,7 +36,15 @@ public class DeviceSession {
         this.loginTime = System.currentTimeMillis();
         this.lastHeartbeatTime = System.currentTimeMillis();
     }
-
+    public CompletableFuture<TcpMessage> addPendingRequest(int seqId){
+        CompletableFuture<TcpMessage> future=new CompletableFuture<>();
+        pendingRequests.put(seqId,future);
+        return future;
+    }
+  
+    public CompletableFuture<TcpMessage> removePendingRequest(int seqId){
+        return pendingRequests.remove(seqId);
+    }
     public int nextSeq() {
         return seqGenerator.incrementAndGet();
     }
