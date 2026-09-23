@@ -8,10 +8,7 @@ import yzx.iot.protocol.TcpMessage;
 import yzx.iot.session.DeviceSession;
 import yzx.iot.session.SessionManager;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * @className: BusinessHandler
@@ -51,10 +48,12 @@ public class BusinessHandler extends SimpleChannelInboundHandler<TcpMessage> {
         DeviceSession session = SessionManager.INSTANCE.getByChannel(ctx.channel());
         if (session == null) return;
         switch (tcpMessage.getCmdType()) {
+            //数据上报
             case DATA_REPORT -> {
                 handleDataReport(ctx, tcpMessage, session);
                 break;
             }
+            //指令下发
             case CMD_PUSH_RESP -> {
                 handleCmdPushResp(tcpMessage, session);
                 break;
@@ -81,7 +80,7 @@ public class BusinessHandler extends SimpleChannelInboundHandler<TcpMessage> {
                     tcpMessage.getSeqId(),
                     tcpMessage.getDeviceId(),
                     new byte[]{0x00} // 成功
-                    );
+            );
             ctx.writeAndFlush(resp);
         });
     }
@@ -95,27 +94,17 @@ public class BusinessHandler extends SimpleChannelInboundHandler<TcpMessage> {
     private void handleCmdPushResp(TcpMessage tcpMessage, DeviceSession session) throws Exception {
 // 根据序列号匹配对应的请求，唤醒等待的Future
         // TODO: 异步请求-响应匹配逻辑
-    }
-
-
-    /**
-     *
-     */
-    private static void sendCommand(String deviceId, byte[] cmdData) {
-        DeviceSession session = SessionManager.INSTANCE.get(deviceId);
-        if (session == null || !session.getChannel().isActive()) {
-            //设备离线,存入离线消息队列
-            if (session != null) {
-                session.addofflineMsg(cmdData);
-            }
+        CompletableFuture<TcpMessage> tcpMessageCompletableFuture = session.removePendingRequest(tcpMessage.getSeqId());
+        if (tcpMessageCompletableFuture == null) {
+            log.warn(
+                    "未找到待响应请求, seqId={}, deviceId={}",
+                    tcpMessage.getSeqId(),
+                    session.getDeviceId()
+            );
             return;
         }
-        TcpMessage tcpMessage = new TcpMessage(
-                CmdType.CMD_PUSH,
-                session.nextSeq(),
-                deviceId,
-                cmdData
-        );
-        session.getChannel().writeAndFlush(tcpMessage);
+        tcpMessageCompletableFuture.complete(tcpMessage);
     }
+
+
 }

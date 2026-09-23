@@ -2,8 +2,10 @@ package yzx.iot.session;
 
 import io.netty.channel.Channel;
 import lombok.Data;
+import yzx.iot.protocol.TcpMessage;
 
 import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CompletableFuture;
