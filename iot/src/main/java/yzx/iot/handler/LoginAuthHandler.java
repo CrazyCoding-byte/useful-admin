@@ -4,9 +4,11 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import yzx.iot.deviceneum.CmdType;
+import yzx.iot.exchange.NettyDeviceExchange;
 import yzx.iot.protocol.TcpMessage;
 import yzx.iot.session.DeviceSession;
 import yzx.iot.session.SessionManager;
+import yzx.iot.utils.AttributeKeys;
 
 /**
  * @className: LoginAuthHandler
@@ -43,6 +45,10 @@ public class LoginAuthHandler extends ChannelInboundHandlerAdapter {
             }
             //注册会话
             SessionManager.INSTANCE.register(deviceId, ctx.channel());
+            NettyDeviceExchange exchange = ctx.channel().attr(AttributeKeys.DEVICE_EXCHANGE).get();
+            if(exchange!=null){
+                exchange.setDeviceId(deviceId);
+            }
             sendLoginResp(ctx, message, (byte) 0x00, "登录成功");
             return;
         }

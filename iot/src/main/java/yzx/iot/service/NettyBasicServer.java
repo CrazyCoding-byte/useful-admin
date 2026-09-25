@@ -10,10 +10,10 @@ import io.netty.handler.timeout.IdleStateHandler;
 import yzx.iot.Codec.TcpFrameDecoder;
 import yzx.iot.Codec.TcpMessageDecoder;
 import yzx.iot.Codec.TcpMessageEncoder;
-import yzx.iot.handler.BusinessHandler;
-import yzx.iot.handler.FlowControlHandler;
-import yzx.iot.handler.HeartbeatHandler;
-import yzx.iot.handler.LoginAuthHandler;
+import yzx.iot.exchange.NettyDeviceExchange;
+import yzx.iot.handler.*;
+import yzx.iot.processor.DeviceBusinessProcessor;
+import yzx.iot.utils.AttributeKeys;
 
 /**
  * @className: NettyBasicServer
@@ -28,6 +28,7 @@ public class NettyBasicServer {
         MultiThreadIoEventLoopGroup boosGroup = new MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory());
         //workStrap
         MultiThreadIoEventLoopGroup workerGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
+        DeviceBusinessProcessor processor = new DeviceBusinessProcessor();
         try {
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(boosGroup, workerGroup)
@@ -38,19 +39,26 @@ public class NettyBasicServer {
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {
+                            // ① 一条连接 = 一个 Exchange
+                            NettyDeviceExchange exchange = new NettyDeviceExchange(ch);
+                            // ② 注册上行监听器：消息过桥后，最终进到业务处理器
+                            exchange.onInbound(msg -> processor.onMessage(exchange, msg));
+                            // ③ 挂到 channel 属性上，登录 Handler 要用
+                            ch.attr(AttributeKeys.DEVICE_EXCHANGE).set(exchange);
                             ch.pipeline().addLast("frameDecoder", new TcpFrameDecoder());
                             ch.pipeline().addLast("messageDecoder", new TcpMessageDecoder());
                             ch.pipeline().addLast("messageEncoder", new TcpMessageEncoder());
                             /**
                              * readerIdleTime  = 30 秒
-                               writerIdleTime  = 0，不检测写空闲
-                               allIdleTime     = 0，不检测总空闲
+                             writerIdleTime  = 0，不检测写空闲
+                             allIdleTime     = 0，不检测总空闲
                              */
                             ch.pipeline().addLast("idleState", new IdleStateHandler(30, 0, 0));
                             ch.pipeline().addLast("flowControl", new FlowControlHandler());
                             ch.pipeline().addLast("loginAuth", new LoginAuthHandler());
                             ch.pipeline().addLast("heartbeat", new HeartbeatHandler());
-                            ch.pipeline().addLast("business", new BusinessHandler());
+                            // ③ 原来的 BusinessHandler 删除，换成桥
+                            ch.pipeline().addLast("bridge",new ExchangeBridgeHandler(exchange));
                         }
                     });
             ChannelFuture channelFuture = serverBootstrap.bind(8080).sync();
