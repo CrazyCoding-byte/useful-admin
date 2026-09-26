@@ -22,18 +22,22 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class DeviceBusinessProcessor {
-    private static final ExecutorService BUSINESS_EXECUTOR = new ThreadPoolExecutor(
-            Runtime.getRuntime().availableProcessors() * 2,
-            Runtime.getRuntime().availableProcessors() * 4,
-            60L, TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(10000),
-            r -> {
-                Thread t = new Thread(r, "business-worker");
-                t.setDaemon(true);
-                return t;
-            },
-            new ThreadPoolExecutor.CallerRunsPolicy()
-    );
+    private static final ExecutorService BUSINESS_EXECUTOR = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors() * 2, Runtime.getRuntime().availableProcessors() * 4, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(10000), r -> {
+        Thread t = new Thread(r, "business-worker");
+        t.setDaemon(true);
+        return t;
+    }, new ThreadPoolExecutor.CallerRunsPolicy());
+
+    public void handle(DeviceExchange exchange, DeviceMessage message) {
+        //fireInbound 在IO线程,这里立刻丢业务池,绝不堵io
+        BUSINESS_EXECUTOR.submit(() -> {
+            try {
+                processor(exchange, message);
+            } catch (Exception e) {
+                log.warn("业务处理异常 deviceId={}", message.getDeviceId(), e);
+            }
+        });
+    }
 
     public void onMessage(DeviceExchange exchange, Object raw) {
         if (!(raw instanceof DeviceMessage message)) {
@@ -61,12 +65,7 @@ public class DeviceBusinessProcessor {
     private void handlerDataReport(DeviceExchange exchange, DeviceMessage message) {
         //todo 真实业务:入库,规则引擎
         byte success = 0x00;
-        TcpMessage response = new TcpMessage(
-                CmdType.DATA_REPORT_RESP,
-                message.getSeqId(),
-                message.getDeviceId(),
-                new byte[]{success}
-        );
+        TcpMessage response = new TcpMessage(CmdType.DATA_REPORT_RESP, message.getSeqId(), message.getDeviceId(), new byte[]{success});
         exchange.sendOutbound(response);
     }
 
@@ -83,9 +82,6 @@ public class DeviceBusinessProcessor {
             log.warn("未找到待响应请求,seqId={},deviceId={}", message.getSeqId(), message.getDeviceId());
             return;
         }
-        pending.complete(new TcpMessage(
-                CmdType.CMD_PUSH_RESP, message.getSeqId(),
-                message.getDeviceId(), message.getPayload()
-        ));
+        pending.complete(new TcpMessage(CmdType.CMD_PUSH_RESP, message.getSeqId(), message.getDeviceId(), message.getPayload()));
     }
 }

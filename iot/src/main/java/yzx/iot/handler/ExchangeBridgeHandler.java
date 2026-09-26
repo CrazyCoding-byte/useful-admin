@@ -15,6 +15,7 @@ import yzx.iot.protocol.TcpMessage;
  * @Version: 1.0
  * @description:
  * 为什么用`SimpleChannelInboundHandler` ？ 它消费完消息会自动释放`ByteBuf` 引用计数
+ * TcpMessage->DeviceMessage
  */
 public class ExchangeBridgeHandler extends SimpleChannelInboundHandler<TcpMessage> {
     private final NettyDeviceExchange exchange;

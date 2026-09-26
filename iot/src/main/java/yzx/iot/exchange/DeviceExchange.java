@@ -7,11 +7,11 @@ import java.util.function.Consumer;
  * @author: yzx
  * @date: 2026/9/3 9:23
  * @Version: 1.0
- * @description:
+ * @description: 协议转换机
  */
 public interface DeviceExchange {
     /**
-     * 设备唯一id
+     * 设备唯一id 通道的身份
      * @return
      */
     String deviceId();
@@ -31,6 +31,7 @@ public interface DeviceExchange {
 
     /**
      * 发送下行消息(平台->设备)
+     * 向设备发消息
      */
     void sendOutbound(Object message);
 

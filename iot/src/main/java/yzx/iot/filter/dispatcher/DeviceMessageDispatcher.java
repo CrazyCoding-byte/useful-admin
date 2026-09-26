@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import yzx.iot.exchange.DeviceExchange;
 import yzx.iot.exchange.DeviceMessage;
+import yzx.iot.filter.DeviceFilterChain;
 import yzx.iot.filter.DeviceMessageFilter;
 import yzx.iot.processor.DeviceBusinessProcessor;
 
@@ -33,9 +34,9 @@ public class DeviceMessageDispatcher {
             return;
         }
         try {
-
+            new DeviceFilterChain(filters, processor::onMessage).doNext(exchange, (DeviceMessage) raw);
         } catch (Exception e) {
-
+            log.error("过滤链执行异常 deviceId={}", ((DeviceMessage) raw).getDeviceId(), e);
         }
     }
 }

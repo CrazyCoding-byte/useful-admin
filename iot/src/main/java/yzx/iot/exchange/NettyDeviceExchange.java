@@ -134,7 +134,7 @@ public class NettyDeviceExchange implements DeviceExchange {
 
     private final Channel channel;
     private String deviceId;
-    private Consumer<Object> inboundListener;
+    private Consumer<Object> inboundListener; //存者谁要消息
 
     public NettyDeviceExchange(Channel channel) {
         this.channel = channel;
@@ -160,14 +160,20 @@ public class NettyDeviceExchange implements DeviceExchange {
 
     /**
      *  给Netty Handler调用,把消息投递到上行监听器 仅在NettyIO线程执行
+     *  `fireInbound` （往通道里灌消息）
+     *  快递员按照快递地址投递
      * @param msg
      */
     public void fireInbound(Object msg) {
         if (inboundListener != null) {
-            inboundListener.accept(msg);
+            inboundListener.accept(msg); //投递消息
         }
     }
 
+    /**
+     * 类似填写快递地址
+     * @param listener
+     */
     @Override
     public void onInbound(Consumer<Object> listener) {
         this.inboundListener = listener;

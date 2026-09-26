@@ -7,6 +7,7 @@ import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
+import lombok.Data;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -33,9 +34,8 @@ import java.util.function.Consumer;
  * @description:
  */
 @Component
-@Getter
+@Data
 public class TcpTransport implements ServerTransport {
-    @Getter
     @Value("${iot.tcp.port:8080}")
     private int port;
     private EventLoopGroup bossGroup;
@@ -69,6 +69,7 @@ public class TcpTransport implements ServerTransport {
                     ch.pipeline().addLast("flowControl", new FlowControlHandler());
                     ch.pipeline().addLast("loginAuth", new LoginAuthHandler());
                     ch.pipeline().addLast("heartbeat", new HeartbeatHandler());
+                    //过桥边界
                     ch.pipeline().addLast("bridge", new ExchangeBridgeHandler(exchange, tcpMessageConverter)); // 3. 交给平台：平台决定消息送给谁，传输层不关心 exchangeFactory.accept(exchange);
                 }
             });
