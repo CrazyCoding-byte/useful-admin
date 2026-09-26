@@ -10,6 +10,8 @@ import yzx.iot.session.SessionManager;
 
 import java.util.concurrent.*;
 
+import org.springframework.stereotype.Component;
+
 /**
  * @className: DeviceBusinessProcessor
  * @author: yzx
@@ -18,6 +20,7 @@ import java.util.concurrent.*;
  * @description:
  */
 @Slf4j
+@Component
 public class DeviceBusinessProcessor {
     private static final ExecutorService BUSINESS_EXECUTOR = new ThreadPoolExecutor(
             Runtime.getRuntime().availableProcessors() * 2,
@@ -29,7 +32,7 @@ public class DeviceBusinessProcessor {
                 t.setDaemon(true);
                 return t;
             },
-            new ThreadPoolExecutor.AbortPolicy()
+            new ThreadPoolExecutor.CallerRunsPolicy()
     );
 
     public void onMessage(DeviceExchange exchange, Object raw) {
@@ -76,7 +79,7 @@ public class DeviceBusinessProcessor {
         //统一消息要唤醒future,需要转回协议消息,配对只用到seqId
         //所以这里直接用 seqId 完成配对即可(future)里的Tcpmessage
         CompletableFuture<TcpMessage> pending = deviceSession.removePendingRequest(message.getSeqId());
-        if (pending != null) {
+        if (pending == null) {
             log.warn("未找到待响应请求,seqId={},deviceId={}", message.getSeqId(), message.getDeviceId());
             return;
         }

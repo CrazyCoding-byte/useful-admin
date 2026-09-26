@@ -22,7 +22,7 @@ public class TcpMessageConverter implements ProtocolMessageConverter<TcpMessage>
 
     @Override
     public String protocol() {
-        return "private-ctp";
+        return "private-tcp";
     }
 
     @Override

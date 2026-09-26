@@ -4,6 +4,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import yzx.iot.exchange.DeviceMessage;
 import yzx.iot.exchange.NettyDeviceExchange;
+import yzx.iot.exchange.converter.ProtocolMessageConverter;
 import yzx.iot.exchange.converter.TcpMessageConverter;
 import yzx.iot.protocol.TcpMessage;
 
@@ -17,22 +18,21 @@ import yzx.iot.protocol.TcpMessage;
  */
 public class ExchangeBridgeHandler extends SimpleChannelInboundHandler<TcpMessage> {
     private final NettyDeviceExchange exchange;
-    private final TcpMessageConverter tcpMessageConverter = new TcpMessageConverter();
+    private final ProtocolMessageConverter<TcpMessage> converter;
 
-    public ExchangeBridgeHandler(NettyDeviceExchange exchange) {
+    public ExchangeBridgeHandler(NettyDeviceExchange exchange, ProtocolMessageConverter<TcpMessage> tcpMessageConverter) {
         this.exchange = exchange;
+        this.converter = tcpMessageConverter;
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, TcpMessage msg) throws Exception {
-        //1.协议信息翻译统一消息
-        DeviceMessage deviceMessage = tcpMessageConverter.toDeviceMessage(msg);
-        //2.投递进通道 注意这里不写任何逻辑
-        exchange.fireInbound(deviceMessage);
+        exchange.fireInbound(converter.convert(msg));
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) { // 边界处兜底，异常不能烂在链上 cause.printStackTrace();
+        cause.printStackTrace();
         ctx.close();
     }
 }
