@@ -28,15 +28,15 @@ public class DeviceMessageDispatcher {
         this.processor = processor;
     }
 
-    public void dispatch(DeviceExchange exchange, Object raw) {
+    public void dispatch(DeviceExchange exchange, DeviceMessage raw) {
         if (!(raw instanceof DeviceMessage)) {
             log.warn("非统一消息,丢弃:{}", raw.getClass());
             return;
         }
         try {
-            new DeviceFilterChain(filters, processor::onMessage).doNext(exchange, (DeviceMessage) raw);
+            new DeviceFilterChain(filters, processor::onMessage).doNext(exchange, raw);
         } catch (Exception e) {
-            log.error("过滤链执行异常 deviceId={}", ((DeviceMessage) raw).getDeviceId(), e);
+            log.error("过滤链执行异常 deviceId={}", (raw).getDeviceId(), e);
         }
     }
 }

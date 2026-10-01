@@ -27,7 +27,7 @@ public interface DeviceExchange {
      * 传输层收到消息后,回调这个监听器
      * @param listener
      */
-    void onInbound(Consumer<Object> listener);
+    void onInbound(Consumer<DeviceMessage> listener);
 
     /**
      * 发送下行消息(平台->设备)

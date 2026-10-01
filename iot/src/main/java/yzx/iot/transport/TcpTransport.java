@@ -32,6 +32,17 @@ import java.util.function.Consumer;
  * @date: 2026/9/25 22:55
  * @Version: 1.0
  * @description:
+ * │
+ *         │ 设备A 拨号连上来
+ *         ├─▶ Netty 自动 new SocketChannel(A)
+ *         │       └─▶ 回调 initChannel(A)：给A装一条全新 pipeline、new Exchange(A)
+ *         │
+ *         │ 设备B 连上来
+ *         ├─▶ Netty 自动 new SocketChannel(B)
+ *         │       └─▶ 回调 initChannel(B)：给B装一条全新 pipeline、new Exchange(B)
+ *         │
+ *         │ 设备C 连上来
+ *         └─▶ ……再来一次
  */
 @Component
 @Data
@@ -70,7 +81,9 @@ public class TcpTransport implements ServerTransport {
                     ch.pipeline().addLast("loginAuth", new LoginAuthHandler());
                     ch.pipeline().addLast("heartbeat", new HeartbeatHandler());
                     //过桥边界
-                    ch.pipeline().addLast("bridge", new ExchangeBridgeHandler(exchange, tcpMessageConverter)); // 3. 交给平台：平台决定消息送给谁，传输层不关心 exchangeFactory.accept(exchange);
+                    ch.pipeline().addLast("bridge", new ExchangeBridgeHandler(exchange, tcpMessageConverter));
+                    // 3. 交给平台：平台决定消息送给谁，传输层不关心
+                    exchangeFactory.accept(exchange);
                 }
             });
             serverChannel = serverBootstrap.bind(port).sync().channel();

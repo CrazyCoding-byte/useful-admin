@@ -6,13 +6,8 @@ import io.netty.channel.Channel;
 import io.netty.channel.DefaultFileRegion;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
 import java.util.function.Consumer;
 
 /**
@@ -23,6 +18,74 @@ import java.util.function.Consumer;
  * @description:
  */
 public class NettyDeviceExchange implements DeviceExchange {
+
+    private final Channel channel;
+    private String deviceId;
+    private Consumer<DeviceMessage> inboundListener; //存者谁要消息
+
+    public NettyDeviceExchange(Channel channel) {
+        this.channel = channel;
+    }
+
+    /**
+     * 登录成功后设置设备ID
+     * @param deviceId
+     */
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    @Override
+    public String deviceId() {
+        return deviceId;
+    }
+
+    @Override
+    public String protocol() {
+        return "private-tcp";
+    }
+
+    /**
+     *  给Netty Handler调用,把消息投递到上行监听器 仅在NettyIO线程执行
+     *  `fireInbound` （往通道里灌消息）
+     *  快递员按照快递地址投递
+     * @param msg
+     */
+    public void fireInbound(DeviceMessage msg) {
+        if (inboundListener != null) {
+            inboundListener.accept(msg); //投递消息
+        }
+    }
+
+    /**
+     * 类似填写快递地址
+     * @param listener
+     */
+    @Override
+    public void onInbound(Consumer<DeviceMessage> listener) {
+        this.inboundListener = listener;
+    }
+
+    @Override
+    public void sendOutbound(Object msg) {
+        //netty线程安全规则,写操作必须在EventLoop线程执行
+        if (channel.eventLoop().inEventLoop()) {
+            channel.writeAndFlush(msg);
+        } else {
+            channel.eventLoop().execute(() -> channel.writeAndFlush(msg));
+        }
+    }
+
+    @Override
+    public boolean isActive() {
+        return channel.isActive();
+    }
+
+    @Override
+    public void close() {
+        channel.close();
+    }
+
     public static void main(String[] args) throws IOException {
 
 //        SocketChannel socketChannel = SocketChannel.open();
@@ -132,70 +195,4 @@ public class NettyDeviceExchange implements DeviceExchange {
         byteBuf.release();//业务自己释放
     }
 
-    private final Channel channel;
-    private String deviceId;
-    private Consumer<Object> inboundListener; //存者谁要消息
-
-    public NettyDeviceExchange(Channel channel) {
-        this.channel = channel;
-    }
-
-    /**
-     * 登录成功后设置设备ID
-     * @param deviceId
-     */
-    public void setDeviceId(String deviceId) {
-        this.deviceId = deviceId;
-    }
-
-    @Override
-    public String deviceId() {
-        return deviceId;
-    }
-
-    @Override
-    public String protocol() {
-        return "private-tcp";
-    }
-
-    /**
-     *  给Netty Handler调用,把消息投递到上行监听器 仅在NettyIO线程执行
-     *  `fireInbound` （往通道里灌消息）
-     *  快递员按照快递地址投递
-     * @param msg
-     */
-    public void fireInbound(Object msg) {
-        if (inboundListener != null) {
-            inboundListener.accept(msg); //投递消息
-        }
-    }
-
-    /**
-     * 类似填写快递地址
-     * @param listener
-     */
-    @Override
-    public void onInbound(Consumer<Object> listener) {
-        this.inboundListener = listener;
-    }
-
-    @Override
-    public void sendOutbound(Object msg) {
-        //netty线程安全规则,写操作必须在EventLoop线程执行
-        if (channel.eventLoop().inEventLoop()) {
-            channel.writeAndFlush(msg);
-        } else {
-            channel.eventLoop().execute(() -> channel.writeAndFlush(msg));
-        }
-    }
-
-    @Override
-    public boolean isActive() {
-        return channel.isActive();
-    }
-
-    @Override
-    public void close() {
-        channel.close();
-    }
 }

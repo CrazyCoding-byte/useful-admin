@@ -21,6 +21,13 @@ public class ExchangeBridgeHandler extends SimpleChannelInboundHandler<TcpMessag
     private final NettyDeviceExchange exchange;
     private final ProtocolMessageConverter<TcpMessage> converter;
 
+    /**
+     *
+     * @param exchange
+     * @param tcpMessageConverter
+     * 一个NettyDeviceExchange 对于一个设备
+     * ProtocolMessageConverter转换协议 将TcpMessage 转换成
+     */
     public ExchangeBridgeHandler(NettyDeviceExchange exchange, ProtocolMessageConverter<TcpMessage> tcpMessageConverter) {
         this.exchange = exchange;
         this.converter = tcpMessageConverter;

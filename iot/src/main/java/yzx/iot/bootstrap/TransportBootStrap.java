@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import yzx.iot.exchange.DeviceExchange;
 import yzx.iot.processor.DeviceBusinessProcessor;
 import yzx.iot.spi.ServerTransport;
+import yzx.iot.transport.TcpTransport;
 
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,9 @@ public class TransportBootStrap implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) throws Exception {
         Map<String, ServerTransport> transportMap = transports.stream().collect(Collectors.toMap(ServerTransport::name, Function.identity()));
-
+        startIfPresent(transportMap, "private-tcp", TcpTransport.class);
+        // 将来加 MQTT 只需要多一行：
+        // startIfPresent(transportMap, "mqtt", MqttTransport.class);
     }
 
     private void startIfPresent(Map<String, ServerTransport> map, String name, Class<? extends ServerTransport> type) {
@@ -49,7 +52,7 @@ public class TransportBootStrap implements ApplicationRunner {
             throw new RuntimeException("读取端口配置失败:" + name, e);
         }
         //在这里定义"平台拿到通道之后做什么"——绑定统一的业务处理器
-        serverTransport.start(port, (DeviceExchange exchange) -> {
+        serverTransport.start(port,  exchange -> {
             exchange.onInbound(msg -> processor.handle(exchange, msg));
         });
     }
