@@ -5,7 +5,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 import yzx.iot.exchange.DeviceExchange;
-import yzx.iot.processor.DeviceBusinessProcessor;
+import yzx.iot.filter.dispatcher.DeviceMessageDispatcher;
 import yzx.iot.spi.ServerTransport;
 import yzx.iot.transport.TcpTransport;
 
@@ -24,11 +24,11 @@ import java.util.stream.Collectors;
 @Component
 public class TransportBootStrap implements ApplicationRunner {
     private final List<ServerTransport> transports;
-    private final DeviceBusinessProcessor processor;
+    private final DeviceMessageDispatcher dispatcher;
 
-    public TransportBootStrap(List<ServerTransport> transports, DeviceBusinessProcessor processor) {
+    public TransportBootStrap(List<ServerTransport> transports, DeviceMessageDispatcher dispatcher) {
         this.transports = transports;
-        this.processor = processor;
+        this.dispatcher = dispatcher;
     }
 
     @Override
@@ -52,8 +52,8 @@ public class TransportBootStrap implements ApplicationRunner {
             throw new RuntimeException("读取端口配置失败:" + name, e);
         }
         //在这里定义"平台拿到通道之后做什么"——绑定统一的业务处理器
-        serverTransport.start(port,  exchange -> {
-            exchange.onInbound(msg -> processor.handle(exchange, msg));
+        serverTransport.start(port, exchange -> {
+            exchange.onInbound(msg -> dispatcher.dispatch(exchange, msg));
         });
     }
 

@@ -25,7 +25,7 @@ public class DeviceFilterChain {
 
     public void doNext(DeviceExchange exchange, DeviceMessage message) throws Exception {
         if (cursor < filters.size()) {
-            DeviceMessageFilter filter = filters.get(cursor);
+            DeviceMessageFilter filter = filters.get(cursor++);
             filter.doFilter(exchange, message, this);
         } else {
             //所有过滤器放行后,消息才到达业务处理器

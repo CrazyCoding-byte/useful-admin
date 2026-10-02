@@ -53,7 +53,7 @@ public class NettyDeviceExchange implements DeviceExchange {
      */
     public void fireInbound(DeviceMessage msg) {
         if (inboundListener != null) {
-            inboundListener.accept(msg); //投递消息
+            inboundListener.accept(msg); //投递消息 触发Consumer的accept方法
         }
     }
 

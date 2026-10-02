@@ -29,12 +29,14 @@ public class DeviceBusinessProcessor {
     }, new ThreadPoolExecutor.CallerRunsPolicy());
 
     public void handle(DeviceExchange exchange, DeviceMessage message) {
-         //fireInbound 在IO线程,这里立刻丢业务池,绝不堵io
-        BUSINESS_EXECUTOR.submit(()->{
-            try{
+        //fireInbound 在IO线程,这里立刻丢业务池,绝不堵io
+        log.info("handle device message: {}", message);
+        log.info("handle device exchange: {}", exchange);
+        BUSINESS_EXECUTOR.submit(() -> {
+            try {
                 processor(exchange, message);
-            }catch (Exception e){
-                log.warn("业务处理异常 deviceId={}",message.getDeviceId(),e);
+            } catch (Exception e) {
+                log.warn("业务处理异常 deviceId={}", message.getDeviceId(), e);
             }
         });
     }

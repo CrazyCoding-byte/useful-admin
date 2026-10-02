@@ -34,7 +34,7 @@ public class DeviceMessageDispatcher {
             return;
         }
         try {
-            new DeviceFilterChain(filters, processor::onMessage).doNext(exchange, raw);
+            new DeviceFilterChain(filters, (e, message) -> processor.onMessage(exchange, raw)).doNext(exchange, raw);
         } catch (Exception e) {
             log.error("过滤链执行异常 deviceId={}", (raw).getDeviceId(), e);
         }
