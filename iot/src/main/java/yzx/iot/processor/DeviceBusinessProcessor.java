@@ -5,7 +5,7 @@ import yzx.iot.deviceneum.CmdType;
 import yzx.iot.exchange.DeviceExchange;
 import yzx.iot.exchange.DeviceMessage;
 import yzx.iot.protocol.TcpMessage;
-import yzx.iot.schedule.ExecutorPartitionScheduler;
+import yzx.iot.schedule.DeviceMessageScheduler;
 import yzx.iot.session.DeviceSession;
 import yzx.iot.session.SessionManager;
 
@@ -36,9 +36,9 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class DeviceBusinessProcessor {
-    private final ExecutorPartitionScheduler schedule;
+    private final DeviceMessageScheduler schedule;
 
-    public DeviceBusinessProcessor(ExecutorPartitionScheduler schedule) {
+    public DeviceBusinessProcessor(DeviceMessageScheduler schedule) {
         this.schedule = schedule;
     }
 
@@ -65,9 +65,10 @@ public class DeviceBusinessProcessor {
     }
 
     private void handlerDataReport(DeviceExchange exchange, DeviceMessage message) {
-        //todo 真实业务:入库,规则引擎
-        byte success = 0x00;
-        TcpMessage response = new TcpMessage(CmdType.DATA_REPORT_RESP, message.getSeqId(), message.getDeviceId(), new byte[]{success});
+        byte success = 0x00 ; DeviceMessage response = new DeviceMessage (
+                CmdType.DATA_REPORT_RESP.name(),
+                message.getSeqId(),
+                message.getDeviceId(), new byte []{success});
         exchange.sendOutbound(response);
     }
 

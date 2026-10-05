@@ -70,7 +70,7 @@ public class TcpTransport implements ServerTransport {
                 @Override
                 protected void initChannel(SocketChannel ch) throws Exception {
 // 1. 创建这条连接的通道
-                    NettyDeviceExchange exchange = new NettyDeviceExchange(ch);
+                    NettyDeviceExchange exchange = new NettyDeviceExchange(ch,tcpMessageConverter);
                     ch.attr(AttributeKeys.DEVICE_EXCHANGE).set(exchange);
                     // 2. 装配 TCP 私有管线
                     ch.pipeline().addLast("frameDecoder", new TcpFrameDecoder());

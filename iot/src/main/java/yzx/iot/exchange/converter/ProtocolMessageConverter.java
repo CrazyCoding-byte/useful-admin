@@ -12,5 +12,9 @@ import yzx.iot.exchange.DeviceMessage;
 public interface ProtocolMessageConverter<S> {
     String protocol();
 
-    DeviceMessage convert(S source);
+    /** 入站：协议私有报文 -> 统一消息 */
+    DeviceMessage toInbound(S source);
+
+    /** 出站：统一消息 -> 协议私有报文 */
+    S toOutbound(DeviceMessage source);
 }

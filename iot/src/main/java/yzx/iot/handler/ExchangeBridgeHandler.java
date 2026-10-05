@@ -36,7 +36,7 @@ public class ExchangeBridgeHandler extends SimpleChannelInboundHandler<TcpMessag
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, TcpMessage msg) throws Exception {
         //把TcpMessage转换成DeviceMessage 并投递出去
-        exchange.fireInbound(converter.convert(msg));
+        exchange.fireInbound(converter.toInbound(msg));
     }
 
     @Override

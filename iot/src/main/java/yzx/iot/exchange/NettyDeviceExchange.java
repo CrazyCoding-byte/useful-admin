@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.DefaultFileRegion;
+import yzx.iot.exchange.converter.ProtocolMessageConverter;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,14 +18,17 @@ import java.util.function.Consumer;
  * @Version: 1.0
  * @description:
  */
-public class NettyDeviceExchange implements DeviceExchange {
+public class NettyDeviceExchange<P> implements DeviceExchange {
 
     private final Channel channel;
+    /** 出站翻译官：消息写成什么字节格式是传输层的事，业务层不关心 */
+    private final ProtocolMessageConverter<P> converter;
     private String deviceId;
     private Consumer<DeviceMessage> inboundListener; //存者谁要消息
 
-    public NettyDeviceExchange(Channel channel) {
+    public NettyDeviceExchange(Channel channel, ProtocolMessageConverter<P> converter) {
         this.channel = channel;
+        this.converter = converter;
     }
 
     /**
@@ -67,12 +71,13 @@ public class NettyDeviceExchange implements DeviceExchange {
     }
 
     @Override
-    public void sendOutbound(Object msg) {
+    public void sendOutbound(DeviceMessage msg) {
         //netty线程安全规则,写操作必须在EventLoop线程执行
+        P outbound = converter.toOutbound(msg);
         if (channel.eventLoop().inEventLoop()) {
-            channel.writeAndFlush(msg);
+            channel.writeAndFlush(outbound);
         } else {
-            channel.eventLoop().execute(() -> channel.writeAndFlush(msg));
+            channel.eventLoop().execute(() -> channel.writeAndFlush(outbound));
         }
     }
 

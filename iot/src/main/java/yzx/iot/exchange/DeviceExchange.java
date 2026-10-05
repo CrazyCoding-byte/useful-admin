@@ -33,7 +33,7 @@ public interface DeviceExchange {
      * 发送下行消息(平台->设备)
      * 向设备发消息
      */
-    void sendOutbound(Object message);
+    void sendOutbound(DeviceMessage message);
 
     /**
      * 通道是否存货

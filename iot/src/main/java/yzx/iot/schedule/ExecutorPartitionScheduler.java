@@ -36,13 +36,15 @@ public class ExecutorPartitionScheduler implements DeviceMessageScheduler {
         }
     }
 
+    @Override
     public void schedule(String deviceId, Runnable task) {
         partitions[partition(deviceId)].execute(task);
     }
 
     private int partition(String deviceId) {
         if (deviceId == null) return 0;
-        return Math.abs(deviceId.hashCode() % PARTITION_COUNT);
+        // floorMod 恒非负；Math.abs(Integer.MIN_VALUE) 仍为负会导致数组越界
+        return Math.floorMod(deviceId.hashCode(), PARTITION_COUNT);
     }
 
     @PreDestroy
