@@ -1,4 +1,4 @@
-package yzx.iot.transport;
+package yzx.iot.bootstrap.transport;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;

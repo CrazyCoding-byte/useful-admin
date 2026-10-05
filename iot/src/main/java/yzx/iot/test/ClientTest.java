@@ -25,63 +25,46 @@ public class ClientTest {
         int port = 8080;
         try (Socket socket = new Socket(host, port);
              InputStream in = socket.getInputStream();
-             OutputStream out = socket.getOutputStream();
-        ) {
+             OutputStream out = socket.getOutputStream()) {
+
             String deviceId = "dev001";
-            int seqId = 1001;
-            byte[] payload = "hello".getBytes(StandardCharsets.UTF_8);
-            byte[] frame = buildLoginFrame(deviceId, seqId, payload);
-            out.write(frame);
+
+            // 1. 登录（27字节）
+            out.write(buildFrame(CmdType.LOGIN_REQ, deviceId, 1001, "hello".getBytes(StandardCharsets.UTF_8)));
             out.flush();
-            //读取服务端返回
-            byte[] header = new byte[1024];
-            int readLen = in.read(header);
-            if (readLen > 0) {
-                byte[] reak=Arrays.copyOf(header,readLen);
-                System.out.println("收到响应,长度=" + readLen);
-                System.out.println(Arrays.toString(reak));
+
+            // 2. 数据上报（24字节）—— debug 命中 processor 的就是这条
+            out.write(buildFrame(CmdType.DATA_REPORT, deviceId, 2001, new byte[]{0x01, 0x02}));
+            out.flush();
+
+            // 3. 循环读响应：登录响应 + 上报响应 都要读完再关，否则又是 reset
+            byte[] buf = new byte[1024];
+            int frameNo = 0;
+            int len;
+            // 简单演示：读够两帧后退出；read 返回 -1 表示服务端关连接
+            while (frameNo < 2 && (len = in.read(buf)) != -1) {
+                System.out.println("收到响应" + (++frameNo) + ", 长度=" + len
+                        + " " + Arrays.toString(Arrays.copyOf(buf, len)));
             }
-        } catch (UnknownHostException e) {
-            throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static byte[] buildLoginFrame(String deviceId, int seqId, byte[] payload) {
+    private static byte[] buildFrame(CmdType cmdType, String deviceId, int seqId, byte[] payload) {
         byte[] deviceIdBytes = deviceId.getBytes(StandardCharsets.UTF_8);
-
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-
-        // 1. magic
         bos.write(toBytes((short) TcpMessage.MAGIC), 0, 2);
-
-        // 2. version
         bos.write(TcpMessage.VERSION);
-
-        // 3. cmdType
-        bos.write(CmdType.LOGIN_REQ.getCode());
-
-        // 4. seqId
+        bos.write(cmdType.getCode());
         bos.write(toBytes(seqId), 0, 4);
-
-        // 5. deviceIdLen
         bos.write(toBytes((short) deviceIdBytes.length), 0, 2);
-
-        // 6. payloadLen
         bos.write(toBytes(payload.length), 0, 4);
-
-        // 7. deviceId
         bos.write(deviceIdBytes, 0, deviceIdBytes.length);
-
-        // 8. payload
         bos.write(payload, 0, payload.length);
-
-        // 9. crc16（对前面的内容做 CRC）
-        byte[] bodyWithoutCrc = bos.toByteArray();
-        short crc = Crc16Util.calculateCrc16(bodyWithoutCrc);
+        byte[] body = bos.toByteArray();
+        short crc = Crc16Util.calculateCrc16(body);
         bos.write(toBytes(crc), 0, 2);
-
         return bos.toByteArray();
     }
 
@@ -92,4 +75,15 @@ public class ClientTest {
     private static byte[] toBytes(int value) {
         return ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(value).array();
     }
+
+    /** 读一次响应并打印（服务端响应可能分多次到，这里简单按一次read读） */
+    private static void readOneFrame(InputStream in, String tag) throws IOException {
+        byte[] buf = new byte[1024];
+        int len = in.read(buf);
+        if (len > 0) {
+            System.out.println(tag + ", 长度=" + len + " " + Arrays.toString(Arrays.copyOf(buf, len)));
+        }
+    }
+
+
 }

@@ -4,10 +4,9 @@ import jakarta.annotation.PreDestroy;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
-import yzx.iot.exchange.DeviceExchange;
 import yzx.iot.filter.dispatcher.DeviceMessageDispatcher;
 import yzx.iot.spi.ServerTransport;
-import yzx.iot.transport.TcpTransport;
+import yzx.iot.bootstrap.transport.TcpTransport;
 
 import java.util.List;
 import java.util.Map;
