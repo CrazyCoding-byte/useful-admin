@@ -22,6 +22,7 @@ import yzx.iot.handler.FlowControlHandler;
 import yzx.iot.handler.HeartbeatHandler;
 import yzx.iot.handler.LoginAuthHandler;
 import yzx.iot.spi.ServerTransport;
+import yzx.iot.state.DeviceStateManager;
 import yzx.iot.utils.AttributeKeys;
 
 import java.util.function.Consumer;
@@ -53,11 +54,17 @@ public class TcpTransport implements ServerTransport {
     private EventLoopGroup workerGroup;
     private Channel serverChannel;
     private final TcpMessageConverter tcpMessageConverter = new TcpMessageConverter();
+    private final DeviceStateManager deviceStateManager;
+
+    public TcpTransport(DeviceStateManager deviceStateManager) {
+        this.deviceStateManager = deviceStateManager;
+    }
 
     @Override
     public String name() {
         return "private-tcp";
     }
+
 
     @Override
     public void start(int port, Consumer<DeviceExchange> exchangeFactory) {
@@ -70,7 +77,7 @@ public class TcpTransport implements ServerTransport {
                 @Override
                 protected void initChannel(SocketChannel ch) throws Exception {
 // 1. 创建这条连接的通道
-                    NettyDeviceExchange exchange = new NettyDeviceExchange(ch,tcpMessageConverter);
+                    NettyDeviceExchange exchange = new NettyDeviceExchange(ch, tcpMessageConverter);
                     ch.attr(AttributeKeys.DEVICE_EXCHANGE).set(exchange);
                     // 2. 装配 TCP 私有管线
                     ch.pipeline().addLast("frameDecoder", new TcpFrameDecoder());
