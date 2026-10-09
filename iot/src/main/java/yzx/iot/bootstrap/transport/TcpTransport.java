@@ -54,10 +54,10 @@ public class TcpTransport implements ServerTransport {
     private EventLoopGroup workerGroup;
     private Channel serverChannel;
     private final TcpMessageConverter tcpMessageConverter = new TcpMessageConverter();
-    private final DeviceStateManager deviceStateManager;
+    private final DeviceStateManager stateManager;
 
     public TcpTransport(DeviceStateManager deviceStateManager) {
-        this.deviceStateManager = deviceStateManager;
+        this.stateManager = deviceStateManager;
     }
 
     @Override
@@ -85,8 +85,8 @@ public class TcpTransport implements ServerTransport {
                     ch.pipeline().addLast("messageEncoder", new TcpMessageEncoder());
                     ch.pipeline().addLast("idleState", new IdleStateHandler(30, 0, 0));
                     ch.pipeline().addLast("flowControl", new FlowControlHandler());
-                    ch.pipeline().addLast("loginAuth", new LoginAuthHandler());
-                    ch.pipeline().addLast("heartbeat", new HeartbeatHandler());
+                    ch.pipeline().addLast("loginAuth", new LoginAuthHandler(stateManager));
+                    ch.pipeline().addLast("heartbeat", new HeartbeatHandler(stateManager));
                     //过桥边界
                     ch.pipeline().addLast("bridge", new ExchangeBridgeHandler(exchange, tcpMessageConverter));
                     // 3. 交给平台：平台决定消息送给谁，传输层不关心

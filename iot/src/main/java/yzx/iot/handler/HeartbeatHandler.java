@@ -8,6 +8,7 @@ import yzx.iot.deviceneum.CmdType;
 import yzx.iot.protocol.TcpMessage;
 import yzx.iot.session.DeviceSession;
 import yzx.iot.session.SessionManager;
+import yzx.iot.state.DeviceStateManager;
 
 /**
  * @className: HeartbeatHandler
@@ -17,7 +18,12 @@ import yzx.iot.session.SessionManager;
  * @description: 心跳处理器 读超时30秒断开连接,心跳请求直接在io线响应,不进业务池
  */
 public class HeartbeatHandler extends ChannelDuplexHandler {
-    
+    private final DeviceStateManager stateManager;
+
+    public HeartbeatHandler(DeviceStateManager stateManager) {
+        this.stateManager = stateManager;
+    }
+
     /**
      * 连接长时间没有任何入站数据时，主动断开连接
      */

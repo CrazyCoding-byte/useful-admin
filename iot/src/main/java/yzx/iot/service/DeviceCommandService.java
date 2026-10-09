@@ -3,9 +3,13 @@ package yzx.iot.service;
 import io.netty.channel.ChannelFuture;
 import org.springframework.stereotype.Service;
 import yzx.iot.deviceneum.CmdType;
+import yzx.iot.exchange.DeviceExchange;
+import yzx.iot.exchange.DeviceMessage;
 import yzx.iot.protocol.TcpMessage;
 import yzx.iot.session.DeviceSession;
 import yzx.iot.session.SessionManager;
+import yzx.iot.state.DeviceState;
+import yzx.iot.state.DeviceStateManager;
 
 import java.util.concurrent.*;
 
@@ -20,54 +24,41 @@ import java.util.concurrent.*;
 public class DeviceCommandService {
     private static final long COMMAND_TIMEOUT_MS = 10_000L;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final DeviceStateManager stateManager;
 
-    public CompletableFuture<TcpMessage> sendCommand(String deviceId, byte[] commandData) {
-        DeviceSession session = SessionManager.INSTANCE.get(deviceId);
-        if (session == null || !session.getChannel().isActive()) {
-            CompletableFuture<TcpMessage> future =
+    public DeviceCommandService(DeviceStateManager stateManager) {
+        this.stateManager = stateManager;
+    }
+
+    public CompletableFuture<DeviceMessage> sendCommand(String deviceId, byte[] commandData) {
+        DeviceState state = stateManager.getState(deviceId);
+        if (state == null || !state.isOline()) {
+            CompletableFuture<DeviceMessage> failed =
                     new CompletableFuture<>();
 
-            future.completeExceptionally(
+            failed.completeExceptionally(
                     new IllegalStateException("设备离线: " + deviceId)
             );
 
-            return future;
+            return failed;
         }
 
-        int seqId = session.nextSeq();
+        DeviceExchange exchange = state.getExchange();
+        int seqId = state.nextSeq();
 
-        CompletableFuture<TcpMessage> future =
-                session.addPendingRequest(seqId);
+        CompletableFuture<DeviceMessage> future =
+                state.addPendingRequest(seqId);
+
 
         ScheduledFuture<?> timeoutTask = scheduler.schedule(() -> {
-            CompletableFuture<TcpMessage> pending = session.removePendingRequest(seqId);
-            if (pending != null && !pending.isDone()) {
-                pending.completeExceptionally(
-                        new TimeoutException("设备响应超时, seqId=" + seqId + ", deviceId=" + deviceId)
-                );
+            CompletableFuture<DeviceMessage> pendingRequest = state.removePendingRequest(seqId);
+            if (pendingRequest != null && !pendingRequest.isDone()) {
+                pendingRequest.completeExceptionally(new TimeoutException("设备响应超时, seqId=" + seqId + ", deviceId=" + deviceId));
             }
         }, COMMAND_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-        future.whenComplete((resp, ex) -> {
-            timeoutTask.cancel(false);
-        });
-        TcpMessage request = new TcpMessage(
-                CmdType.CMD_PUSH,
-                seqId,
-                deviceId,
-                commandData
-        );
 
-        ChannelFuture writeFuture = session.getChannel().writeAndFlush(request);
-        writeFuture.addListener(f -> {
-            if (!f.isSuccess()) {
-                CompletableFuture<TcpMessage> pending = session.removePendingRequest(seqId);
-                if (pending != null && !pending.isDone()) {
-                    pending.completeExceptionally(f.cause());
-                }
-                timeoutTask.cancel(false);
-            }
-        });
-
+        future.whenComplete((resp, ex) -> timeoutTask.cancel(false));
+        exchange.sendOutbound(new DeviceMessage(CmdType.CMD_PUSH.name(), seqId, deviceId, commandData));
 
         return future;
     }

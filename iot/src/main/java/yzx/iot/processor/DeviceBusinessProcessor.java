@@ -12,6 +12,8 @@ import yzx.iot.session.SessionManager;
 import java.util.concurrent.*;
 
 import org.springframework.stereotype.Component;
+import yzx.iot.state.DeviceState;
+import yzx.iot.state.DeviceStateManager;
 
 /**
  * @className: DeviceBusinessProcessor
@@ -37,9 +39,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class DeviceBusinessProcessor {
     private final DeviceMessageScheduler schedule;
+    private final DeviceStateManager stateManager;
 
-    public DeviceBusinessProcessor(DeviceMessageScheduler schedule) {
+    public DeviceBusinessProcessor(DeviceMessageScheduler schedule, DeviceStateManager stateManager) {
         this.schedule = schedule;
+        this.stateManager = stateManager;
     }
 
     public void handle(DeviceExchange exchange, DeviceMessage message) {
@@ -65,26 +69,27 @@ public class DeviceBusinessProcessor {
     }
 
     private void handlerDataReport(DeviceExchange exchange, DeviceMessage message) {
-        byte success = 0x00 ; DeviceMessage response = new DeviceMessage (
+        byte success = 0x00;
+        DeviceMessage response = new DeviceMessage(
                 CmdType.DATA_REPORT_RESP.name(),
                 message.getSeqId(),
-                message.getDeviceId(), new byte []{success});
+                message.getDeviceId(), new byte[]{success});
         exchange.sendOutbound(response);
     }
 
     private void handlerCmdPushResp(DeviceMessage message) {
-        DeviceSession deviceSession = SessionManager.INSTANCE.get(message.getDeviceId());
-        if (deviceSession == null) {
+        DeviceState state = stateManager.getState(message.getDeviceId());
+        if (state == null) {
             log.warn("响应到达但会话不存在,seqId={}", message.getSeqId());
             return;
         }
         //统一消息要唤醒future,需要转回协议消息,配对只用到seqId
         //所以这里直接用 seqId 完成配对即可(future)里的Tcpmessage
-        CompletableFuture<TcpMessage> pending = deviceSession.removePendingRequest(message.getSeqId());
+        CompletableFuture<DeviceMessage> pending = state.removePendingRequest(message.getSeqId());
         if (pending == null) {
             log.warn("未找到待响应请求,seqId={},deviceId={}", message.getSeqId(), message.getDeviceId());
             return;
         }
-        pending.complete(new TcpMessage(CmdType.CMD_PUSH_RESP, message.getSeqId(), message.getDeviceId(), message.getPayload()));
+        pending.complete(message);
     }
 }
