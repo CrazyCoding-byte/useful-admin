@@ -72,16 +72,18 @@ public class ThreadTest {
         Thread.sleep(1500);
     }
 
-    public static void testCompletableFutureThenApply() {
-        CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+    public static void testCompletableFutureThenApply() throws InterruptedException {
+        CompletableFuture<Void> future = CompletableFuture.supplyAsync(() -> {
             return "原始报文";
         }).thenApply(msg -> {
-            //转换:解析报文
-            return msg + "->解析完成";
-        }).thenAccept(parsedMsg->{
-            System.out.println("业务处理:"+parsedMsg);
-        }).exceptionally(ex->{
-            System.out.println("发生异常:"+ex.getMessage());
-        })
+            // 转换：解析报文
+            return msg + " -> 解析完成";
+        }).thenAccept(parsedMsg -> {
+            System.out.println("业务处理：" + parsedMsg);
+        }).exceptionally(ex -> {
+            System.out.println("发生异常：" + ex.getMessage());
+            return null;
+        });
+        Thread.sleep(1000);
     }
 }
