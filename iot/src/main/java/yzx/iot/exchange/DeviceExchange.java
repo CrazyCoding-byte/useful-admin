@@ -8,6 +8,7 @@ import java.util.function.Consumer;
  * @date: 2026/9/3 9:23
  * @Version: 1.0
  * @description: 协议转换机
+ * DeviceExchange相当于相当于平台交换机 交换MqttExchange NettyExchange
  */
 public interface DeviceExchange {
     /**

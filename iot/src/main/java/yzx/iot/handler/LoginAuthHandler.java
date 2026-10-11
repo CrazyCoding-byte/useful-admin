@@ -6,8 +6,6 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import yzx.iot.deviceneum.CmdType;
 import yzx.iot.exchange.NettyDeviceExchange;
 import yzx.iot.protocol.TcpMessage;
-import yzx.iot.session.DeviceSession;
-import yzx.iot.session.SessionManager;
 import yzx.iot.state.DeviceStateManager;
 import yzx.iot.utils.AttributeKeys;
 
@@ -66,7 +64,10 @@ public class LoginAuthHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        SessionManager.INSTANCE.remove(ctx.channel());
+        NettyDeviceExchange<?> nettyDeviceExchange = ctx.channel().attr(AttributeKeys.DEVICE_EXCHANGE).get();
+        if (nettyDeviceExchange != null) {
+            stateManager.logout(nettyDeviceExchange.deviceId(), nettyDeviceExchange);
+        }
         super.channelInactive(ctx);
     }
 }

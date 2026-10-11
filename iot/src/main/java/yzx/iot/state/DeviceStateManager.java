@@ -20,14 +20,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @Slf4j
 @Component
 public class DeviceStateManager {
-    public static void main(String[] args) {
-        HashMap<Integer, String> map = new HashMap<>();
-        map.put(1, "1");
-        if (map.get(1) == null) {
-            map.put(1, "2");
-        }
-        map.put(1, "3");
-    }
 
     private final ConcurrentHashMap<String, DeviceState> states = new ConcurrentHashMap<String, DeviceState>();
 

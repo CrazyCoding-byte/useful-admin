@@ -29,7 +29,7 @@ public class DeviceState {
     //序列号
     private final AtomicInteger seqGenerator = new AtomicInteger(0);
     private final ConcurrentHashMap<Integer, CompletableFuture<DeviceMessage>> pendingRequests = new ConcurrentHashMap<>();
-    private final Queue<byte[]> offlineMsgQueue = new LinkedBlockingQueue<>();
+    private final Queue<byte[]> offlineMsgQueue = new LinkedBlockingQueue<>(100);
     private final Set<String> subscriptions = ConcurrentHashMap.newKeySet();
 
     public DeviceState(String deviceId) {
@@ -95,6 +95,7 @@ public class DeviceState {
      */
     public void failAllPending(Throwable cause) {
         pendingRequests.forEach((seqId, future) -> future.completeExceptionally(cause));
+        pendingRequests.clear();
     }
 
     /**

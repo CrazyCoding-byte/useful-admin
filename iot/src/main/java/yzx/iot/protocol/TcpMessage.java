@@ -9,6 +9,7 @@ import yzx.iot.deviceneum.CmdType;
  * @date: 2026/8/30 14:45
  * @Version: 1.0
  * @description:
+ *
  */
 @Data
 public class TcpMessage {

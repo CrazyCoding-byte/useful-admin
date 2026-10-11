@@ -11,6 +11,8 @@ import lombok.AllArgsConstructor;
  * @date: 2026/9/2 8:34
  * @Version: 1.0
  * @description: 统一设备协议
+ * TcpMessage是设备传上来的协议 他可能有 http-mqttMessage-modbus-自定义协议 等等协议
+ * DeviceMessage是平台的统一协议 经过conver进行一个转换把不同的tcpMessage转换成deviceMessage
  */
 @Data
 @NoArgsConstructor

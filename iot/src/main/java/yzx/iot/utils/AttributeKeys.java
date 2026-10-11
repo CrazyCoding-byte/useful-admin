@@ -3,7 +3,6 @@ package yzx.iot.utils;
 import io.netty.util.AttributeKey;
 import lombok.Data;
 import yzx.iot.exchange.NettyDeviceExchange;
-import yzx.iot.session.DeviceSession;
 
 /**
  * @className: AttributeKeys
@@ -14,7 +13,5 @@ import yzx.iot.session.DeviceSession;
  */
 @Data
 public class AttributeKeys {
-    public static final AttributeKey<DeviceSession> DEVICE_SESSION = AttributeKey.valueOf("DEVICE_SESSION");
-    public static final AttributeKey<String> DEVICE_ID = AttributeKey.valueOf("DEVICE_ID");
-    public static final AttributeKey<NettyDeviceExchange> DEVICE_EXCHANGE = AttributeKey.valueOf("DEVICE_EXCHANGE");
+    public static final AttributeKey<NettyDeviceExchange<?>> DEVICE_EXCHANGE = AttributeKey.valueOf("DEVICE_EXCHANGE");
 }

@@ -29,12 +29,8 @@ public class DeviceMessageDispatcher {
     }
 
     public void dispatch(DeviceExchange exchange, DeviceMessage raw) {
-        if (!(raw instanceof DeviceMessage)) {
-            log.warn("非统一消息,丢弃:{}", raw.getClass());
-            return;
-        }
         try {
-            new DeviceFilterChain(filters, (e, message) -> processor.handle(exchange, raw)).doNext(exchange, raw);
+            new DeviceFilterChain(filters, (e, message) -> processor.handle(e, message)).doNext(exchange, raw);
         } catch (Exception e) {
             log.error("过滤链执行异常 deviceId={}", (raw).getDeviceId(), e);
         }

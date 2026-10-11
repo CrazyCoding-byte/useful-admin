@@ -24,6 +24,9 @@ public class BlackListFilter implements DeviceMessageFilter {
     @Override
     public void doFilter(DeviceExchange exchange, DeviceMessage msg, DeviceFilterChain chain) throws Exception {
         if (BLACKLIST.contains(msg.getDeviceId())) { // 不调用 chain.doNext() —— 消息在此终结，后面的过滤器和业务都收不到 exchange.close(); return ;
+            log.warn("命中黑名单,断开连接deviceId={}", msg.getDeviceId());
+            exchange.close();
+            return;
         }
         chain.doNext(exchange, msg);
     }
