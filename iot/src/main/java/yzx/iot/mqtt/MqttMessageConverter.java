@@ -1,9 +1,9 @@
-package yzx.iot.exchange.converter;
+package yzx.iot.mqtt;
 
-import ch.qos.logback.classic.pattern.MessageConverter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import yzx.iot.exchange.DeviceMessage;
-import yzx.iot.protocol.MqttMsg;
+import yzx.iot.exchange.converter.ProtocolMessageConverter;
+import yzx.iot.protocol.mqtt.MqttMsg;
 
 import java.util.Base64;
 
@@ -51,6 +51,7 @@ public class MqttMessageConverter implements ProtocolMessageConverter<MqttMsg> {
     public MqttMsg toOutbound(DeviceMessage source) {
         String topic = "device/" + source.getDeviceId() + "/down/" + source.getCmdType();
         Payload payload = new Payload();
+        payload.seqId = source.getSeqId();
         payload.data = Base64.getEncoder().encodeToString(source.getPayload());
         try {
             return new MqttMsg(topic, objectMapper.writeValueAsBytes(payload));

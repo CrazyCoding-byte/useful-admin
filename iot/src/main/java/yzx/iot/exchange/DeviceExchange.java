@@ -1,5 +1,6 @@
 package yzx.iot.exchange;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 /**
@@ -34,7 +35,7 @@ public interface DeviceExchange {
      * 发送下行消息(平台->设备)
      * 向设备发消息
      */
-    void sendOutbound(DeviceMessage message);
+    CompletableFuture<Void> sendOutbound(DeviceMessage message);
 
     /**
      * 通道是否存货

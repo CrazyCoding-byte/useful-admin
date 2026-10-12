@@ -3,12 +3,14 @@ package yzx.iot.exchange;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.DefaultFileRegion;
 import yzx.iot.exchange.converter.ProtocolMessageConverter;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 /**
@@ -71,14 +73,26 @@ public class NettyDeviceExchange<P> implements DeviceExchange {
     }
 
     @Override
-    public void sendOutbound(DeviceMessage msg) {
+    public CompletableFuture<Void> sendOutbound(DeviceMessage msg) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
         //netty线程安全规则,写操作必须在EventLoop线程执行
         P outbound = converter.toOutbound(msg);
         if (channel.eventLoop().inEventLoop()) {
-            channel.writeAndFlush(outbound);
+            writeAndFlush(outbound, result);
         } else {
-            channel.eventLoop().execute(() -> channel.writeAndFlush(outbound));
+            channel.eventLoop().execute(() -> writeAndFlush(outbound, result));
         }
+        return result;
+    }
+
+    private void writeAndFlush(Object outbound, CompletableFuture<Void> result) {
+        channel.writeAndFlush(outbound).addListener((ChannelFuture f) -> {
+            if (f.isSuccess()) {
+                result.complete(null);
+            } else {
+                result.completeExceptionally(f.cause());
+            }
+        });
     }
 
     @Override

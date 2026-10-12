@@ -1,10 +1,13 @@
-package yzx.iot.exchange;
+package yzx.iot.mqtt;
 
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import yzx.iot.exchange.DeviceExchange;
+import yzx.iot.exchange.DeviceMessage;
 import yzx.iot.exchange.converter.ProtocolMessageConverter;
-import yzx.iot.protocol.MqttMsg;
+import yzx.iot.protocol.mqtt.MqttMsg;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 /**
@@ -44,17 +47,25 @@ public class MqttDeviceExchange implements DeviceExchange {
     /**
      * 出站=publish到本设备的down主题，Broker负责路由到订阅该主题的设备
      * QoS 1：至少送达一次，重复靠设备侧seqId去重
+     * 将DeviceMessage转换成MqttMsg
      */
     @Override
-    public void sendOutbound(DeviceMessage message) {
+    public CompletableFuture<Void> sendOutbound(DeviceMessage message) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        if (!active || !sharedClient.isConnected()) {
+            result.completeExceptionally(new IllegalStateException("MQTT话机不可用 deviceId=" + deviceId));
+            return result;
+        }
         try {
             MqttMsg outbound = converter.toOutbound(message);
             MqttMessage pahoMsg = new MqttMessage(outbound.getBody());
             pahoMsg.setQos(1);
             sharedClient.publish(outbound.getTopic(), pahoMsg);
+            result.complete(null);
         } catch (Exception e) {
             throw new IllegalStateException("MQTT下行发布失败 deviceId=" + deviceId, e);
         }
+        return result;
     }
 
     /** 总机（MqttTransport）把上行消息转给本设备分机时调用 */

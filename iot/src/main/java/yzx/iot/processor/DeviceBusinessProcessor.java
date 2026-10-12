@@ -68,11 +68,11 @@ public class DeviceBusinessProcessor {
 
     private void handlerDataReport(DeviceExchange exchange, DeviceMessage message) {
         byte success = 0x00;
-        DeviceMessage response = new DeviceMessage(
-                CmdType.DATA_REPORT_RESP.name(),
-                message.getSeqId(),
-                message.getDeviceId(), new byte[]{success});
-        exchange.sendOutbound(response);
+        DeviceMessage response = new DeviceMessage(CmdType.DATA_REPORT_RESP.name(), message.getSeqId(), message.getDeviceId(), new byte[]{success});
+        exchange.sendOutbound(response).exceptionally(ex -> {
+            log.warn("数据上报应答发送失败 deviceId={}", message.getDeviceId(), ex);
+            return null;
+        });
     }
 
     private void handlerCmdPushResp(DeviceMessage message) {

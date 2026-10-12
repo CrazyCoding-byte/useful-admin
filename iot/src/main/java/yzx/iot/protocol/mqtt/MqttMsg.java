@@ -1,4 +1,4 @@
-package yzx.iot.protocol;
+package yzx.iot.protocol.mqtt;
 
 /**
  * @className: MqttMsg
