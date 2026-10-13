@@ -33,6 +33,7 @@ public final class MqttTopicScheme {
         STATUS, UP, DOWN, UNKNOWN;
     }
 
+    //record是一个类 属性写在类名边上
     public record Address(String deviceId, Kind kind, String cmdType) {
 
     }

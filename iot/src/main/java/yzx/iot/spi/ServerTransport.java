@@ -15,6 +15,9 @@ import java.util.function.Consumer;
 public interface ServerTransport {
     String name();
 
+
+    int port();
+
     void start(int port, Consumer<DeviceExchange> exchangeFactory);
 
     void stop();

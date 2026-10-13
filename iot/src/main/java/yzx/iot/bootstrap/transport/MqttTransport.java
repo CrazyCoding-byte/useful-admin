@@ -2,7 +2,7 @@ package yzx.iot.bootstrap.transport;
 
 import io.moquette.broker.Server;
 import io.moquette.broker.config.MemoryConfig;
-import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import yzx.iot.exchange.DeviceExchange;
@@ -43,6 +43,11 @@ public class MqttTransport implements ServerTransport {
     }
 
     @Override
+    public int port() {
+        return port;
+    }
+
+    @Override
     public void start(int port, Consumer<DeviceExchange> exchangeFactory) {
         Properties props = new Properties();
         props.setProperty("host", "0.0.0.0");
@@ -55,6 +60,34 @@ public class MqttTransport implements ServerTransport {
             throw new RuntimeException(e);
         }
         try {
+            String url = "tcp://127.0.0.1:" + port;
+            gatewayClient = new MqttClient(url, MqttClient.generateClientId());
+            MqttConnectOptions mqttConnectOptions = new MqttConnectOptions();
+            mqttConnectOptions.setCleanSession(true);
+            mqttConnectOptions.setAutomaticReconnect(true);
+            gatewayClient.setCallback(new MqttCallbackExtended() {
+
+                @Override
+                public void connectionLost(Throwable throwable) {
+
+                }
+
+                @Override
+                public void messageArrived(String s, MqttMessage mqttMessage) throws Exception {
+
+                }
+
+                @Override
+                public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {
+
+                }
+
+                @Override
+                public void connectComplete(boolean b, String s) {
+
+                }
+            });
+        } catch (Exception e) {
 
         }
     }
@@ -70,6 +103,9 @@ public class MqttTransport implements ServerTransport {
     }
 
     private void dispatch(String topic, byte[] payload, Consumer<DeviceExchange> exChangeFactory) {
+
+    }
+    private void handleStatus(String deviceId,byte[] payload,Consumer<DeviceExchange> exchangeFactory) {
 
     }
 }

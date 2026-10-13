@@ -17,7 +17,7 @@ import java.util.function.Consumer;
  * @description:
  */
 @Slf4j
-public class MqttGatewayClient {
+public class MqttGatewayClient  {
     private final String brokerUrl;
     private final List<String> subscriptions;
     private final Consumer<MqttMsg> inboundSink;
@@ -54,7 +54,7 @@ public class MqttGatewayClient {
 
                 @Override
                 public void messageArrived(String s, MqttMessage mqttMessage) throws Exception {
-                     inboundSink.accept(new MqttMsg(s,mqttMessage.getPayload()));
+                    inboundSink.accept(new MqttMsg(s, mqttMessage.getPayload()));
                 }
 
                 @Override

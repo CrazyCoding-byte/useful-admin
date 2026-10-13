@@ -17,8 +17,8 @@ import java.util.function.Consumer;
  * - 入站由MqttTransport按deviceId转交对应实例的fireInbound
  */
 public class MqttDeviceExchange implements DeviceExchange {
-
-    private final MqttClient sharedClient;
+    private static final int QOS_AT_LEAST_ONCE = 1;
+    private final MqttGatewayClient sharedClient;
     private final ProtocolMessageConverter<MqttMsg> converter;
     private final String deviceId;
 
@@ -26,7 +26,7 @@ public class MqttDeviceExchange implements DeviceExchange {
     private volatile boolean active = true;
     private volatile Consumer<DeviceMessage> inboundListener;
 
-    public MqttDeviceExchange(MqttClient sharedClient,
+    public MqttDeviceExchange(MqttGatewayClient sharedClient,
                               ProtocolMessageConverter<MqttMsg> converter,
                               String deviceId) {
         this.sharedClient = sharedClient;
@@ -51,21 +51,13 @@ public class MqttDeviceExchange implements DeviceExchange {
      */
     @Override
     public CompletableFuture<Void> sendOutbound(DeviceMessage message) {
-        CompletableFuture<Void> result = new CompletableFuture<>();
-        if (!active || !sharedClient.isConnected()) {
-            result.completeExceptionally(new IllegalStateException("MQTT话机不可用 deviceId=" + deviceId));
-            return result;
+        CompletableFuture<Void> failed = new CompletableFuture<>();
+        if (!active) {
+            failed.completeExceptionally(new IllegalStateException("Not active" + deviceId));
+            return failed;
         }
-        try {
-            MqttMsg outbound = converter.toOutbound(message);
-            MqttMessage pahoMsg = new MqttMessage(outbound.getBody());
-            pahoMsg.setQos(1);
-            sharedClient.publish(outbound.getTopic(), pahoMsg);
-            result.complete(null);
-        } catch (Exception e) {
-            throw new IllegalStateException("MQTT下行发布失败 deviceId=" + deviceId, e);
-        }
-        return result;
+        MqttMsg outbound = converter.toOutbound(message);
+        return sharedClient.publish(outbound.getTopic(), outbound.getBody(), QOS_AT_LEAST_ONCE);
     }
 
     /** 总机（MqttTransport）把上行消息转给本设备分机时调用 */
