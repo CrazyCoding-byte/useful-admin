@@ -35,6 +35,13 @@ public class MqttMessageRouter {
         this.exchangeBinder = exchangeBinder1;
     }
 
+    public MqttMessageRouter(MqttGatewayClient mqttGatewayClient, DeviceStateManager stateManager, ProtocolMessageConverter protocolMessageConverter, Consumer<DeviceExchange> exchangeBinder){
+
+        this.mqttGatewayClient = mqttGatewayClient;
+        this.stateManager = stateManager;
+        this.protocolMessageConverter = protocolMessageConverter;
+        this.exchangeBinder = exchangeBinder;
+    }
     public void route(MqttMsg msg) {
         MqttTopicScheme.Address address = MqttTopicScheme.parse(msg.getTopic());
         switch (address.kind()) {

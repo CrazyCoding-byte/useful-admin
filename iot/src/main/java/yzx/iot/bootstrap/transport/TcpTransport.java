@@ -65,6 +65,11 @@ public class TcpTransport implements ServerTransport {
         return "private-tcp";
     }
 
+    @Override
+    public int port() {
+        return port;
+    }
+
 
     @Override
     public void start(int port, Consumer<DeviceExchange> exchangeFactory) {

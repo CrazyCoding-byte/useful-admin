@@ -2,10 +2,12 @@ package yzx.iot.mqtt;
 
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.*;
+import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
 import yzx.iot.protocol.mqtt.MqttMsg;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -31,6 +33,7 @@ public class MqttGatewayClient  {
 
     public void start() {
         try {
+            client=new MqttClient(brokerUrl, "gateway-"+ UUID.randomUUID(),new MqttDefaultFilePersistence());
             MqttConnectOptions mqttConnectOptions = new MqttConnectOptions();
             mqttConnectOptions.setCleanSession(true);
             mqttConnectOptions.setAutomaticReconnect(true);

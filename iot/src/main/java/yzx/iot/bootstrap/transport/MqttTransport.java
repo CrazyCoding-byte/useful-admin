@@ -2,15 +2,17 @@ package yzx.iot.bootstrap.transport;
 
 import io.moquette.broker.Server;
 import io.moquette.broker.config.MemoryConfig;
+import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import yzx.iot.exchange.DeviceExchange;
-import yzx.iot.mqtt.MqttDeviceExchange;
-import yzx.iot.mqtt.MqttMessageConverter;
+import yzx.iot.mqtt.*;
+import yzx.iot.protocol.mqtt.MqttMsg;
 import yzx.iot.spi.ServerTransport;
 import yzx.iot.state.DeviceStateManager;
 
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -21,15 +23,28 @@ import java.util.function.Consumer;
  * @date: 2026/10/12 9:59
  * @Version: 1.0
  * @description:
+ *
+ *  * MQTT传输层装配器：只负责把四个零件拼起来，自己不含任何业务逻辑
+ *  *
+ *  *   Moquette Broker（端口1883，管设备连接/遗嘱）
+ *  *        ▲ 设备连入
+ *  *        │ 网关回环
+ *  *   MqttGatewayClient（唯一一条到Broker的连接，订阅+发布+重连）
+ *  *        │ 入站 MqttMsg
+ *  *   MqttMessageRouter（status控制面 / up业务面，管理话机注册表）
+ *  *        │ up翻译过桥
+ *  *   dispatcher → 过滤器链 → 调度器 → Processor（与TCP完全共用）
+ *
  */
 @Component
+@Slf4j
 public class MqttTransport implements ServerTransport {
     @Value("${iot.mqtt.port:1883}")
     private int port;
     private final DeviceStateManager stateManager;
     private final MqttMessageConverter converter = new MqttMessageConverter();
     private Server broker;
-    private MqttClient gatewayClient;
+    private MqttGatewayClient gatewayClient;
     private final ConcurrentHashMap<String, MqttDeviceExchange> exchanges = new ConcurrentHashMap<>();
 
     public MqttTransport(final DeviceStateManager stateManager) {
@@ -49,63 +64,43 @@ public class MqttTransport implements ServerTransport {
 
     @Override
     public void start(int port, Consumer<DeviceExchange> exchangeFactory) {
-        Properties props = new Properties();
-        props.setProperty("host", "0.0.0.0");
-        props.setProperty("port", String.valueOf(port));
-        props.setProperty("allow_anonymous", "true"); // 学习期不鉴权，Moquette留了IAuthenticator以后接
-        broker = new Server();
-        try {
-            broker.startServer(new MemoryConfig(props));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        startEmbeddedBroker(port);
         try {
             String url = "tcp://127.0.0.1:" + port;
-            gatewayClient = new MqttClient(url, MqttClient.generateClientId());
-            MqttConnectOptions mqttConnectOptions = new MqttConnectOptions();
-            mqttConnectOptions.setCleanSession(true);
-            mqttConnectOptions.setAutomaticReconnect(true);
-            gatewayClient.setCallback(new MqttCallbackExtended() {
-
-                @Override
-                public void connectionLost(Throwable throwable) {
-
-                }
-
-                @Override
-                public void messageArrived(String s, MqttMessage mqttMessage) throws Exception {
-
-                }
-
-                @Override
-                public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {
-
-                }
-
-                @Override
-                public void connectComplete(boolean b, String s) {
-
-                }
-            });
+            List<String> filters = List.of(MqttTopicScheme.FILTER_STATUS, MqttTopicScheme.FILTER_UP);
+            MqttMessageRouter[] routers = new MqttMessageRouter[1];
+            gatewayClient = new MqttGatewayClient(url, filters, (MqttMsg msg) -> routers[0].route(msg));
+            MqttMessageRouter mqttMessageRouter = new MqttMessageRouter(gatewayClient, stateManager, converter, exchangeFactory);
+            routers[0] = mqttMessageRouter;
+            gatewayClient.start();
+            log.info("[mqtt]传输层启动,Broker监听端口:{}", port);
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
     }
 
 
     @Override
     public void stop() {
-
+        if (gatewayClient != null) {
+            gatewayClient.stop();
+        }
+        if (broker != null) {
+            broker.stopServer();
+        }
     }
 
-    private void subscribeTopics() throws Exception {
-        gatewayClient.subscribe(new String[]{"device/+/status", "device/+/up/#"}, new int[]{1, 1});
+    private void startEmbeddedBroker(int port) {
+        Properties props = new Properties();
+        props.setProperty("host", "0.0.0.0");
+        props.setProperty("port", String.valueOf(port));
+        props.setProperty("allow_anonymous", "true");
+        broker = new Server();
+        try {
+            broker.startServer(new MemoryConfig(props));
+        } catch (Exception e) {
+            throw new IllegalStateException("内嵌MQTT Broker启动失败 port=" + port, e);
+        }
     }
 
-    private void dispatch(String topic, byte[] payload, Consumer<DeviceExchange> exChangeFactory) {
-
-    }
-    private void handleStatus(String deviceId,byte[] payload,Consumer<DeviceExchange> exchangeFactory) {
-
-    }
 }
