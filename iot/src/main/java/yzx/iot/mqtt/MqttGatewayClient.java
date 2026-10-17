@@ -19,7 +19,7 @@ import java.util.function.Consumer;
  * @description:
  */
 @Slf4j
-public class MqttGatewayClient  {
+public class MqttGatewayClient {
     private final String brokerUrl;
     private final List<String> subscriptions;
     private final Consumer<MqttMsg> inboundSink;
@@ -33,7 +33,7 @@ public class MqttGatewayClient  {
 
     public void start() {
         try {
-            client=new MqttClient(brokerUrl, "gateway-"+ UUID.randomUUID(),new MqttDefaultFilePersistence());
+            client = new MqttClient(brokerUrl, "gateway-" + UUID.randomUUID(), new MqttDefaultFilePersistence());
             MqttConnectOptions mqttConnectOptions = new MqttConnectOptions();
             mqttConnectOptions.setCleanSession(true);
             mqttConnectOptions.setAutomaticReconnect(true);
@@ -65,6 +65,7 @@ public class MqttGatewayClient  {
 
                 }
             });
+            client.connect(mqttConnectOptions);
         } catch (Exception e) {
             throw new IllegalStateException("MQTT gateway client failed to start" + brokerUrl, e);
         }

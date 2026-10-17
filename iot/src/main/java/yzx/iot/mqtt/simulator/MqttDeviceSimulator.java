@@ -61,8 +61,14 @@ public class MqttDeviceSimulator {
         Scanner scanner = new Scanner(System.in);
         String cmd = scanner.nextLine();
         if ("crash".equalsIgnoreCase(cmd.trim())) {
-
+            System.out.println("[设备]模拟崩溃,不告而别(等待越15~30秒看网关遗嘱日志)");
+            mqttClient.disconnectForcibly(0, 0);
+        } else {
+           publish(mqttClient,"device/" + DEVICE_ID + "/status", "offline", true);
+           mqttClient.close();
+            System.out.println("[设备]已优雅下线");
         }
+        mqttClient.close();
     }
 
     private static void publish(MqttClient client, String topic, String payload, boolean retained) throws MqttException {

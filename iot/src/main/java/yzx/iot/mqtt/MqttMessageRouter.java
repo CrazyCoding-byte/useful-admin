@@ -63,16 +63,18 @@ public class MqttMessageRouter {
     private void handleOnline(String deviceId) {
         MqttDeviceExchange created = new MqttDeviceExchange(mqttGatewayClient, protocolMessageConverter, deviceId);
         MqttDeviceExchange existing = exchanges.putIfAbsent(deviceId, created);
-        if (existing != null) {
-            exchangeBinder.accept(existing);
+        if (existing == null) {
+            exchangeBinder.accept(created);
             stateManager.login(deviceId, created);
             log.info("[mqtt]设备上线deviceId={}", deviceId);
+        }else{
+            log.debug( "[mqtt]设备已在线，忽略重复的retained上线消息 deviceId={}" , deviceId);
         }
     }
 
     private void handleOffline(String deviceId) {
         MqttDeviceExchange mqttDeviceExchange = exchanges.get(deviceId);
-        if (mqttDeviceExchange != null) {
+        if (mqttDeviceExchange == null) {
             return;
         }
         mqttDeviceExchange.close();

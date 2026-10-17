@@ -24,8 +24,7 @@ public final class MqttTopicScheme {
     public static final String SEG_UP = "up";
     public static final String SEG_DOWN = "down";
     public static final String FILTER_STATUS = ROOT + "/+/" + SEG_STATUS;
-    public static final String FILTER_UP = ROOT + "/+/" + SEG_UP + "#";
-
+public static final String FILTER_UP = ROOT + "/+/" + SEG_UP + "/#";  // device/+/up/#
     private MqttTopicScheme() {
     }
 
@@ -61,8 +60,8 @@ public final class MqttTopicScheme {
         String deviceId = p[1];
         String segment = p[2];
         return switch (segment) {
-            case "SEG_STATUS" -> new Address(deviceId, Kind.STATUS, segment);
-            case "SEG_UP", "SEG_DOWN" ->
+            case SEG_STATUS -> new Address(deviceId, Kind.STATUS, segment);
+            case SEG_UP, SEG_DOWN ->
                     p.length >= 4 ? new Address(deviceId, Kind.UP.equals(segment) ? Kind.UP : Kind.DOWN, p[3]) : new Address(deviceId, Kind.UNKNOWN, null);
             default -> new Address(deviceId, Kind.UNKNOWN, null);
         };
