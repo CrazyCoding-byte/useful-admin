@@ -13,7 +13,7 @@ public class ThreadTest {
     public static ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     public static void main(String[] args) throws InterruptedException {
-        testScheduledFuture();
+        testCompletableFuture();
     }
 
     public void testScheduleFuture() throws InterruptedException {
@@ -59,6 +59,7 @@ public class ThreadTest {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+            int num = 2 / 0;
             return "设备应答成功";
         });
         //whenComplete:成功/异常都会执行
@@ -85,5 +86,56 @@ public class ThreadTest {
             return null;
         });
         Thread.sleep(1000);
+    }
+
+    public static void testCompletableFutureThenRun() throws InterruptedException {
+        CompletableFuture.supplyAsync(() -> "100")
+                //thenApply 有入参有返回值
+                .thenApply(s -> Integer.valueOf(s));
+
+        CompletableFuture.supplyAsync(() -> "100")
+                //有入参无返回值
+                .thenAccept(s -> System.out.println(s));
+        CompletableFuture.supplyAsync(() -> "100").thenRun(() -> {
+            System.out.println("我没有参数");
+        });
+    }
+
+    public static void testCombine() throws InterruptedException {
+        CompletableFuture<Integer> c1 = CompletableFuture.supplyAsync(() -> 20);
+        CompletableFuture<Integer> c2 = CompletableFuture.supplyAsync(() -> 10);
+        c1.thenCombine(c2, (a, b) -> a + b)
+                .thenAccept(sum -> {
+                    System.out.println(sum);
+                });
+    }
+
+    public static void testAnyOf() throws InterruptedException {
+        CompletableFuture<Object> objectCompletableFuture = CompletableFuture.anyOf(
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(100);
+                    } catch (Exception e) {
+                    }
+                    return "任务A";
+                }),
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(50);
+                    } catch (Exception e) {
+                    }
+                    return "任务B";
+                })
+        );
+        objectCompletableFuture.thenAccept(s -> {
+            System.out.println("优先完成的结果" + s);
+        });
+    }
+
+    public static void testAllof() throws InterruptedException {
+        CompletableFuture<String> a1 = CompletableFuture.supplyAsync(() -> "a");
+        CompletableFuture<String> b1 = CompletableFuture.supplyAsync(() -> "b");
+        CompletableFuture<String> c1 = CompletableFuture.supplyAsync(() -> "c");
+        CompletableFuture.allOf(a1, b1, c1).thenAccept(s -> System.out.println(s));
     }
 }

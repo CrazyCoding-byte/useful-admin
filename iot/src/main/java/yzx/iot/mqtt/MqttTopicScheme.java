@@ -23,7 +23,7 @@ public final class MqttTopicScheme {
     public static final String SEG_STATUS = "status";
     public static final String SEG_UP = "up";
     public static final String SEG_DOWN = "down";
-    public static final String FILTER_STATUS = ROOT + "/+/" + SEG_STATUS;
+    public static final String FILTER_STATUS = ROOT + "/+/" + SEG_STATUS; // device/+/status
 public static final String FILTER_UP = ROOT + "/+/" + SEG_UP + "/#";  // device/+/up/#
     private MqttTopicScheme() {
     }

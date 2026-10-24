@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.logging.log4j.message.MapMessage.MapFormat.JSON;
 
@@ -23,22 +24,31 @@ public class MqttDeviceSimulator {
     private static final String BROKER = "tcp://127.0.0.1:1883";
     private static final String DEVICE_ID = "dev-mqtt-001";
     private static final ObjectMapper mapper = new ObjectMapper();
+    private static final AtomicInteger pendingSeq = new AtomicInteger(-1);
 
     public static void main(String[] args) throws MqttException, JsonProcessingException {
         MqttClient mqttClient = new MqttClient(BROKER, DEVICE_ID, new MemoryPersistence());
-        MqttConnectOptions mqttConnectOptions = new MqttConnectOptions();
-        mqttConnectOptions.setCleanSession(true);
-        mqttConnectOptions.setKeepAliveInterval(15);
-        // 遗嘱：必须在connect前登记。异常死亡时Broker代发到status主题，retained覆盖online
-        mqttConnectOptions.setWill("device/" + DEVICE_ID + "/status", "offline".getBytes(StandardCharsets.UTF_8), 1, true);
-        mqttClient.connect();
+        MqttConnectOptions options = new MqttConnectOptions();
+        options.setCleanSession(true);
+        options.setKeepAliveInterval(15);
+        // 遗嘱：异常死亡时Broker代发offline(retained覆盖online)
+        options.setWill("device/" + DEVICE_ID + "/status",
+                "offline".getBytes(StandardCharsets.UTF_8), 1, true);
+        mqttClient.connect(options);
         System.out.println("Connected to " + BROKER);
-        mqttClient.setCallback(new MqttCallback() {
 
+        mqttClient.setCallback(new MqttCallback() {
             @Override
-            public void messageArrived(String topic, MqttMessage message) {
-                System.out.println("[设备] 收到下行 topic=" + topic
-                        + " payload=" + new String(message.getPayload(), StandardCharsets.UTF_8));
+            public void messageArrived(String topic, MqttMessage message) throws Exception {
+                String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
+                System.out.println("[设备] 收到下行 topic=" + topic + " payload=" + payload);
+                // 只认平台主动下发的指令；DATA_REPORT_RESP是应答自己的上报，忽略
+                if (topic.endsWith("/down/CMD_PUSH")) {
+                    int seq = mapper.readTree(payload).get("seqId").asInt();
+                    pendingSeq.set(seq);   // 亮牌：只存取，不发送、不阻塞
+                    System.out.println("[设备] 指令已收到 seqId=" + seq
+                            + "，输入 resp 回复；不回复平台10秒后超时");
+                }
             }
 
             @Override
@@ -47,28 +57,52 @@ public class MqttDeviceSimulator {
             }
 
             @Override
-            public void deliveryComplete(org.eclipse.paho.client.mqttv3.IMqttDeliveryToken token) {
+            public void deliveryComplete(IMqttDeliveryToken token) {
             }
         });
-        //订阅自己的下行通道(#匹配任意指令)
+
         mqttClient.subscribe("device/" + DEVICE_ID + "/down/#", 1);
-        //上线:retaine消息,网关-订阅status就会收到
         publish(mqttClient, "device/" + DEVICE_ID + "/status", "online", true);
         byte[] raw = "温度=26.5".getBytes(StandardCharsets.UTF_8);
-        String body = mapper.writeValueAsString(Map.of("seqId", 1, "data", Base64.getEncoder().encodeToString(raw)));
+        String body = mapper.writeValueAsString(Map.of(
+                "seqId", 1, "data", Base64.getEncoder().encodeToString(raw)));
         publish(mqttClient, "device/" + DEVICE_ID + "/up/DATA_REPORT", body, false);
-        System.out.println("[设备]已发送数据上报,等待平台应答");
+        System.out.println("[设备]已上线并发送数据上报，命令: resp应答 / crash模拟崩溃 / offline优雅下线");
+
         Scanner scanner = new Scanner(System.in);
-        String cmd = scanner.nextLine();
-        if ("crash".equalsIgnoreCase(cmd.trim())) {
-            System.out.println("[设备]模拟崩溃,不告而别(等待越15~30秒看网关遗嘱日志)");
-            mqttClient.disconnectForcibly(0, 0);
-        } else {
-           publish(mqttClient,"device/" + DEVICE_ID + "/status", "offline", true);
-           mqttClient.close();
-            System.out.println("[设备]已优雅下线");
+        while (scanner.hasNextLine()) {
+            String cmd = scanner.nextLine().trim();
+            int seq = pendingSeq.get();   // 看牌
+            switch (cmd) {
+                case "resp" -> {
+                    if (seq < 0) {
+                        System.out.println("[设备] 当前没有待应答的指令");
+                        break;
+                    }
+                    String respBody = mapper.writeValueAsString(Map.of(
+                            "seqId", seq,
+                            "data", Base64.getEncoder().encodeToString(
+                                    "ok".getBytes(StandardCharsets.UTF_8))));
+                    // topic和报文形状与上报完全一致，cmdType换成应答类型
+                    publish(mqttClient,
+                            "device/" + DEVICE_ID + "/up/CMD_PUSH_RESP", respBody, false);
+                    pendingSeq.set(-1);
+                    System.out.println("[设备] 已发送应答 seqId=" + seq);
+                }
+                case "crash" -> {
+                    System.out.println("[设备] 模拟崩溃，不告而别，等15~30秒看网关遗嘱日志");
+                    mqttClient.disconnectForcibly(0, 0);
+                    return;
+                }
+                case "offline" -> {
+                    publish(mqttClient, "device/" + DEVICE_ID + "/status", "offline", true);
+                    mqttClient.close();
+                    System.out.println("[设备] 已优雅下线");
+                    return;
+                }
+                default -> System.out.println("[设备] 未知命令: " + cmd);
+            }
         }
-        mqttClient.close();
     }
 
     private static void publish(MqttClient client, String topic, String payload, boolean retained) throws MqttException {
